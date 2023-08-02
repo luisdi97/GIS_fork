@@ -351,7 +351,7 @@ class CKT_QGIS():
         _NEUTSIZ: "1/0"
         _LINEGEO: It's "None" but it will adopt
                   specific code in the future.
-        Note: For Underground MV line next attributes are taking
+        Note: For Underground LV line next attributes are taking
         as typical values:
         _NEUTMAT: "CU"
         """
@@ -380,7 +380,7 @@ class CKT_QGIS():
                         # _PHASEDESIG
                         if n == 0:
                             attrs = ft.split("_")
-                            ph = attrs[1][3]
+                            ph = attrs[2][:-1]
                             phcode = get_PHASEDESIG(ph)
                             underG_LVline._PHASEDESIG.append(phcode)
                         # _PHASESIZ
@@ -424,7 +424,7 @@ class CKT_QGIS():
                         # _PHASEDESIG
                         if n == 0:
                             attrs = ft.split("_")
-                            ph = attrs[2][0]
+                            ph = attrs[2][:-1]
                             phcode = get_PHASEDESIG(ph)
                             underG_MVline._PHASEDESIG.append(phcode)
                         # _PHASESIZ
@@ -516,7 +516,7 @@ class CKT_QGIS():
                         # _PHASEDESIG
                         if n == 0:
                             attrs = ft.split("_")
-                            ph = attrs[1][0]
+                            ph = attrs[1][:-1]
                             phcode = get_PHASEDESIG(ph)
                             overH_MVline._PHASEDESIG.append(phcode)
                         # _PHASESIZ
@@ -671,7 +671,7 @@ def get_INSULVOLT(nomVLL: float) -> str:
 def set_Label(LibType: str) -> str:
     """Replace to labels used in manual.
 
-    Notation from Neplan/ICE to manual notation.
+    Notation from Neplan/SIRDE to manual notation.
     No data {
             "NE": "No Existe",
             "NT": "No tiene",
@@ -756,6 +756,10 @@ def set_Label(LibType: str) -> str:
     for (k, v) in insulvolt.items():
         LibType = LibType.replace(k, v)
 
+    # SUB_
+    uunderg = {"SUB": "SUB_"}
+    for (k, v) in uunderg.items():
+        LibType = LibType.replace(k, v)
     return LibType
 
 
@@ -833,7 +837,7 @@ if __name__ == "__main__":
     cktQgis = CKT_QGIS()
     _ = cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
     # Turn OH_LVline layer into df
-    OH_LVlines_df = layer2df(cktQgis._lines["overH_LVlines"])
+    OH_LVlines_df = layer2df(cktQgis._lines["overH_MVlines"])
     # Show first & last 10 values
     print(OH_LVlines_df.head(10))
     print(OH_LVlines_df.tail(10))
