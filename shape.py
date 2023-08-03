@@ -178,7 +178,6 @@ class Line():
                     "NA": "No aplica"
                 }
         """
-        self._line_type = None   # str as dict key of line layer
         self._objectID = []         # New
         self._NEUTMAT = []       # *
         self._NEUTSIZ = []       # *
