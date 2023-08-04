@@ -755,10 +755,6 @@ def set_Label(LibType: str) -> str:
     for (k, v) in insulvolt.items():
         LibType = LibType.replace(k, v)
 
-    # SUB_
-    uunderg = {"SUB": "SUB_"}
-    for (k, v) in uunderg.items():
-        LibType = LibType.replace(k, v)
     return LibType
 
 
