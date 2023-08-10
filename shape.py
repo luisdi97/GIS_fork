@@ -32,7 +32,6 @@ class CKTdata:
         self._breakers = {}
 
     def call_data(self, path: str) -> None:
-        import pandas as pd
         # Read data
         df = pd.read_excel(path,
                            sheet_name=None)
@@ -136,7 +135,9 @@ class Line():
                 a geometry SIRDE code and finally information about the
                 Guard Conductor (material & size). Such attribute has will
                 have the next format:
-                <LVC>_<SIRDEcodeID>_<GUARDMAT>_<GUARDSIZ>
+
+                    <LVC>_<SIRDEcodeID>_<GUARDMAT>_<GUARDSIZ>
+
                 - Y_2.1B_None_None: Flag style three-phase with neutral
                                     conductor ("2.1B") with LV
                                     cable beneath ("Y") but
@@ -162,10 +163,20 @@ class Line():
                 - BPH: Split-Phase
                 - TPH: Three-Phase
 
+            LibraryName:
+                Mandatory new string type attribute for ICE circuits with
+                the following notation:
+
+                    <LC(LG)>: <LibraryType>
+
+                Where "LC" stands for "LineCode" and "LG" to
+                "LineGeometry" depending on the electric model
+                of the line defined in the `*.dss` library.
+
         1. Note: Optional attributes: "geometry" is not explicitly
                  mencioned in the manual of "QGIS2OPENDSS" plug-in.
                  It is the spatial points the line pass through.
-                 "objectID" works as an extra unique label
+                 "ICEobjectID" works as an extra unique label
                  for all circuit objects.
         2. Note: "Conductor" for HV/MV line & "Cable" for LV line.
         3. Note: *RHH* is also used for TYPE of underground LV lines.
@@ -178,7 +189,9 @@ class Line():
                     "NA": "No aplica"
                 }
         """
-        self._objectID = []         # New
+        # "*" symbol stands for mandator attribute
+        self._ICEobjectID = []   # New (*)
+        self._LibraryName = []   # New (*)
         self._NEUTMAT = []       # *
         self._NEUTSIZ = []       # *
         self._PHASEMAT = []      # *
@@ -203,31 +216,31 @@ class Line():
 class UG_MVline(Line):
     def __init__(self):
         super().__init__()
-        self._line_type = "underG_MVlines"
+        self._line_layer = "underG_MVlines"
 
 
 class OH_MVline(Line):
     def __init__(self):
         super().__init__()
-        self._line_type = "overH_MVlines"
+        self._line_layer = "overH_MVlines"
 
 
 class UG_LVline(Line):
     def __init__(self):
         super().__init__()
-        self._line_type = "underG_LVlines"
+        self._line_layer = "underG_LVlines"
 
 
 class OH_LVline(Line):
     def __init__(self):
         super().__init__()
-        self._line_type = "overH_LVlines"
+        self._line_layer = "overH_LVlines"
 
 
 class serv_LVline(Line):
     def __init__(self):
         super().__init__()
-        self._line_type = "service_LVlines"
+        self._line_layer = "service_LVlines"
 
 
 class CKT_QGIS():
@@ -323,7 +336,7 @@ class CKT_QGIS():
                                           linesID)
         # Update attribute
         for LL in line_layers:
-            L = LL._line_type
+            L = LL._line_layer
             dictAttrs = LL.__dict__
             self._lines[L] = {col.strip("_"): vals for (col, vals)
                               in dictAttrs.items()}
@@ -368,8 +381,8 @@ class CKT_QGIS():
             # ["Node1", "Node2", "Name", "LibraryType", "Length", "Un"]
             cols = row.split("&")
             # LibraryType
-            Ltype = cols[3]
-            Ltype = set_Label(Ltype)
+            originalLtype = cols[3]
+            Ltype = set_Label(originalLtype)
             line = Ltype.split()
             # Underground
             if "SUB" in line[0]:
@@ -395,6 +408,8 @@ class CKT_QGIS():
                             attrs = ft.split("_")
                             underG_LVline._INSULMAT.append(attrs[0])
                             underG_LVline._NEUTSIZ.append(attrs[1])
+                    # _LibraryName: LineCode (LC)
+                    underG_LVline._LibraryName.append(f"LC: {originalLtype}")
                     # _NEUTMAT
                     underG_LVline._NEUTMAT.append("CU")
                     # _NOMVOLT
@@ -410,9 +425,9 @@ class CKT_QGIS():
                     underG_LVline._Y1.append(Y1)
                     underG_LVline._X2.append(X2)
                     underG_LVline._Y2.append(Y2)
-                    # _objectID
+                    # _ICEobjectID
                     nameID = cols[2]
-                    underG_LVline._objectID.append(nameID)
+                    underG_LVline._ICEobjectID.append(nameID)
                     # _LENGTH
                     length = float(cols[4].strip())
                     underG_LVline._LENGTH.append(length)
@@ -439,6 +454,8 @@ class CKT_QGIS():
                             attrs = ft.split("_")
                             underG_MVline._INSULMAT.append(attrs[0])
                             underG_MVline._NEUTPER.append(attrs[1])
+                    # _LibraryName: LineCode (LC)
+                    underG_MVline._LibraryName.append(f"LC: {originalLtype}")
                     # _NEUTMAT
                     underG_MVline._NEUTMAT.append("CU")
                     # _NEUTSIZ
@@ -463,9 +480,9 @@ class CKT_QGIS():
                     underG_MVline._Y1.append(Y1)
                     underG_MVline._X2.append(X2)
                     underG_MVline._Y2.append(Y2)
-                    # _objectID
+                    # _ICEobjectID
                     nameID = cols[2]
-                    underG_MVline._objectID.append(nameID)
+                    underG_MVline._ICEobjectID.append(nameID)
                     # _LENGTH
                     length = float(cols[4].strip())
                     underG_MVline._LENGTH.append(length)
@@ -490,6 +507,8 @@ class CKT_QGIS():
                             overH_LVline._NEUTMAT.append(attrs[1])
                             overH_LVline._NEUTSIZ.append(attrs[2])
                             overH_LVline._TYPE.append(attrs[3])
+                    # _LibraryName: LineCode (LC)
+                    overH_LVline._LibraryName.append(f"LC: {originalLtype}")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
                     codenomV = get_NOMVOLT(nomV)
@@ -503,9 +522,9 @@ class CKT_QGIS():
                     overH_LVline._Y1.append(Y1)
                     overH_LVline._X2.append(X2)
                     overH_LVline._Y2.append(Y2)
-                    # _objectID
+                    # _ICEobjectID
                     nameID = cols[2]
-                    overH_LVline._objectID.append(nameID)
+                    overH_LVline._ICEobjectID.append(nameID)
                     # _LENGTH
                     length = float(cols[4].strip())
                     overH_LVline._LENGTH.append(length)
@@ -533,6 +552,8 @@ class CKT_QGIS():
                             geo_format = f"{attrs[6]}_{attrs[5]}" \
                                          f"_{attrs[4]}_{attrs[3]}"
                             overH_MVline._LINEGEO.append(geo_format)
+                    # _LibraryName: LineCode (LC)
+                    overH_MVline._LibraryName.append(f"LC: {originalLtype}")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
                     codenomV = get_NOMVOLT(nomV)
@@ -546,9 +567,9 @@ class CKT_QGIS():
                     overH_MVline._Y1.append(Y1)
                     overH_MVline._X2.append(X2)
                     overH_MVline._Y2.append(Y2)
-                    # _objectID
+                    # _ICEobjectID
                     nameID = cols[2]
-                    overH_MVline._objectID.append(nameID)
+                    overH_MVline._ICEobjectID.append(nameID)
                     # _LENGTH
                     length = float(cols[4].strip())
                     overH_MVline._LENGTH.append(length)
@@ -801,26 +822,26 @@ def loc_buscoord(busname: str,
     return (X, Y)
 
 
-def layer2df(layer: dict) -> pd.DataFrame:
+def layer2df(layer: dict) -> tuple[pd.DataFrame]:
     """Convert to pd.DataFrame.
 
     It gets the layer of certain object as dict
-    and returns a DataFrame of pandas.
+    and returns a DataFrame of pandas as well as such dict.
     Format of the layer:
     overH_MVline = {
         "line_type": "LayerName",
-        "objectID": [val1, val2, ..., valN],
+        "ICEobjectID": [val1, val2, ..., valN],
         "NEUTMAT": [val1, val2, ..., valN],
         ...,
         "Y2": [val1, val2, ..., valN]
     }
     """
-    data = dict()
+    dictData = dict()
     for (k, v) in layer.items():
         if type(v) == list:
             if len(v) != 0:
-                data[k] = v
-    return pd.DataFrame.from_dict(data)
+                dictData[k] = v
+    return pd.DataFrame.from_dict(dictData), dictData
 
 
 if __name__ == "__main__":
