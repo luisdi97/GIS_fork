@@ -167,7 +167,7 @@ class Line():
                 Mandatory new string type attribute for ICE circuits with
                 the following notation:
 
-                    <LC(LG)>: <LibraryType>
+                    <LC(LG)>::<LibraryType>
 
                 Where "LC" stands for "LineCode" and "LG" to
                 "LineGeometry" depending on the electric model
@@ -380,9 +380,10 @@ class CKT_QGIS():
         for row in linesID:
             # ["Node1", "Node2", "Name", "LibraryType", "Length", "Un"]
             cols = row.split("&")
-            # LibraryType
-            originalLtype = cols[3]
-            Ltype = set_Label(originalLtype)
+            # LibraryType -> LibraryName
+            lineName = cols[3].replace(" ", "").strip()
+            # Replace label
+            Ltype = set_Label(lineName)
             line = Ltype.split()
             # Underground
             if "SUB" in line[0]:
@@ -409,7 +410,7 @@ class CKT_QGIS():
                             underG_LVline._INSULMAT.append(attrs[0])
                             underG_LVline._NEUTSIZ.append(attrs[1])
                     # _LibraryName: LineCode (LC)
-                    underG_LVline._LibraryName.append(f"LC: {originalLtype}")
+                    underG_LVline._LibraryName.append(f"LC::{lineName}")
                     # _NEUTMAT
                     underG_LVline._NEUTMAT.append("CU")
                     # _NOMVOLT
@@ -455,7 +456,7 @@ class CKT_QGIS():
                             underG_MVline._INSULMAT.append(attrs[0])
                             underG_MVline._NEUTPER.append(attrs[1])
                     # _LibraryName: LineCode (LC)
-                    underG_MVline._LibraryName.append(f"LC: {originalLtype}")
+                    underG_MVline._LibraryName.append(f"LC::{lineName}")
                     # _NEUTMAT
                     underG_MVline._NEUTMAT.append("CU")
                     # _NEUTSIZ
@@ -508,7 +509,7 @@ class CKT_QGIS():
                             overH_LVline._NEUTSIZ.append(attrs[2])
                             overH_LVline._TYPE.append(attrs[3])
                     # _LibraryName: LineCode (LC)
-                    overH_LVline._LibraryName.append(f"LC: {originalLtype}")
+                    overH_LVline._LibraryName.append(f"LC::{lineName}")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
                     codenomV = get_NOMVOLT(nomV)
@@ -553,7 +554,7 @@ class CKT_QGIS():
                                          f"_{attrs[4]}_{attrs[3]}"
                             overH_MVline._LINEGEO.append(geo_format)
                     # _LibraryName: LineCode (LC)
-                    overH_MVline._LibraryName.append(f"LC: {originalLtype}")
+                    overH_MVline._LibraryName.append(f"LC::{lineName}")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
                     codenomV = get_NOMVOLT(nomV)
