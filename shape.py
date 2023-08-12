@@ -382,8 +382,9 @@ class CKT_QGIS():
             cols = row.split("&")
             # LibraryType -> LibraryName
             lineName = cols[3].replace(" ", "").strip()
+            originalLib = cols[3]
             # Replace label
-            Ltype = set_Label(lineName)
+            Ltype = set_Label(originalLib)
             line = Ltype.split()
             # Underground
             if "SUB" in line[0]:
