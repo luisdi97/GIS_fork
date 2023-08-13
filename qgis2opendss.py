@@ -495,6 +495,8 @@ class QGIS2OpenDSS(object):
                 faseOrig = lineaMT['PHASEDESIG']
                 cantFases = phaseOperations.renamePhase(lineaMT['PHASEDESIG']).get('phaseNumber')
                 nom_volt = lineaMT['NOMVOLT']
+                ICEobjID = lineaMT["ICEobjectID"]   # New: list[str]
+                libName = lineaMT["LibraryName"]    # New: list[str]
                 datos_tension = lineOperations.renameVoltage(nom_volt)
                 opervoltLN = datos_tension['LVCode']['LN']
                 opervoltLL = datos_tension['LVCode']['LL']
@@ -520,7 +522,8 @@ class QGIS2OpenDSS(object):
                                   'NOMVOLT': lineaMT['INSULVOLT'], 'PHASE': fase, 'SHLEN': LineLength, 'AIR_UGND': air_ugnd,
                                   'INSUL': lineaMT['INSULMAT'], 'NPHAS': cantFases, 'VOLTOPRLL': opervoltLL,
                                   'VOLTOPRLN': opervoltLN, "SHIELD": lineaMT["SHIELDING"],
-                                  'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2}
+                                  'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2,
+                                  "ICEobjectID": ICEobjID, "LibraryName": libName}
                 else:
                     air_ugnd = 'air'
                     datosLinea = {"PHASEDESIG": faseOrig, "INDEXDSS": indexDSS, 'ID': lineaMT.id(), "LAYER": layer,
@@ -529,8 +532,9 @@ class QGIS2OpenDSS(object):
                                   'PHAMAT': lineaMT['PHASEMAT'], 'PHASIZ': lineaMT['PHASESIZ'], 'CCONF': lineaMT['LINEGEO'],
                                   'PHASE': fase, 'SHLEN': LineLength, 'AIR_UGND': air_ugnd, 'NPHAS': cantFases,
                                   'VOLTOPRLL': opervoltLL, 'VOLTOPRLN': opervoltLN,
-                                  'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2}
-    
+                                  'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2,
+                                  "ICEobjectID": ICEobjID, "LibraryName": libName}
+
                 if Grafo.get_edge_data(nodo1, nodo2)== None:  # se asegura que la línea no existe
                     Grafo.add_edge(nodo1, nodo2)
                     Grafo[nodo1][nodo2].update(datosLinea) # Agrega la línea al grafo con todos los datos
@@ -8445,31 +8449,40 @@ class QGIS2OpenDSS(object):
                         configFase = DATOS['PHASE']  # Recibe la fase del bus en formato ODSS
                         cantFases = DATOS['NPHAS']  # Recibe la cantidad de fases de la linea
                         opervoltLN = DATOS['VOLTOPRLN']  # ,' !1ph_basekV=',opervolt
+                        libcode = DATOS["LibraryName"]
                         nodo1 = linea[0]
                         nodo2 = linea[1]
-                        
-                        # Recibe la informacion del tipo de conductor, cantidad y aislamiento
-                        if air_or_ugnd == 'air':
-                            equipment = str(cantFases)+ 'FMV' + str(DATOS['PHASIZ'])+ str(DATOS['PHAMAT'])
-                            equipment += str(DATOS['NEUSIZ'])+ str(DATOS['NEUMAT'])+ '_' + str(DATOS['CCONF']) 
+
+                        if "::" in libcode:
+                            equipment =  libcode.split("::")[1]
                         else:
-                            equipment = str(cantFases)+ 'FMV' + str(DATOS['PHASIZ'])
-                            equipment += str(DATOS['PHAMAT'])+ '_' + str(DATOS['NOMVOLT'])+ str(DATOS['INSUL'])
+                            # Recibe la informacion del tipo de conductor, cantidad y aislamiento
+                            if air_or_ugnd == 'air':
+                                equipment = str(cantFases)+ 'FMV' + str(DATOS['PHASIZ'])+ str(DATOS['PHAMAT'])
+                                equipment += str(DATOS['NEUSIZ'])+ str(DATOS['NEUMAT'])+ '_' + str(DATOS['CCONF']) 
+                            else:
+                                equipment = str(cantFases)+ 'FMV' + str(DATOS['PHASIZ'])
+                                equipment += str(DATOS['PHAMAT'])+ '_' + str(DATOS['NOMVOLT'])+ str(DATOS['INSUL'])
+
                         busfrom = DATOS['bus1']
                         busto = DATOS['bus2']
-                        if float(DATOS['SHLEN'])== 0:
+                        if float(DATOS['SHLEN']) == 0:
                             DATOS['SHLEN'] = 0.0001
                         sh_len = "{0:.4f}".format(DATOS['SHLEN']) # Recibe la longitud de la linea
-                        if (busfrom == 'BUSMV' + circuitName + str(1))or (busto == 'BUSMV' + circuitName + str(1)):
-                            lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
+
+                        if "::" in libcode:
+                            lineName = DATOS["ICEobjectID"]
                         else:
-                            lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
-                        
+                            if (busfrom == 'BUSMV' + circuitName + str(1))or (busto == 'BUSMV' + circuitName + str(1)):
+                                lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
+                            else:
+                                lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
+
                         if air_or_ugnd == "air":
                             lista_geo_MT_aer.append((DATOS["ID"]-1, lineName, equipment))
                         else:
                             lista_geo_MT_sub.append((DATOS["ID"]-1, lineName, equipment))
-                        
+
                         n += 1
                          
                         # Switch
@@ -8604,23 +8617,33 @@ class QGIS2OpenDSS(object):
                                     idxbus2_rec = info_reclosers["INDEXBUS2"]
                                     layerReclosers.changeAttributeValue(id_rec, idxbus1_rec, busfrom)
                                     layerReclosers.changeAttributeValue(id_rec, idxbus2_rec, busto)
-                                    
+
                         # Reguladores
                         if capa_reg is True:
                             if busfrom in buslist_reg:
                                 busfrom = busfrom + "_reg"                    
-                        
+
                         # Escritura Líneas Media Tensión
-                        
                         if lineName == "MV" + str(cantFases)+ 'P' + circuitName + '0':
                             busfrom = 'AFTERMETER' #Para coincidir con la línea 00
-                        
+
                         line = 'new line.' + lineName + ' bus1=' + busfrom + configFase
-                        line += ' bus2=' +  busto + configFase + ' geometry=' + equipment
+                        line += ' bus2=' +  busto + configFase  # + ' geometry=' + equipment
+                        # New: LineGeometry or LineCode
+                        if "LC::" in libcode:
+                            line += ' linecode=' + equipment
+                        elif "LG::" in libcode:
+                            line += ' geometry=' + equipment
+                        elif "::" not in libcode:
+                            line += ' geometry=' + equipment
+                        else:
+                            raise Exception(("LibraryName can only be LC:: or LG:: "),
+                                            ("see documentation of Line object of shape.py module."))
+
                         line += ' length=' + sh_len + ' units=m' + ' !1ph_basekV='
                         line += str(opervoltLN) + " \n" # Se usan las variables anteriores en formar el string de salida
                         output_lmtdss.write(line)
-                        
+
                         element = 'line.' + lineName
                         line = 'new monitor.Mon' + lineName + ' Element=' + element
                         line += ' Terminal=1 Mode=0 !1ph_basekV=' + str(opervoltLN) + " \n"
