@@ -9,6 +9,7 @@ of "QGIS2OPENDSS" plug-in.
    Universidad de Costa Rica (UCR)
 
 Electric Power & Energy Research Laboratory (EPERLab).
+
 """
 import pandas as pd
 import geopandas as gpd
@@ -247,20 +248,20 @@ class serv_LVline(Line):
 
 
 class Bus():
+    """Bus object.
+
+    Kind of buses:
+    - Barras de MT subterráneas: "underG_MVbus"
+    - Barras de MT aéreas: "overH_MVbus"
+    - Barras de BT subterráneas: "underG_LVbus"
+    - Barras de BT aéreas: "overH_LVbus"
+
+    Buses do not have obligatory attributes and only need to
+    identify themselves with their ID, nominal voltage and
+    geometry (X1,Y1).
+
+    """
     def __init__(self) -> None:
-        """bus object.
-
-        Kind of buses:
-        - Barras de MT subterráneas: "underG_MVbus"
-        - Barras de MT aéreas: "overH_MVbus"
-        - Barras de BT subterráneas: "underG_LVbus"
-        - Barras de BT aéreas: "overH_LVbus"
-
-        Buses do not have obligatory attributes and only need to
-        identify themselves with their ID, nominal voltage and 
-        geometry (X1,Y1)
-        
-        """
         self._ICEobjectID = []
         self._NOMVOLT = []
         self._X1 = []
@@ -292,6 +293,11 @@ class UG_LVbus(Bus):
 
 
 class Transformer():
+    """Missing documentation.
+
+    Here goes the missing description of this class.
+
+    """
     def __init__(self) -> None:
         self._ICEobjectID = []
         self._NODE1 = []
@@ -310,7 +316,7 @@ class Transformer():
         self._RATEDKVA = []
         self._TAPSETTING = []
         self._TAPS = []
-        self._MV_MV = [] # The variable name should be MV/MV in attribute table in .shp
+        self._MV_MV = []      # Label must be MV/MV
         self._HIGHVOLT = []
         self._MEDVOLT = []
         self._LOWVOLT = []
@@ -324,7 +330,7 @@ class Transformer():
         self._KVAMED = []
         self._KVALOW = []
         self._WINDINGS = []
-        self._TAPMAX_MI = [] # The variable name should be TAPMAX/MI in attribute table in .shp
+        self._TAPMAX_MI = []    # Label must be TAPMAX/MI
         self._ISC_3P = []
         self._ISC_1P = []
         self._TTYPE = []
@@ -357,6 +363,11 @@ class Subestation_without_modeling_Tx(Transformer):
 
 
 class Load():
+    """Missing documentation.
+
+    Here goes the missing description of this class.
+
+    """
     def __init__(self):
         self._ICEobjectID = []
         self._NODE1 = []
@@ -388,6 +399,11 @@ class MV_load(Load):
 
 
 class Fuse():
+    """Missing documentation.
+
+    Here goes the missing description of this class.
+
+    """
     def __init__(self):
         self._fuse_layer = "fuses"
         self._ICEobjectID = []
@@ -401,6 +417,11 @@ class Fuse():
 
 
 class PV():
+    """Missing documentation.
+
+    Here goes the missing description of this class.
+
+    """
     def __init__(self):
         self._PV_layer = "PVs"
         self._ICEobjectID = []
@@ -415,6 +436,11 @@ class PV():
 
 
 class Recloser():
+    """Missing documentation.
+
+    Here goes the missing description of this class.
+
+    """
     def __init__(self):
         self._recloser_layer = "reclosers"
         self._ICEobjectID = []
@@ -431,6 +457,11 @@ class Recloser():
 
 
 class Regulator():
+    """Missing documentation.
+
+    Here goes the missing description of this class.
+
+    """
     def __init__(self):
         self._regulator_layer = "regulators"
         self._ICEobjectID = []
@@ -501,6 +532,7 @@ class CKT_QGIS():
             "Y2": [val0, val1, val3, ..., valN]
         }
     }
+
     """
     def __init__(self):
         self._buses = {}
@@ -525,6 +557,7 @@ class CKT_QGIS():
 
         It gets lines data, creat the objects and sets its
         attributes.
+
         """
         # lineID
         linesID = concat_linecols(linesData)
@@ -534,12 +567,13 @@ class CKT_QGIS():
         overH_LVline = OH_LVline()
         overH_MVline = OH_MVline()
         # Unpack libraryType
-        line_layers = self.set_attributes_lines(underG_LVline,
-                                          underG_MVline,
-                                          overH_LVline,
-                                          overH_MVline,
-                                          busesData,
-                                          linesID)
+        line_layers = self.set_attributes_lines(
+            underG_LVline,
+            underG_MVline,
+            overH_LVline,
+            overH_MVline,
+            busesData,
+            linesID)
         # Update attribute
         for LL in line_layers:
             L = LL._line_layer
@@ -551,13 +585,13 @@ class CKT_QGIS():
                 overH_LVline, overH_MVline)
 
     def add_buslayers(self, busesData: dict[list]) -> tuple[Bus]:
-        """
-        Create bus layers.
+        """Create bus layers.
 
         It gets buses data, create the objects and sets its
         attributes.
+
         """
-        # busID
+        # BusID
         busID = concat_buscols(busesData)
         # Create instances
         underG_LVbus = UG_LVbus()
@@ -565,12 +599,13 @@ class CKT_QGIS():
         overH_LVbus = OH_LVbus()
         overH_MVbus = OH_MVbus()
 
-        # Unpack 
-        bus_layers = self.set_attributes_buses(underG_LVbus = underG_LVbus,
-                                         underG_MVbus = underG_MVbus,
-                                         overH_LVbus = overH_LVbus,
-                                         overH_MVbus = overH_MVbus,
-                                         busID = busID)
+        # Unpack
+        bus_layers = self.set_attributes_buses(
+            underG_LVbus=underG_LVbus,
+            underG_MVbus=underG_MVbus,
+            overH_LVbus=overH_LVbus,
+            overH_MVbus=overH_MVbus,
+            busID=busID)
 
         # Update attribute
         for BL in bus_layers:
@@ -580,19 +615,22 @@ class CKT_QGIS():
                               in dictAttrs.items()}
 
         return (underG_LVbus, underG_MVbus,
-                overH_LVbus, overH_MVbus)    
+                overH_LVbus, overH_MVbus)
 
-    def add_txlayers(self, busesData: dict[list], AsymTxData:dict[list], TxData:dict[list]) -> tuple:
-        """
-        Create transformer layers.
+    def add_txlayers(self,
+                     AsymTxData: dict[list],
+                     TxData: dict[list]) -> tuple[Transformer]:
+        """Create transformer layers.
+
         It gets transformer data, create the objects and sets its
         attributes.
 
         To store the layers of transformers was necessary change
         the name of the attributes MV_MV and TAPMAX_MI to
         MV/MV and TAPMAX/MI as the manual requests.
+
         """
-        for k,v in TxData.items():
+        for k, v in TxData.items():
             AsymTxData[k] += v
 
         # TransformerID
@@ -603,19 +641,20 @@ class CKT_QGIS():
         Sub_autoTx = Subestation_auto_Tx()
         Sub_without_modeling_Tx = Subestation_without_modeling_Tx()
 
-        transformer_layers = self.set_attributes_tx(Distribution_transformer = Distribution_transformer,
-                                                    Sub_three_phase_unit_Tx = Sub_three_phase_unit_Tx,
-                                                    Sub_autoTx = Sub_autoTx,
-                                                    Sub_without_modeling_Tx = Sub_without_modeling_Tx,
-                                                    busesData = busesData,
-                                                    txID = txID)
+        transformer_layers = self.set_attributes_tx(
+            Distribution_transformer=Distribution_transformer,
+            Sub_three_phase_unit_Tx=Sub_three_phase_unit_Tx,
+            Sub_autoTx=Sub_autoTx,
+            Sub_without_modeling_Tx=Sub_without_modeling_Tx,
+            txID=txID
+        )
 
         for TL in transformer_layers:
-            T = TL._Tx_layer 
+            T = TL._Tx_layer
             dictAttrs = TL.__dict__
 
             dictAttrsMod = {}
-            for (col,vals) in dictAttrs.items():
+            for (col, vals) in dictAttrs.items():
                 if col == "_MV_MV":
                     col1 = col.replace(col, "_MV/MV")
                     dictAttrsMod[col1.strip("_")] = vals
@@ -624,27 +663,32 @@ class CKT_QGIS():
                     dictAttrsMod[col2.strip("_")] = vals
                 else:
                     dictAttrsMod[col.strip("_")] = vals
-            
+
             self._transformers[T] = dictAttrsMod
-        
+
         return (Distribution_transformer,
-                Sub_three_phase_unit_Tx, 
+                Sub_three_phase_unit_Tx,
                 Sub_autoTx,
                 Sub_without_modeling_Tx)
 
-    def add_load_layers(self, busData: dict[list], loadsData: dict[list]):
+    def add_load_layers(self,
+                        loadsData: dict[list]) -> tuple[Load]:
+        """Missing documentation.
 
+        Here goes the missing description of this method.
+
+        """
         # Rows
         loadID = concat_loadcols(loadsData)
         # Create instances
         LVload = LV_load()
         MVload = MV_load()
 
-        load_layers = self.set_attributes_loads(LVload = LVload,
-                                                MVload = MVload,
-                                                loadID = loadID,
-                                                busData = busData)
-        
+        load_layers = self.set_attributes_loads(
+            LVload=LVload,
+            MVload=MVload,
+            loadID=loadID)
+
         for LL in load_layers:
             L = LL._load_layer
             if L == "LV_load":
@@ -655,85 +699,105 @@ class CKT_QGIS():
                 dictAttrs = LL.__dict__
                 self._MVloads[L] = {col.strip("_"): vals for (col, vals)
                                     in dictAttrs.items()}
-        
+
         return (LVload, MVload)
 
-    def add_fuse_layer(self, fuseData: dict[list]):
+    def add_fuse_layer(self, fuseData: dict[list]) -> Fuse:
+        """Missing documentation.
+
+        Here goes the missing description of this method.
+
+        """
         # Concat columns
         fuseID = concat_fusecols(fuseData)
-
         # Create instance
         fuse = Fuse()
 
-        fuse_layer = self.set_attributes_fuse(fuse=fuse, 
+        fuse_layer = self.set_attributes_fuse(fuse=fuse,
                                               fuseID=fuseID)
-        
         F = fuse_layer._fuse_layer
         dictAttrs = fuse_layer.__dict__
-        self._fuses[F] = {col.strip("_"): vals for (col,vals) in dictAttrs.items()}
+        self._fuses[F] = {col.strip("_"): vals
+                          for (col, vals) in dictAttrs.items()}
 
         return (fuse)
 
-    def add_PV_layer(self, busesData:dict[list], pvData: dict[list]):
+    def add_PV_layer(self,
+                     busesData: dict[list],
+                     pvData: dict[list]) -> PV:
+        """Missing documentation.
 
+        Here goes the missing description of this method.
+
+        """
         # Concat columns
         pvID = concat_PVcols(pvData)
-
         # Create instance
         pv = PV()
-
-        pv_layer = self.set_attributes_PV(pv=pv, pvID=pvID, busesData=busesData)
+        pv_layer = self.set_attributes_PV(
+            pv=pv,
+            pvID=pvID,
+            busesData=busesData)
 
         PVL = pv_layer._PV_layer
         dictAttrs = pv_layer.__dict__
-        self._smallScale_DG[PVL] = {col.strip("_"):vals for (col, vals) in dictAttrs.items()}
+        self._smallScale_DG[PVL] = {col.strip("_"): vals
+                                    for (col, vals) in dictAttrs.items()}
 
         return pv
 
-    def add_recloser_layer(self, recloserData: dict[list]):
+    def add_recloser_layer(self,
+                           recloserData: dict[list]) -> Recloser:
+        """Missing documentation.
 
-        #Concat recloserData rows
+        Here goes the missing description of this method.
+
+        """
+        # Concat recloserData rows
         recloserID = concat_reclosercols(recloserData)
-
-        #Create instance
+        # Create instance
         recloser = Recloser()
-
         recloser_layer = self.set_attributes_recloser(recloser=recloser,
                                                       recloserID=recloserID)
-        
+
         R = recloser_layer._recloser_layer
         dictAttrs = recloser_layer.__dict__
-        self._reclosers[R] = {cols.lstrip("_"):vals for (cols, vals) in dictAttrs.items()}
+        self._reclosers[R] = {cols.lstrip("_"): vals
+                              for (cols, vals) in dictAttrs.items()}
 
         return recloser
 
-    def add_regulator_layer(self, busesData, regulatorData):
+    def add_regulator_layer(self, busesData, regulatorData) -> Regulator:
+        """Layer of regularos.
 
-        #Concat columns
+        It creats regulators layers attributes suitable to
+        be converted to shapefiles.
+        """
+        # Concat columns
         regulatorID = concat_regulatorcols(regulatorData)
-
-        #Create instance
+        # Create instance
         regulator = Regulator()
+        regulator_layer = self.set_attributes_regulator(
+            busesData=busesData,
+            regulatorID=regulatorID,
+            regulator=regulator)
 
-        regulator_layer = self.set_attributes_regulator(busesData=busesData,
-                                                        regulatorID=regulatorID,
-                                                        regulator=regulator)
-        
         R = regulator_layer._regulator_layer
         dictAttrs = regulator_layer.__dict__
-        self._regulators[R] = {cols.lstrip("_"): vals for (cols, vals) in dictAttrs.items()}
+        self._regulators[R] = {cols.lstrip("_"): vals
+                               for (cols, vals) in dictAttrs.items()}
 
         return regulator
 
     # Pending: add_publicLights_layer(self)
 
     def set_attributes_lines(self,
-                       underG_LVline: Line,
-                       underG_MVline: Line,
-                       overH_LVline: Line,
-                       overH_MVline: Line,
-                       busesData: dict[list],
-                       linesID: list[str]) -> tuple[Line]:
+                             underG_LVline: Line,
+                             underG_MVline: Line,
+                             overH_LVline: Line,
+                             overH_MVline: Line,
+                             busesData: dict[list],
+                             linesID: list[str]) -> tuple[Line]:
         """Unpack the data of line layers.
 
         It gets some SIRDE code "subtipos" and gives them all
@@ -963,21 +1027,22 @@ class CKT_QGIS():
                 overH_LVline, overH_MVline)
 
     def set_attributes_buses(self,
-                       underG_LVbus: Bus,
-                       underG_MVbus: Bus,
-                       overH_LVbus: Bus,
-                       overH_MVbus: Bus,
-                       busID: list[str]) -> tuple[Bus]:
+                             underG_LVbus: Bus,
+                             underG_MVbus: Bus,
+                             overH_LVbus: Bus,
+                             overH_MVbus: Bus,
+                             busID: list[str]) -> tuple[Bus]:
         """Unpack the data of bus layers.
-        """
 
+        Optional layer requested for ICE.
+
+        """
         for row in busID:
             # ["Name", "Un", "CoordX1", "CoordY1"]
             cols = row.split("&")
             bus = cols[0]
-            # overH_MVbus
             if "AREA" and "MT" in bus:
-                overH_MVbus._ICEobjectID.append(bus)  
+                overH_MVbus._ICEobjectID.append(bus)
                 # _NOMVOLT
                 nomV = float(cols[1].strip())
                 codenomV = get_NOMVOLT(nomV)
@@ -987,25 +1052,9 @@ class CKT_QGIS():
                 Y1 = float(cols[3])
                 overH_MVbus._X1.append(X1)
                 overH_MVbus._Y1.append(Y1)
-                
-            elif "AREA" and "BT" in bus: # overH_LVbus
+
+            elif "AREA" and "BT" in bus:
                 overH_LVbus._ICEobjectID.append(bus)
-                    
-                # _NOMVOLT
-                nomV = float(cols[1].strip())
-                codenomV = get_NOMVOLT(nomV)
-                overH_LVbus._NOMVOLT.append(codenomV)
-                # _X1, _Y1
-                X1 = float(cols[2])
-                Y1 = float(cols[3])
-                overH_LVbus._X1.append(X1)
-                overH_LVbus._Y1.append(Y1)
-            
-     
-            elif "_T" in bus: # _T buses == LV AEREA BUSES
-            
-                overH_LVbus._ICEobjectID.append(bus.strip("_T"))
-        
                 # _NOMVOLT
                 nomV = float(cols[1].strip())
                 codenomV = get_NOMVOLT(nomV)
@@ -1016,11 +1065,22 @@ class CKT_QGIS():
                 overH_LVbus._X1.append(X1)
                 overH_LVbus._Y1.append(Y1)
 
-            elif "SUB" and "MT" in bus: # underG_MVbus
-                #MV
-                
+            # Odd buses
+            elif "_T" in bus:
+                overH_LVbus._ICEobjectID.append(bus.strip("_T"))
+                # _NOMVOLT
+                nomV = float(cols[1].strip())
+                codenomV = get_NOMVOLT(nomV)
+                overH_LVbus._NOMVOLT.append(codenomV)
+                # _X1, _Y1
+                X1 = float(cols[2])
+                Y1 = float(cols[3])
+                overH_LVbus._X1.append(X1)
+                overH_LVbus._Y1.append(Y1)
+
+            elif "SUB" and "MT" in bus:
+                # MV
                 underG_MVbus._ICEobjectID.append(bus)
-                    
                 # _NOMVOLT
                 nomV = float(cols[1].strip())
                 codenomV = get_NOMVOLT(nomV)
@@ -1030,11 +1090,9 @@ class CKT_QGIS():
                 Y1 = float(cols[3])
                 underG_MVbus._X1.append(X1)
                 underG_MVbus._Y1.append(Y1)
-                
-            elif "SUB" and "BT" in bus: # underG_LVbus
-                    
+
+            elif "SUB" and "BT" in bus:
                 underG_LVbus._ICEobjectID.append(bus)
-                    
                 # _NOMVOLT
                 nomV = float(cols[1].strip())
                 codenomV = get_NOMVOLT(nomV)
@@ -1048,499 +1106,512 @@ class CKT_QGIS():
         return (underG_MVbus, underG_LVbus,
                 overH_MVbus, overH_LVbus)
 
-    def set_attributes_tx(self, 
-                      Distribution_transformer:Transformer,
-                      Sub_three_phase_unit_Tx:Transformer,
-                      Sub_autoTx:Transformer,
-                      Sub_without_modeling_Tx:Transformer,
-                      busesData: dict[list],
-                      txID: list[str]):
-        
-        """
-        For transformers without subestation "Trafo2WindingAsym" and
-        "Trafo2Winding" we need diferentiate this transformers when
+    def set_attributes_tx(self,
+                          Distribution_transformer: Transformer,
+                          Sub_three_phase_unit_Tx: Transformer,
+                          Sub_autoTx: Transformer,
+                          Sub_without_modeling_Tx: Transformer,
+                          txID: list[str]):
+        """Unpack transformer attributes.
+
+        For transformers without subestation `Trafo2WindingAsym` and
+        `Trafo2Winding` we need to diferentiate this transformers when
         the computer read the txID (rows in the sheet) and we watch
         that LibraryType in "Trafo2Winding" contain the PRIMCONN and
         SECCONN, so for now we differentiate with this.
 
         Note: The position of the tap is unknown, therefore it is
               set to 1:
-        _TAPSETTING: 1
+                  `_TAPSETTING:` 1
 
         """
-
+        splitPH_TX = Distribution_transformer
         for row in txID:
-            # ["Name", "Node1", "Node2", "Switch1", "Switch2", "IsRegulated", "Un1", "Un2", "Sr", "LibraryType", "CoordX1", "CoordY1"]
+            # ["Name", "Node1", "Node2", "Switch1", "Switch2",
+            # "IsRegulated", "Un1", "Un2", "Sr",
+            # "LibraryType", "CoordX1", "CoordY1"]
             cols = row.split("&")
             # LibraryType
             LLype = cols[9]
             LLype2 = set_Label_Tx(LLype)
-            # Asym case: [PHASEDESIG, Sr, PRIMVOLT, kV, SECVOLT, kV, TxType]
-            # Tx case: [PHASEDESIG, Sr, PRIMVOLT, kV, SECVOLT, kV, TxType, PRIMCONN, SECCONN]
+            # Asym case: [PHASEDESIG, Sr, PRIMVOLT,
+            # kV, SECVOLT, kV, TxType]
+            # Tx case: [PHASEDESIG, Sr, PRIMVOLT, kV,
+            # SECVOLT, kV, TxType, PRIMCONN, SECCONN]
             LLype3 = LLype2.split("_")
-            
-            #Trafo2Winding
+
+            # Trafo2Winding
             if len(LLype3) > 7:
                 for n, ft in enumerate(LLype3):
-                    #PHASEDESIGN
+                    # PHASEDESIGN
                     if n == 0:
                         ph = ft.strip()
                         phcode = get_PHASEDESIG(ph)
-                        Distribution_transformer._PHASEDESIG.append(phcode)
+                        splitPH_TX._PHASEDESIG.append(phcode)
 
-                        #KVAPHASEA
-                        #KVAPHASEB
-                        #KVAPHASEC
+                        # KVAPHASEA
+                        # KVAPHASEB
+                        # KVAPHASEC
                         if ph == "A":
                             kvaphaseA = float(cols[8].strip())
-                            Distribution_transformer._KVAPHASEA.append(kvaphaseA)
-                            Distribution_transformer._KVAPHASEB.append(float(0))
-                            Distribution_transformer._KVAPHASEC.append(float(0))
+                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
+                            splitPH_TX._KVAPHASEB.append(float(0))
+                            splitPH_TX._KVAPHASEC.append(float(0))
                         elif ph == "B":
                             kvaphaseB = float(cols[8].strip())
-                            Distribution_transformer._KVAPHASEA.append(float(0))
-                            Distribution_transformer._KVAPHASEB.append(kvaphaseB)
-                            Distribution_transformer._KVAPHASEC.append(float(0))
+                            splitPH_TX._KVAPHASEA.append(float(0))
+                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
+                            splitPH_TX._KVAPHASEC.append(float(0))
                         elif ph == "C":
                             kvaphaseC = float(cols[8].strip())
-                            Distribution_transformer._KVAPHASEA.append(float(0))
-                            Distribution_transformer._KVAPHASEB.append(float(0))
-                            Distribution_transformer._KVAPHASEC.append(kvaphaseC)
+                            splitPH_TX._KVAPHASEA.append(float(0))
+                            splitPH_TX._KVAPHASEB.append(float(0))
+                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AB":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseB = float(cols[8].strip())/2
-                            Distribution_transformer._KVAPHASEA.append(kvaphaseA)
-                            Distribution_transformer._KVAPHASEB.append(kvaphaseB)
-                            Distribution_transformer._KVAPHASEC.append(float(0))
+                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
+                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
+                            splitPH_TX._KVAPHASEC.append(float(0))
                         elif ph == "BC":
                             kvaphaseB = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            Distribution_transformer._KVAPHASEA.append(float(0))
-                            Distribution_transformer._KVAPHASEB.append(kvaphaseB)
-                            Distribution_transformer._KVAPHASEC.append(kvaphaseC)
+                            splitPH_TX._KVAPHASEA.append(float(0))
+                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
+                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AC":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            Distribution_transformer._KVAPHASEA.append(kvaphaseA)
-                            Distribution_transformer._KVAPHASEB.append(float(0))
-                            Distribution_transformer._KVAPHASEC.append(kvaphaseC)
+                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
+                            splitPH_TX._KVAPHASEB.append(float(0))
+                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "ABC":
                             kvaphaseA = float(cols[8].strip())/3
                             kvaphaseB = float(cols[8].strip())/3
                             kvaphaseC = float(cols[8].strip())/3
-                            Distribution_transformer._KVAPHASEA.append(kvaphaseA)
-                            Distribution_transformer._KVAPHASEB.append(kvaphaseB)
-                            Distribution_transformer._KVAPHASEC.append(kvaphaseC)
-                    #PRIMCONN
+                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
+                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
+                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                    # PRIMCONN
                     elif n == 7:
                         primconn = ft
                         primmconncode = primconn.strip()
-                        Distribution_transformer._PRIMCONN.append(primmconncode)
-                    #SECCONN
+                        splitPH_TX._PRIMCONN.append(primmconncode)
+                    # SECCONN
                     elif n == 8:
                         secconn = ft
                         secconncode = secconn.strip()
-                        Distribution_transformer._SECCONN.append(secconncode)
-                    #TTYPE
+                        splitPH_TX._SECCONN.append(secconncode)
+                    # TTYPE
                     elif n == 6:
                         txtype = ft.strip()
                         txtypecode = get_TxType(txtype)
-                        Distribution_transformer._TTYPE.append(txtypecode)
+                        splitPH_TX._TTYPE.append(txtypecode)
 
-                #PRIMVOLT
+                # PRIMVOLT
                 pnomv = float(cols[6].strip())
                 pnomvcode = get_NOMVOLT(pnomv)
-                Distribution_transformer._PRIMVOLT.append(pnomvcode)
-                #SECVOLT
+                splitPH_TX._PRIMVOLT.append(pnomvcode)
+                # SECVOLT
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
-                Distribution_transformer._SECVOLT.append(snomvcode)
-                #RATEDKVA
+                splitPH_TX._SECVOLT.append(snomvcode)
+                # RATEDKVA
                 ratedkva = float(cols[8].strip())
-                Distribution_transformer._RATEDKVA.append(ratedkva)
-                #TAPSETTING
+                splitPH_TX._RATEDKVA.append(ratedkva)
+                # TAPSETTING
                 tapsetting = int(1)
-                Distribution_transformer._TAPSETTING.append(tapsetting)
-                #NODE1
+                splitPH_TX._TAPSETTING.append(tapsetting)
+                # NODE1
                 from_bus = cols[1].strip()
-                Distribution_transformer._NODE1.append(from_bus)
-                #NODE2
+                splitPH_TX._NODE1.append(from_bus)
+                # NODE2
                 to_bus = cols[2].strip()
-                Distribution_transformer._NODE2.append(to_bus)
-                #X1
+                splitPH_TX._NODE2.append(to_bus)
+                # X1
                 X1 = float(cols[10])
-                Distribution_transformer._X1.append(X1)
-                #Y1
+                splitPH_TX._X1.append(X1)
+                # Y1
                 Y1 = float(cols[11])
-                Distribution_transformer._Y1.append(Y1)
-                #Object_ID
+                splitPH_TX._Y1.append(Y1)
+                # ICEobjectID
                 name = cols[0]
-                Distribution_transformer._ICEobjectID.append(name.strip("_T"))
-                #SWITCH1
+                splitPH_TX._ICEobjectID.append(name.strip("_T"))
+                # SWITCH1
                 switch1 = cols[3].strip()
-                Distribution_transformer._SWITCH1.append(switch1)
-                #SWITCH2
+                splitPH_TX._SWITCH1.append(switch1)
+                # SWITCH2
                 switch2 = cols[4].strip()
-                Distribution_transformer._SWITCH2.append(switch2)
-                #ISREGULATED
+                splitPH_TX._SWITCH2.append(switch2)
+                # ISREGULATED
                 isregulated = cols[5].strip()
-                Distribution_transformer._ISREGULATED.append(isregulated)
+                splitPH_TX._ISREGULATED.append(isregulated)
 
-            #Trafo2WindingAsym
+            # Trafo2WindingAsym
             else:
                 for n, ft in enumerate(LLype3):
-                    #PHASEDESIGN
+                    # PHASEDESIGN
                     if n == 0:
                         ph = ft
                         phcode = get_PHASEDESIG(ph)
-                        Distribution_transformer._PHASEDESIG.append(phcode)
+                        splitPH_TX._PHASEDESIG.append(phcode)
                         if ph == "AB" or ph == "AC" or ph == "BC":
-                            #PRIMCONN
+                            # PRIMCONN
                             primconn = ph
                             primmconncode = "OY"
-                            Distribution_transformer._PRIMCONN.append(primmconncode)
-                            #SECCONN
-                            secconncode = "OD" #OpenDelta
-                            Distribution_transformer._SECCONN.append(secconncode)
+                            splitPH_TX._PRIMCONN.append(primmconncode)
+                            # SECCONN
+                            secconncode = "OD"    # OpenDelta
+                            splitPH_TX._SECCONN.append(secconncode)
                         else:
-                            #PRIMCONN
+                            # PRIMCONN
                             primconn = ph
                             primmconncode = "LG"
-                            Distribution_transformer._PRIMCONN.append(primmconncode)
-                            #SECCONN
-                            secconncode = "SP" #Split Phase
-                            Distribution_transformer._SECCONN.append(secconncode)
-                        
-                        #KVAPHASEA
-                        #KVAPHASEB
-                        #KVAPHASEC
+                            splitPH_TX._PRIMCONN.append(primmconncode)
+                            # SECCONN
+                            secconncode = "SP"   # Split Phase
+                            splitPH_TX._SECCONN.append(secconncode)
+
+                        # KVAPHASEA
+                        # KVAPHASEB
+                        # KVAPHASEC
                         if ph == "A":
                             kvaphaseA = float(cols[8].strip())
-                            Distribution_transformer._KVAPHASEA.append(kvaphaseA)
-                            Distribution_transformer._KVAPHASEB.append(float(0))
-                            Distribution_transformer._KVAPHASEC.append(float(0))
+                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
+                            splitPH_TX._KVAPHASEB.append(float(0))
+                            splitPH_TX._KVAPHASEC.append(float(0))
                         elif ph == "B":
                             kvaphaseB = float(cols[8].strip())
-                            Distribution_transformer._KVAPHASEA.append(float(0))
-                            Distribution_transformer._KVAPHASEB.append(kvaphaseB)
-                            Distribution_transformer._KVAPHASEC.append(float(0))
+                            splitPH_TX._KVAPHASEA.append(float(0))
+                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
+                            splitPH_TX._KVAPHASEC.append(float(0))
                         elif ph == "C":
                             kvaphaseC = float(cols[8].strip())
-                            Distribution_transformer._KVAPHASEA.append(float(0))
-                            Distribution_transformer._KVAPHASEB.append(float(0))
-                            Distribution_transformer._KVAPHASEC.append(kvaphaseC)
+                            splitPH_TX._KVAPHASEA.append(float(0))
+                            splitPH_TX._KVAPHASEB.append(float(0))
+                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AB":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseB = float(cols[8].strip())/2
-                            Distribution_transformer._KVAPHASEA.append(kvaphaseA)
-                            Distribution_transformer._KVAPHASEB.append(kvaphaseB)
-                            Distribution_transformer._KVAPHASEC.append(float(0))
+                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
+                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
+                            splitPH_TX._KVAPHASEC.append(float(0))
                         elif ph == "BC":
                             kvaphaseB = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            Distribution_transformer._KVAPHASEA.append(float(0))
-                            Distribution_transformer._KVAPHASEB.append(kvaphaseB)
-                            Distribution_transformer._KVAPHASEC.append(kvaphaseC)
+                            splitPH_TX._KVAPHASEA.append(float(0))
+                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
+                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AC":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            Distribution_transformer._KVAPHASEA.append(kvaphaseA)
-                            Distribution_transformer._KVAPHASEB.append(float(0))
-                            Distribution_transformer._KVAPHASEC.append(kvaphaseC)
+                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
+                            splitPH_TX._KVAPHASEB.append(float(0))
+                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "ABC":
                             kvaphaseA = float(cols[8].strip())/3
                             kvaphaseB = float(cols[8].strip())/3
                             kvaphaseC = float(cols[8].strip())/3
-                            Distribution_transformer._KVAPHASEA.append(kvaphaseA)
-                            Distribution_transformer._KVAPHASEB.append(kvaphaseB)
-                            Distribution_transformer._KVAPHASEC.append(kvaphaseC)
-                    #TTYPE
+                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
+                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
+                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                    # TTYPE
                     elif n == 6:
                         txtype = ft.strip()
                         txtypecode = get_TxType(txtype)
-                        Distribution_transformer._TTYPE.append(txtypecode)
+                        splitPH_TX._TTYPE.append(txtypecode)
 
-                #PRIMVOLT
+                # PRIMVOLT
                 pnomv = float(cols[6].strip())
                 pnomvcode = get_NOMVOLT(pnomv)
-                Distribution_transformer._PRIMVOLT.append(pnomvcode)
-                #SECVOLT
+                splitPH_TX._PRIMVOLT.append(pnomvcode)
+                # SECVOLT
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
-                Distribution_transformer._SECVOLT.append(snomvcode)
-                #RATEDKVA
+                splitPH_TX._SECVOLT.append(snomvcode)
+                # RATEDKVA
                 ratedkva = float(cols[8].strip())
-                Distribution_transformer._RATEDKVA.append(ratedkva)
-                #TAPSETTING
+                splitPH_TX._RATEDKVA.append(ratedkva)
+                # TAPSETTING
                 tapsetting = int(1)
-                Distribution_transformer._TAPSETTING.append(tapsetting)
-                #NODE1
+                splitPH_TX._TAPSETTING.append(tapsetting)
+                # NODE1
                 from_bus = cols[1].strip()
-                Distribution_transformer._NODE1.append(from_bus)
-                #NODE2
+                splitPH_TX._NODE1.append(from_bus)
+                # NODE2
                 to_bus = cols[2].strip()
-                Distribution_transformer._NODE2.append(to_bus)
-                #X1
+                splitPH_TX._NODE2.append(to_bus)
+                # X1
                 X1 = float(cols[10])
-                Distribution_transformer._X1.append(X1)
-                #Y1
+                splitPH_TX._X1.append(X1)
+                # Y1
                 Y1 = float(cols[11])
-                Distribution_transformer._Y1.append(Y1)
-                #Object_ID
+                splitPH_TX._Y1.append(Y1)
+                # ICEobject_ID
                 name = cols[0]
-                Distribution_transformer._ICEobjectID.append(name.strip("_T"))
-                #SWITCH1
+                splitPH_TX._ICEobjectID.append(name.strip("_T"))
+                # SWITCH1
                 switch1 = cols[3].strip()
-                Distribution_transformer._SWITCH1.append(switch1)
-                #SWITCH2
+                splitPH_TX._SWITCH1.append(switch1)
+                # SWITCH2
                 switch2 = cols[4].strip()
-                Distribution_transformer._SWITCH2.append(switch2)
-                #ISREGULATED
+                splitPH_TX._SWITCH2.append(switch2)
+                # ISREGULATED
                 isregulated = cols[5].strip()
-                Distribution_transformer._ISREGULATED.append(isregulated)
+                splitPH_TX._ISREGULATED.append(isregulated)
 
-
-        return (Distribution_transformer,
-                Sub_three_phase_unit_Tx, 
+        return (splitPH_TX,
+                Sub_three_phase_unit_Tx,
                 Sub_autoTx,
                 Sub_without_modeling_Tx)
 
     def set_attributes_loads(self,
-                             busData: dict,
-                             loadID: list[str], 
-                             LVload:Load,
-                             MVload:Load):
-        
-        """
+                             loadID: list[str],
+                             LVload: Load,
+                             MVload: Load):
+        """Unpack LV and MV loads attributes.
+
         The code for differenciate loads of MT underground and MT overhead
-        does not work because there are not these loads in Circuito_2.xlsx 
-        and we can not make the code.    
+        does not work because there are not these loads in Circuito_2.xlsx
+        and we can not make the code.
+
         """
-        
         for row in loadID:
-            # ["Node1", "Name", "Phase", "Switch1", "Un", "E", "VelanderK1", "LfType", "Unit", "CosPhi", "CoordX1", "CoordY1"]
+            # ["Node1", "Name", "Phase", "Switch1",
+            # "Un", "E", "VelanderK1", "LfType", "Unit",
+            # "CosPhi", "CoordX1", "CoordY1"]
             cols = row.split("&")
             load = cols[0]
 
             if "BT" in load:
-                #KWHMONTH
+                # KWHMONTH
                 kwhmonth = float(cols[5].strip())
-                LVload._KWHMONTH.append(kwhmonth) 
-                #NOMVOLT
+                LVload._KWHMONTH.append(kwhmonth)
+                # NOMVOLT
                 nomvolT = float(cols[4])
                 nomvolTcode = get_NOMVOLT(nomvolT)
                 LVload._NOMVOLT.append(nomvolTcode)
-                #SERVICE
+                # SERVICE
                 phase = int(cols[2].strip())
                 srvc = get_SERVICE(phase)
                 LVload._SERVICE.append(srvc)
-                #PHASEDESIG
+                # PHASEDESIG
                 phasedesig = int(cols[2].strip())
-                phasedesigcode = get_PHASEDESIG(ph=None, code=phasedesig)
+                phasedesigcode = get_PHASEDESIG(phcode=phasedesig)
                 LVload._PHASEDESIG.append(phasedesigcode)
-                #SWITCH1
+                # SWITCH1
                 switch1 = cols[3].strip()
                 LVload._SWITCH1.append(switch1)
-                #NODE1
+                # NODE1
                 node1 = cols[0].strip()
                 LVload._NODE1.append(node1)
-                #PF
+                # PF
                 pf = float(cols[9].strip())
                 LVload._PF.append(pf)
-                #objectID
+                # ICEobjectID
                 objectID = cols[1].strip()
                 LVload._ICEobjectID.append(objectID)
-                #X1
+                # X1
                 X1 = float(cols[10].strip())
                 LVload._X1.append(X1)
-                #Y1
+                # Y1
                 Y1 = float(cols[11].strip())
                 LVload._Y1.append(Y1)
-            
+
             elif "_T" in load:
-                #KWHMONTH
+                # KWHMONTH
                 kwhmonth = float(cols[5].strip())
-                LVload._KWHMONTH.append(kwhmonth) 
-                #NOMVOLT
+                LVload._KWHMONTH.append(kwhmonth)
+                # NOMVOLT
                 nomvolT = float(cols[4])
                 nomvolTcode = get_NOMVOLT(nomvolT)
                 LVload._NOMVOLT.append(nomvolTcode)
-                #SERVICE
+                # SERVICE
                 phase = int(cols[2].strip())
                 srvc = get_SERVICE(phase)
                 LVload._SERVICE.append(srvc)
-                #PHASEDESIG
+                # PHASEDESIG
                 phasedesig = int(cols[2].strip())
-                phasedesigcode = get_PHASEDESIG(ph=None, code=phasedesig)
+                phasedesigcode = get_PHASEDESIG(phcode=phasedesig)
                 LVload._PHASEDESIG.append(phasedesigcode)
-                #SWITCH1
+                # SWITCH1
                 switch1 = cols[3].strip()
                 LVload._SWITCH1.append(switch1)
-                #NODE1
+                # NODE1
                 node1 = cols[0].strip()
                 LVload._NODE1.append(node1)
-                #PF
+                # PF
                 pf = float(cols[9].strip())
                 LVload._PF.append(pf)
-                #objectID
+                # ICEobjectID
                 objectID = cols[1].strip()
                 LVload._ICEobjectID.append(objectID)
-                #X1
+                # X1
                 X1 = float(cols[10].strip())
                 LVload._X1.append(X1)
-                #Y1
+                # Y1
                 Y1 = float(cols[11].strip())
                 LVload._Y1.append(Y1)
-            
+
             elif "MT" in load:
                 # Missing Data
                 pass
-            
+
         return (LVload, MVload)
 
     def set_attributes_fuse(self,
-                            fuse:Fuse, 
-                            fuseID:list[str]):
+                            fuse: Fuse,
+                            fuseID: list[str]):
+        """Unpack fuses attributes.
 
+        One layer of fuses only.
+
+        """
         for row in fuseID:
             # ["Name", "Phase", "IsActive", "OnElement"]
             cols = row.split("&")
 
-            #ObjectID
+            # ICEObjectID
             objetID = cols[0].strip("_F")
             fuse._ICEobjectID.append(objetID)
-            #PHASEDESIGN
+            # PHASEDESIGN
             phasedesign = int(cols[1].strip())
-            phasedesigncode = get_PHASEDESIG(ph=None, code=phasedesign)
+            phasedesigncode = get_PHASEDESIG(phcode=phasedesign)
             fuse._PHASEDESIG.append(phasedesigncode)
-            #NC
+            # NC
             nc = cols[2].strip()
             nccode = get_NC(nc)
             fuse._NC.append(nccode)
-            #ONELEMENT
+            # ONELEMENT
             onelement = cols[3].strip()
             fuse._ONELEMENT.append(onelement)
-        
+
         return (fuse)
 
-    def set_attributes_PV(self, 
-                          pv:PV, 
-                          pvID:list[str],
+    def set_attributes_PV(self,
+                          pv: PV,
+                          pvID: list[str],
                           busesData: dict[list]):
+        """Unpack attributes of Photovoltaic technologies.
 
+        In order to make hosting capacity in low voltage networks.
+
+        """
         for row in pvID:
-            """["Name", "Node1", "Switch1", "Pset", "Cosr", "Unit", 
-                "Phase", "Sr", "nProductionType", "Ur", "Un", "Sk2max", "Sk2min"]
-             """
+            # cols: ["Name", "Node1", "Switch1", "Pset", "Cosr", "Unit",
+            # "Phase", "Sr", "nProductionType", "Ur", "Un", "Sk2max", "Sk2min"]
             cols = row.split("&")
             PV = cols[0].split("_")[3]
 
-            #objectID
+            # ICEobjectID
             objectID = cols[0].strip("_PV")
             pv._ICEobjectID.append(objectID)
-            #NODE1
+            # NODE1
             node1 = cols[1].strip()
             pv._NODE1.append(node1)
-            #SWITCH1
+            # SWITCH1
             switch1 = cols[2].strip()
             pv._SWITCH1.append(switch1)
-            #KVA
+            # KVA
             kva = float(cols[7].strip())
             pv._KVA.append(kva)
-            #TECH
+            # TECH
             pv._TECH.append(PV)
-            #X1 Y1
+            # X1, Y1
             busname = cols[1].strip()
             (X1, Y1) = loc_buscoord(busname, busesData)
             pv._X1.append(X1)
             pv._Y1.append(Y1)
-        
+
         return (pv)
 
-    def set_attributes_recloser(self, recloser: Recloser, recloserID: list[str]):
-    
+    def set_attributes_recloser(self,
+                                recloser: Recloser,
+                                recloserID: list[str]):
+        """"Reclosers (also considered breakers).
+
+        One layer for reclosers only.
+
+        """
         # ["Name", "Phase", "Switch", "OnElement"]
         for row in recloserID:
             cols = row.split("&")
 
-            #objectID
+            # ICEobjectID
             objectID = cols[0].strip("R")
             recloser._ICEobjectID.append(objectID)
-            #PHASEDESIG
+            # PHASEDESIG
             phasedesig = int(cols[1])
-            phasedesigcode = get_PHASEDESIG(ph=None, code=phasedesig)
+            phasedesigcode = get_PHASEDESIG(phcode=phasedesig)
             recloser._PHASEDESIG.append(phasedesigcode)
-            #NC
+            # NC
             NC = cols[2].strip()
             recloser._NC.append(NC)
 
         return (recloser)
 
-    def set_attributes_regulator(self, busesData:dict, regulatorID:list[str], regulator: Regulator):
+    def set_attributes_regulator(self,
+                                 busesData: dict,
+                                 regulatorID: list[str],
+                                 regulator: Regulator):
+        """Unpack data of regulars and set its attributes.
+
+            `VREG:` is typically used 120V in distribution network.
+            `BANDWIDTH:` is typically used 2 in distributon network.
+            `PT_RATIO:` use the nominal voltage of the circuit and regulated
+                        voltage for its calculation.
 
         """
-        VREG is typically used 120V in distribution network.
-
-        BANDWIDTH is typically used 2 in distributon network.
-
-        PT_RATIO use the nominal volLage of the circuit and regulated
-        volLage for its calculation. 
-        
-        """
-
-        # ["Name", "Node1", "Node2", "Switch1", "Switch2", "Un1", "Un2", "Phase", "LibraryType"]
+        # ["Name", "Node1", "Node2", "Switch1", "Switch2",
+        # "Un1", "Un2", "Phase", "LibraryType"]
         for row in regulatorID:
             cols = row.split("&")
             libraryType = cols[8].split("_")
 
-            #objectID
+            # ICEobjectID
             objectID = cols[0].strip("_R")
             regulator._ICEobjectID.append(objectID)
-            #PHASEDESIG
+            # PHASEDESIG
             phasedesig = int(cols[7])
-            phasedesigcode = get_PHASEDESIG(ph=None, code=phasedesig)
+            phasedesigcode = get_PHASEDESIG(phcode=phasedesig)
             regulator._PHASEDESIG.append(phasedesigcode)
-            #NOMVOLT
+            # NOMVOLT
             nomvolT = float(cols[5])
             nomvolTcode = get_NOMVOLT(nomvolT)
             regulator._NOMVOLT.append(nomvolTcode)
-            #KVA
+            # KVA
             kva = float(libraryType[1])
             regulator._KVA.append(kva)
-            #VREG
+            # VREG
             vreg = float(120)
             regulator._VREG.append(vreg)
-            #PT_RATIO
+            # PT_RATIO
             pt_ratio = get_TP_RATIO(vnom=nomvolT, vreg=vreg)
             regulator._PT_RATIO.append(pt_ratio)
-            #BANDWIDTH
+            # BANDWIDTH
             bandwidth = float(2)
             regulator._BANDWIDTH.append(bandwidth)
-            #X1 Y1
+            # X1, Y1
             from_bus = cols[1]
             (X1, Y1) = loc_buscoord(from_bus, busesData)
             regulator._X1.append(X1)
             regulator._Y1.append(Y1)
-            #X2 Y2
+            # X2, Y2
             to_bus = cols[2]
             (X2, Y2) = loc_buscoord(to_bus, busesData)
             regulator._X2.append(X2)
             regulator._Y2.append(Y2)
-            #TAPS
+            # TAPS
             regulator._TAPS.append(int(32))
-        
+
         return (regulator)
 
 
-
-def get_PHASEDESIG(ph: str, code: int = None) -> int:
+def get_PHASEDESIG(phcode) -> int:
     """Phase designation.
 
     Set the phase code based on the manual either
-    Neplan code or Phase letter if `ph` is passed.
-    PARAMETERS:
-        ph: Phase (A/R, B/S, C/T)
-        code: Neplan code
+    Neplan code or Phase letter if `phcode` is a string.
 
     * --------*---------------*
     |  code   |      ph       |
@@ -1554,36 +1625,39 @@ def get_PHASEDESIG(ph: str, code: int = None) -> int:
     |    0    |  7: ABC (RST) |
     |    7    |  7: ABC (RST) |
     *---------*---------------*
+
+    If `phcode` is a integer SIRDE translation will be taken.
+
     """
-    if code is None:
-        if ph == "C" or ph == "T":
+    if type(phcode) is str:
+        if phcode == "C" or phcode == "T":
             return 1
-        elif ph == "B" or ph == "S":
+        elif phcode == "B" or phcode == "S":
             return 2
-        elif ph == "BC" or ph == "ST":
+        elif phcode == "BC" or phcode == "ST":
             return 3
-        elif ph == "A" or ph == "R":
+        elif phcode == "A" or phcode == "R":
             return 4
-        elif ph == "AC" or ph == "RT":
+        elif phcode == "AC" or phcode == "RT":
             return 5
-        elif ph == "AB" or ph == "RS":
+        elif phcode == "AB" or phcode == "RS":
             return 6
-        elif ph == "ABC" or ph == "RST":
+        elif phcode == "ABC" or phcode == "RST":
             return 7
     else:
-        if code == 3:
+        if phcode == 3:
             return 1
-        elif code == 2:
+        elif phcode == 2:
             return 2
-        elif code == 6:
+        elif phcode == 6:
             return 3
-        elif code == 1:
+        elif phcode == 1:
             return 4
-        elif code == 5:
+        elif phcode == 5:
             return 5
-        elif code == 4:
+        elif phcode == 4:
             return 6
-        elif code == 0 or code == 7:
+        elif phcode == 0 or phcode == 7:
             return 7
 
 
@@ -1612,8 +1686,8 @@ def get_NOMVOLT(nomVLL: float) -> int:
     |   340   |     14.38       |       24.9      |      wye       |
     |   380   |     19.92       |       34.5      |      wye       |
     *---------*-----------------*-----------------*----------------*
-
     Note: Code 40 refers to special delta of splitted phase.
+
     """
     nomVs = [0.208, 0.24, 0.44, 0.48, 0.48,
              0.48, 0.416, 2.40, 4.16, 4.16,
@@ -1628,11 +1702,14 @@ def get_NOMVOLT(nomVLL: float) -> int:
 
 def get_INSULVOLT(nomVLL: float) -> str:
     """Insulation standardized voltage (kV).
+
     For Underground MV lines. Usually:
     - 15
     - 25
     - 35
     - 45
+    Otherwise QGIS2OPENDSS handbook should be considered.
+
     """
     if nomVLL <= 15:
         return "15"
@@ -1654,7 +1731,7 @@ def get_SERVICE(code: int) -> int:
         code: Neplan code
 
     * --------*-----------------*----------------------------------------*
-    |  code   |      srvc       |              Definition                | 
+    |  code   |      srvc       |              Definition                |
     *---------*-----------------*----------------------------------------*
     |    4    |  1: A (R)       | Load connected to phase 1 and neutral. |
     |    2    |  2: B (S)       | Load connected to phase 2 and neutral. |
@@ -1665,22 +1742,22 @@ def get_SERVICE(code: int) -> int:
     |    0    |  123: ABC (RST) | Load connected to three phase.         |
     |    7    |  7: ABC (RST)   | Load connected to three phase.         |
     *---------*-----------------*----------------------------------------*
-    """
 
+    """
     if code == 1:
-            return float(3)
+        return float(3)
     elif code == 2:
-            return float(2)
+        return float(2)
     elif code == 3:
-            return float(23)
+        return float(23)
     elif code == 4:
-            return float(1)
+        return float(1)
     elif code == 5:
-            return float(13)
+        return float(13)
     elif code == 6:
-            return float(12)
+        return float(12)
     elif code == 0 or code == 7:
-            return float(7)
+        return float(7)
 
 
 def get_TxType(txtype: str) -> int:
@@ -1701,24 +1778,24 @@ def get_TxType(txtype: str) -> int:
     |    4    |  Subestacion    |
     |    5    |  Seco           |
     *---------*-----------------*
-    """
 
+    """
     if txtype == "1":
-            return "Tipo poste"
+        return "Tipo poste"
     elif txtype == "2":
-            return "Pedestal"
+        return "Pedestal"
     elif txtype == "3":
-            return "Sumergible"
+        return "Sumergible"
     elif txtype == "4":
-            return "Subestacion"
+        return "Subestacion"
     elif txtype == "5":
-            return "Seco"
+        return "Seco"
 
 
-def get_NC(nc:str) -> str:
-    """
-    Indicates if the fuse is open or closed
+def get_NC(nc: str) -> str:
+    """Fuse Normally Closed.
 
+    Indicates if the fuse is open or closed.
     NEPLAN code : IsActive
     Manual code : NC
 
@@ -1728,17 +1805,17 @@ def get_NC(nc:str) -> str:
     |    1     |  Yes  |
     |    0     |  No   |
     *----------*-------*
-    """
 
+    """
     if nc == "1":
         return "Yes"
     else:
         return "No"
 
 
-def get_TP_RATIO(vnom:float, vreg:float) -> float:
+def get_TP_RATIO(vnom: float, vreg: float) -> float:
+    """Tap ratio.
 
-    """
     Return the transformation ratio of the regulator
     PT voltages.
 
@@ -1746,11 +1823,9 @@ def get_TP_RATIO(vnom:float, vreg:float) -> float:
     Note: Manual considers this attribute as real number
           this function rounds and returns a
           float according to the manual.
-    
+
     """
-
     tp_ratio = ((vnom*1e3)/np.sqrt(3))*(1/vreg)
-
     return float(round(tp_ratio))
 
 
@@ -1811,6 +1886,7 @@ def set_Label(LibType: str) -> str:
     2. Note: Neplan notation LibraryType does not have the
             label code (TYPE) for UG's conducors.
     3. Note: UG_MVline type has no data about conductors TYPE.
+
     """
     # Missing data:
     noData = ["NE", "NT", "UNK", "NA"]
@@ -1846,46 +1922,46 @@ def set_Label(LibType: str) -> str:
 
 
 def set_Label_Tx(LibType: str) -> str:
-    """
+    """Special Tx connections.
+
     For the moment in the circuit read, the
-    transformers do not have the secondary 
+    transformers do not have the secondary
     as the manual asks for it.
-    
+
     """
     LibTypeMod = LibType
-    #NOMVOLT
+    # NOMVOLT
     nomvolT = {
-        ".240":"0.24",
-        ".208":"0.208",
-        ".480":"0.48"
+        ".240": "0.24",
+        ".208": "0.208",
+        ".480": "0.48"
     }
-    
-    for (k,v) in nomvolT.items():
+
+    for (k, v) in nomvolT.items():
         LibTypeMod = LibTypeMod.replace(k, v)
-    
-    
-    #PRIMCONN
+
+    # PRIMCONN
     primconn = {
-        "Estrella":"Y", #ready
-        "Delta":"D",
-        "DEFINIR":"OY",
-        "DEFINIR":"LG"
+        "Estrella": "Y",  # Ready
+        "Delta": "D",
+        "DEFINIR": "OY",
+        "DEFINIR": "LG"
     }
 
-    for (k,v) in primconn.items():
-       LibTypeMod = LibTypeMod.replace(k,v)
+    for (k, v) in primconn.items():
+        LibTypeMod = LibTypeMod.replace(k, v)
 
-    #SECCONN
+    # SECCONN
     secconn = {
-        "Estrella":"Y", #ready
-        "Delta":"D",
-        "DEFINIR":"4D",
-        "Fase_Partida":"SP" #ready
+        "Estrella": "Y",  # Ready
+        "Delta": "D",
+        "DEFINIR": "4D",
+        "Fase_Partida": "SP"  # Ready
     }
 
-    for (k,v) in secconn.items():
-        LibTypeMod = LibTypeMod.replace(k,v)
-    
+    for (k, v) in secconn.items():
+        LibTypeMod = LibTypeMod.replace(k, v)
+
     return LibTypeMod
 
 
@@ -1896,7 +1972,8 @@ def concat_linecols(linesData: dict) -> list[str]:
     ['NodeFrom1'&'NodeTo1'&'LibraryType1'&... &'attr1M',
     'NodeFrom2'&'NodeTo2'&'LibraryType2'&... &'attr2M', ...
     ...,
-    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM']
+    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
+
     """
     for k, v in linesData.items():
         if k == "Node1":
@@ -1915,6 +1992,7 @@ def concat_linecols(linesData: dict) -> list[str]:
     cols = zip(col1, col2, col3, col4, col5, col6)
     linesID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}"
                for c1, c2, c3, c4, c5, c6 in cols]
+
     return linesID
 
 
@@ -1925,7 +2003,8 @@ def concat_buscols(busesData: dict) -> list[str]:
     ['Name'&'Un'&'CoordX1'&... &'attr1M',
     'Name'&'Un'&'CoordX1'&... &'attr2M', ...
     ...,
-    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM']
+    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
+
     """
     for k, v in busesData.items():
         if k == "Name":
@@ -1939,7 +2018,8 @@ def concat_buscols(busesData: dict) -> list[str]:
 
     cols = zip(col1, col2, col3, col4)
     busID = [f"{c1}&{c2}&{c3}&{c4}"
-               for c1, c2, c3, c4 in cols]
+             for c1, c2, c3, c4 in cols]
+
     return busID
 
 
@@ -1950,9 +2030,9 @@ def concat_Txcols(TxData: dict) -> list[str]:
     ['Name'&'Node1'&'Node2'&... &'attr1M',
     'Name'&'Un'&'CoordX1'&... &'attr2M', ...
     ...,
-    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM']
-    """
+    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
 
+    """
     for k, v in TxData.items():
         if k == "Name":
             col1 = v
@@ -1979,10 +2059,11 @@ def concat_Txcols(TxData: dict) -> list[str]:
         elif k == "CoordY1":
             col12 = v
 
-    cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12)
+    cols = zip(col1, col2, col3, col4, col5, col6,
+               col7, col8, col9, col10, col11, col12)
     TxID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}&{c10}&{c11}&{c12}"
-               for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12 in cols]
-    
+            for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12 in cols]
+
     return TxID
 
 
@@ -1993,9 +2074,9 @@ def concat_loadcols(loadsData: dict) -> list[str]:
     ['Name'&'Node1'&'Node2'&... &'attr1M',
     'Name'&'Un'&'CoordX1'&... &'attr2M', ...
     ...,
-    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM']
-    """
+    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
 
+    """
     for k, v in loadsData.items():
         if k == "Node1":
             col1 = v
@@ -2022,10 +2103,11 @@ def concat_loadcols(loadsData: dict) -> list[str]:
         elif k == "CoordY1":
             col12 = v
 
-    cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12)
+    cols = zip(col1, col2, col3, col4, col5, col6,
+               col7, col8, col9, col10, col11, col12)
     loadID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}&{c10}&{c11}&{c12}"
-               for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12 in cols]
-    
+              for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12 in cols]
+
     return loadID
 
 
@@ -2036,9 +2118,9 @@ def concat_fusecols(fuseData: dict) -> list[str]:
     ['Name'&'Phase'&'IsActive'&... &'attr1M',
     'Name'&'Phase'&'IsActive'&... &'attr2M', ...
     ...,
-    'NameN'&'PhaseN'&'IsActive'&... &'attrNM']
-    """
+    'NameN'&'PhaseN'&'IsActive'&... &'attrNM'].
 
+    """
     for k, v in fuseData.items():
         if k == "Name":
             col1 = v
@@ -2051,8 +2133,8 @@ def concat_fusecols(fuseData: dict) -> list[str]:
 
     cols = zip(col1, col2, col3, col4)
     fuseID = [f"{c1}&{c2}&{c3}&{c4}"
-               for c1, c2, c3, c4 in cols]
-    
+              for c1, c2, c3, c4 in cols]
+
     return fuseID
 
 
@@ -2063,9 +2145,9 @@ def concat_PVcols(pvData: dict) -> list[str]:
     ['Name'&'Node1'&'Switch1'&... &'attr1M',
     'Name'&'Node1'&'Switch1'&... &'attr2M', ...
     ...,
-    'NameN'&'Node1N'&'Switch1N'&... &'attrNM']
-    """
+    'NameN'&'Node1N'&'Switch1N'&... &'attrNM'].
 
+    """
     for k, v in pvData.items():
         if k == "Name":
             col1 = v
@@ -2094,11 +2176,15 @@ def concat_PVcols(pvData: dict) -> list[str]:
         elif k == "Sk2min":
             col13 = v
 
-    cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, col13)
+    cols = zip(col1, col2, col3, col4, col5, col6,
+               col7, col8, col9, col10, col11, col12, col13)
 
-    pvID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}&{c10}&{c11}&{c12}&{c13}"
-               for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13 in cols]
-    
+    pvID = []
+    for attrs in cols:
+        row = ""
+        for attr in attrs:
+            row += f"{attr}&"
+        pvID.append(row)
     return pvID
 
 
@@ -2109,9 +2195,9 @@ def concat_reclosercols(recloserData: dict) -> list[str]:
     ['Name'&'Phase'&'Switch'&... &'attr1M',
     'Name'&'Phase'&'Switch'&... &'attr2M', ...
     ...,
-    'NameN'&'PhaseN'&'SwitchN'&... &'attrNM']
-    """
+    'NameN'&'PhaseN'&'SwitchN'&... &'attrNM'].
 
+    """
     for k, v in recloserData.items():
         if k == "Name":
             col1 = v
@@ -2125,8 +2211,8 @@ def concat_reclosercols(recloserData: dict) -> list[str]:
     cols = zip(col1, col2, col3, col4)
 
     recloserID = [f"{c1}&{c2}&{c3}&{c4}"
-               for c1, c2, c3, c4 in cols]
-    
+                  for c1, c2, c3, c4 in cols]
+
     return recloserID
 
 
@@ -2137,9 +2223,9 @@ def concat_regulatorcols(regulatorData: dict) -> list[str]:
     ['Name'&'Node1'&'Node2'&... &'attr1M',
     'Name'&'Node1'&'Node2'&... &'attr2M', ...
     ...,
-    'NameN'&'Node1N'&'Node2N'&... &'attrNM']
-    """
+    'NameN'&'Node1N'&'Node2N'&... &'attrNM'].
 
+    """
     for k, v in regulatorData.items():
         if k == "Name":
             col1 = v
@@ -2163,8 +2249,8 @@ def concat_regulatorcols(regulatorData: dict) -> list[str]:
     cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9)
 
     regulatorID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}"
-               for c1, c2, c3, c4, c5, c6, c7, c8, c9 in cols]
-    
+                   for c1, c2, c3, c4, c5, c6, c7, c8, c9 in cols]
+
     return regulatorID
 
 
@@ -2175,10 +2261,12 @@ def loc_buscoord(busname: str,
     Given the bus name ID it looks for its
     X, Y coordinates and return them
     as floats in a tuple.
+
     """
     indx = busesData["Name"].index(busname)
     X = float(busesData["CoordX1"][indx])
     Y = float(busesData["CoordY1"][indx])
+
     return (X, Y)
 
 
@@ -2195,6 +2283,7 @@ def layer2df(layer: dict) -> tuple[pd.DataFrame]:
         ...,
         "Y2": [val1, val2, ..., valN]
     }
+
     """
     dictData = dict()
     for (k, v) in layer.items():
@@ -2204,11 +2293,11 @@ def layer2df(layer: dict) -> tuple[pd.DataFrame]:
     return pd.DataFrame.from_dict(dictData), dictData
 
 
-def df2shp(df, namestr:str):
-    """
-    Convert DataFrame to GeoDataFrame to finally
-    convert in shapefile.
+def df2shp(df: pd.DataFrame, namestr: str):
+    """From pandas.DataFrame to shapefile.
 
+    It gets DataFrame as argument to be converted to
+    pd.GeoDataFrame and finally into shapefile `*.shp`.
     After have been create the DataFrame, add the
     geometry column when create tha GeoDataFrame.
 
@@ -2216,23 +2305,21 @@ def df2shp(df, namestr:str):
     system is typically used in Costa Rica.
 
     Note: For create the shapefile, create a path
-          called GIS, this for store the .shp and 
+          called GIS, this for store the .shp and
           the other files generated.
 
     """
     if "X2" and "Y2" in df.columns:
-
-        from_buses = [Point(X1,Y1) for X1, Y1 in zip(df["X1"], df["Y1"])]
-        to_buses = [Point(X2,Y2) for X2, Y2 in zip(df["X2"], df["Y2"])]
+        from_buses = [Point(X1, Y1) for X1, Y1 in zip(df["X1"], df["Y1"])]
+        to_buses = [Point(X2, Y2) for X2, Y2 in zip(df["X2"], df["Y2"])]
         lines = [LineString([p1, p2]) for p1, p2 in zip(from_buses, to_buses)]
         gdf = gpd.GeoDataFrame(df, geometry=lines)
         gdf.to_file("./GIS/"+namestr+".shp")
 
         return gdf
-        
+
     else:
-    
-        geometry = [Point(X,Y) for X,Y in zip(df["X1"], df["Y1"])]
+        geometry = [Point(X, Y) for X, Y in zip(df["X1"], df["Y1"])]
         gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:5367")
         gdf.to_file("./GIS/"+namestr+".shp")
 
@@ -2297,8 +2384,7 @@ if __name__ == "__main__":
     or the method .add_layers() is used again.
     
     """
-    cktQgis.add_txlayers(busesData=cktNeplan._buses, 
-                         AsymTxData=cktNeplan._AsymTx, 
+    cktQgis.add_txlayers(AsymTxData=cktNeplan._AsymTx,
                          TxData=cktNeplan._Tx)
 
     Distribution_transformer_df = layer2df(cktQgis._transformers["Distribution_transformer"])
@@ -2314,7 +2400,7 @@ if __name__ == "__main__":
     ##################################################
     ## Turn load layers into df to gdf to shapefile ##
     ##################################################
-    cktQgis.add_load_layers(cktNeplan._buses, cktNeplan._loads)
+    cktQgis.add_load_layers(cktNeplan._loads)
 
     LV_load_df = layer2df(cktQgis._LVloads["LV_load"])
     MV_load_df = layer2df(cktQgis._MVloads["MV_load"])
@@ -2360,5 +2446,4 @@ if __name__ == "__main__":
 
     recloser_df = layer2df(cktQgis._reclosers["reclosers"])
 
-    #recloser_df_gdf_shp = df2shp(recloser_df, "reclosers")
-
+    # recloser_df_gdf_shp = df2shp(recloser_df, "reclosers")
