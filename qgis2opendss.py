@@ -495,8 +495,8 @@ class QGIS2OpenDSS(object):
                 faseOrig = lineaMT['PHASEDESIG']
                 cantFases = phaseOperations.renamePhase(lineaMT['PHASEDESIG']).get('phaseNumber')
                 nom_volt = lineaMT['NOMVOLT']
-                ICEobjID = lineaMT["ICEobjectID"]   # New: list[str]
-                libName = lineaMT["LibraryName"]    # New: list[str]
+                ICEobjID = lineaMT["ICEobjID"]   # New: list[str]
+                libName = lineaMT["LibName"]    # New: list[str]
                 datos_tension = lineOperations.renameVoltage(nom_volt)
                 opervoltLN = datos_tension['LVCode']['LN']
                 opervoltLL = datos_tension['LVCode']['LL']
@@ -523,7 +523,7 @@ class QGIS2OpenDSS(object):
                                   'INSUL': lineaMT['INSULMAT'], 'NPHAS': cantFases, 'VOLTOPRLL': opervoltLL,
                                   'VOLTOPRLN': opervoltLN, "SHIELD": lineaMT["SHIELDING"],
                                   'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2,
-                                  "ICEobjectID": ICEobjID, "LibraryName": libName}
+                                  "ICEobjID": ICEobjID, "LibName": libName}
                 else:
                     air_ugnd = 'air'
                     datosLinea = {"PHASEDESIG": faseOrig, "INDEXDSS": indexDSS, 'ID': lineaMT.id(), "LAYER": layer,
@@ -533,7 +533,7 @@ class QGIS2OpenDSS(object):
                                   'PHASE': fase, 'SHLEN': LineLength, 'AIR_UGND': air_ugnd, 'NPHAS': cantFases,
                                   'VOLTOPRLL': opervoltLL, 'VOLTOPRLN': opervoltLN,
                                   'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2,
-                                  "ICEobjectID": ICEobjID, "LibraryName": libName}
+                                  "ICEobjID": ICEobjID, "LibName": libName}
 
                 if Grafo.get_edge_data(nodo1, nodo2)== None:  # se asegura que la línea no existe
                     Grafo.add_edge(nodo1, nodo2)
@@ -8449,7 +8449,7 @@ class QGIS2OpenDSS(object):
                         configFase = DATOS['PHASE']  # Recibe la fase del bus en formato ODSS
                         cantFases = DATOS['NPHAS']  # Recibe la cantidad de fases de la linea
                         opervoltLN = DATOS['VOLTOPRLN']  # ,' !1ph_basekV=',opervolt
-                        libcode = DATOS["LibraryName"]
+                        libcode = DATOS["LibName"]
                         nodo1 = linea[0]
                         nodo2 = linea[1]
 
@@ -8471,7 +8471,7 @@ class QGIS2OpenDSS(object):
                         sh_len = "{0:.4f}".format(DATOS['SHLEN']) # Recibe la longitud de la linea
 
                         if "::" in libcode:
-                            lineName = DATOS["ICEobjectID"]
+                            lineName = DATOS["ICEobjID"]
                         else:
                             if (busfrom == 'BUSMV' + circuitName + str(1))or (busto == 'BUSMV' + circuitName + str(1)):
                                 lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
