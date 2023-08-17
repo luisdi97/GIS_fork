@@ -820,6 +820,11 @@ class CKT_QGIS():
         return regulator
 
     def add_PublicLights_layer(self, publicLightsData:dict):
+        """ Missing documentation.
+            
+            Missing description
+        
+        """
 
         # Concatenate columns
         publicLightsID = concat_publicLightscols(publicLightsData=publicLightsData)
