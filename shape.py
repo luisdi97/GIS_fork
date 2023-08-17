@@ -33,6 +33,7 @@ class CKTdata:
         self._regulators = {}
         self._ders = {}
         self._reclosers = {}
+        self._publicLights = {}
 
     def call_data(self, path: str) -> None:
         # Read data
@@ -97,6 +98,12 @@ class CKTdata:
                     values = [v for v in df[sheet][c]]
                     # Update attribute
                     self._reclosers[c] = values
+            # PublicLights
+            elif sheet == sheets[9]:
+                for c in df[sheet].columns:
+                    values = [v for v in df[sheet][c]]
+                    # Update attribute
+                    self._publicLights[c] = values
 
 
 class Line():
@@ -448,6 +455,19 @@ class Regulator():
         self._Y2 = []
 
 
+class PublicLights():
+    def __init__(self):
+        self._PublicLights_layer = "public_Lights"
+        self._ICEobjectID = []
+        self._SERVICE = []
+        self._KW = []
+        self._NOMVOLT = []
+        self._ID = []
+        self._MODEL = []
+        self._X1 = []
+        self._Y1 = []
+
+
 class CKT_QGIS():
     """Result ciruict.
 
@@ -725,7 +745,22 @@ class CKT_QGIS():
 
         return regulator
 
-    # Pending: add_publicLights_layer(self)
+    def add_PublicLights_layer(self, publicLightsData:dict):
+
+        # Concatenate columns
+        publicLightsID = concat_publicLightscols(publicLightsData=publicLightsData)
+
+        # Create instance
+        public_lights = PublicLights()
+
+        public_lights_layer = self.set_attributes_publicLights(public_lights=public_lights,
+                                                               publicLightsID=publicLightsID)
+
+        PL = public_lights_layer._PublicLights_layer
+        dictAttrs = public_lights_layer.__dict__
+        self._publicLights[PL] = {cols.strip("_"): vals for cols, vals in dictAttrs.items()}
+        
+        return public_lights
 
     def set_attributes_lines(self,
                        underG_LVline: Line,
@@ -1327,9 +1362,9 @@ class CKT_QGIS():
                 kwhmonth = float(cols[5].strip())
                 LVload._KWHMONTH.append(kwhmonth) 
                 #NOMVOLT
-                nomvolT = float(cols[4])
-                nomvolTcode = get_NOMVOLT(nomvolT)
-                LVload._NOMVOLT.append(nomvolTcode)
+                nomvolt = float(cols[4])
+                nomvoltcode = get_NOMVOLT(nomvolt)
+                LVload._NOMVOLT.append(nomvoltcode)
                 #SERVICE
                 phase = int(cols[2].strip())
                 srvc = get_SERVICE(phase)
@@ -1362,9 +1397,9 @@ class CKT_QGIS():
                 kwhmonth = float(cols[5].strip())
                 LVload._KWHMONTH.append(kwhmonth) 
                 #NOMVOLT
-                nomvolT = float(cols[4])
-                nomvolTcode = get_NOMVOLT(nomvolT)
-                LVload._NOMVOLT.append(nomvolTcode)
+                nomvolt = float(cols[4])
+                nomvoltcode = get_NOMVOLT(nomvolt)
+                LVload._NOMVOLT.append(nomvoltcode)
                 #SERVICE
                 phase = int(cols[2].strip())
                 srvc = get_SERVICE(phase)
@@ -1403,23 +1438,29 @@ class CKT_QGIS():
                             fuseID:list[str]):
 
         for row in fuseID:
-            # ["Name", "Phase", "IsActive", "OnElement"]
+            # ["Name", "Phase", "IsActive", "OnElement", "X", "Y"]
             cols = row.split("&")
 
-            #ObjectID
+            # ObjectID
             objetID = cols[0].strip("_F")
             fuse._ICEobjectID.append(objetID)
-            #PHASEDESIGN
+            # PHASEDESIGN
             phasedesign = int(cols[1].strip())
             phasedesigncode = get_PHASEDESIG(ph=None, code=phasedesign)
             fuse._PHASEDESIG.append(phasedesigncode)
-            #NC
+            # NC
             nc = cols[2].strip()
             nccode = get_NC(nc)
             fuse._NC.append(nccode)
-            #ONELEMENT
+            # ONELEMENT
             onelement = cols[3].strip()
             fuse._ONELEMENT.append(onelement)
+            # X1
+            X1 = float(cols[4])
+            fuse._X1.append(X1)
+            # Y1
+            Y1 = float(cols[5])
+            fuse._Y1.append(Y1)
         
         return (fuse)
 
@@ -1479,12 +1520,17 @@ class CKT_QGIS():
     def set_attributes_regulator(self, busesData:dict, regulatorID:list[str], regulator: Regulator):
 
         """
-        VREG is typically used 120V in distribution network.
+        To assign the unknown attributes given the lack of information
+        in the circuit, the following should be considered:
 
-        BANDWIDTH is typically used 2 in distributon network.
+            VREG is typically used 120 V in distribution network.
 
-        PT_RATIO use the nominal volLage of the circuit and regulated
-        volLage for its calculation. 
+            BANDWIDTH is typically used 2 ([119, 121]V) in distributon network.
+
+            PT_RATIO use the nominal voltage of the circuit and regulated
+            voltage for its calculation.
+
+        TAPS are asigned as 32.
         
         """
 
@@ -1531,7 +1577,34 @@ class CKT_QGIS():
         
         return (regulator)
 
+    def set_attributes_publicLights(self, public_lights:PublicLights, publicLightsID: list[str]):
 
+        # ["Node1", "Name", "Phase", "Switch1", "Potencia_kW", "Lftype", "Unit", "CosPhi", "CoordX1", "CoordY1", "Un"]
+        for row in publicLightsID:
+            cols = row.split("&")
+
+            # ICEobjectID
+            objectID = cols[1]
+            public_lights._ICEobjectID.append(objectID)
+            # SERVICE
+            phase = int(cols[2])
+            srvc = get_SERVICE(phase)
+            public_lights._SERVICE.append(srvc)
+            # KW
+            kw = float(cols[4])
+            public_lights._KW.append(kw)
+            # NOMVOLT
+            nomvolt = float(cols[10])
+            nomvoltcode = get_NOMVOLT(nomvolt)
+            public_lights._NOMVOLT.append(nomvoltcode)
+            # X1
+            X1 = float(cols[8])
+            public_lights._X1.append(X1)
+            # Y1
+            Y1 = float(cols[9])
+            public_lights._Y1.append(Y1)
+        
+        return (public_lights)
 
 def get_PHASEDESIG(ph: str, code: int = None) -> int:
     """Phase designation.
@@ -1645,7 +1718,7 @@ def get_INSULVOLT(nomVLL: float) -> str:
 
 
 def get_SERVICE(code: int) -> int:
-    """Connection type designation of loads.
+    """Connection type designation of loads and AP.
 
     Set the phase code based on the manual either
     Neplan code or Phase letter if `code` is passed.
@@ -2048,10 +2121,14 @@ def concat_fusecols(fuseData: dict) -> list[str]:
             col3 = v
         elif k == "OnElement":
             col4 = v
+        elif k == "X":
+            col5 = v
+        elif k == "Y":
+            col6 = v
 
-    cols = zip(col1, col2, col3, col4)
-    fuseID = [f"{c1}&{c2}&{c3}&{c4}"
-               for c1, c2, c3, c4 in cols]
+    cols = zip(col1, col2, col3, col4, col5, col6)
+    fuseID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}"
+               for c1, c2, c3, c4, c5, c6 in cols]
     
     return fuseID
 
@@ -2168,6 +2245,49 @@ def concat_regulatorcols(regulatorData: dict) -> list[str]:
     return regulatorID
 
 
+def concat_publicLightscols(publicLightsData: dict) -> list[str]:
+    """Concatenate public lights columns.
+
+    ResulLing shape of a single element
+    ['Node1'&'Name'&'Phase'&... &'attr1M',
+    'Node1'&'Name'&'Phase'&... &'attr2M', ...
+    ...,
+    'Node1N'&'NameN'&'PhaseN'&... &'attrNM']
+    """
+
+    for k, v in publicLightsData.items():
+        if k == "Node1":
+            col1 = v
+        elif k == "Name":
+            col2 = v
+        elif k == "Phase":
+            col3 = v
+        elif k == "Switch1":
+            col4 = v
+        elif k == "Potencia_kW":
+            col5 = v
+        elif k == "LfType":
+            col6 = v
+        elif k == "Unit":
+            col7 = v
+        elif k == "CosPhi":
+            col8 = v
+        elif k == "CoordX1":
+            col9 = v
+        elif k == "CoordY1":
+            col10 = v
+        elif k == "Un":
+            col11 = v
+
+
+    cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11)
+
+    publicLightsID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}&{c10}&{c11}"
+               for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11 in cols]
+    
+    return publicLightsID
+
+
 def loc_buscoord(busname: str,
                  busesData: dict[list]) -> tuple[float]:
     """Localize bus coordinates.
@@ -2225,8 +2345,8 @@ def df2shp(df, namestr:str):
         from_buses = [Point(X1,Y1) for X1, Y1 in zip(df["X1"], df["Y1"])]
         to_buses = [Point(X2,Y2) for X2, Y2 in zip(df["X2"], df["Y2"])]
         lines = [LineString([p1, p2]) for p1, p2 in zip(from_buses, to_buses)]
-        gdf = gpd.GeoDataFrame(df, geometry=lines)
-        gdf.to_file("./GIS/"+namestr+".shp")
+        gdf = gpd.GeoDataFrame(df, geometry=lines, crs= "EPSG:5367")
+        gdf.to_file(namestr +".shp")
 
         return gdf
         
@@ -2234,7 +2354,7 @@ def df2shp(df, namestr:str):
     
         geometry = [Point(X,Y) for X,Y in zip(df["X1"], df["Y1"])]
         gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:5367")
-        gdf.to_file("./GIS/"+namestr+".shp")
+        gdf.to_file(namestr +".shp")
 
         return gdf
 
@@ -2275,10 +2395,10 @@ if __name__ == "__main__":
     ##################################################
     cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
 
-    OH_LVline_df = layer2df(cktQgis._lines["overH_LVlines"])
-    OH_MVline_df = layer2df(cktQgis._lines["overH_MVlines"])
-    UG_LVline_df = layer2df(cktQgis._lines["underG_LVlines"])
-    UG_MVline_df = layer2df(cktQgis._lines["underG_MVlines"])
+    OH_LVline_df, _ = layer2df(cktQgis._lines["overH_LVlines"])
+    OH_MVline_df, _ = layer2df(cktQgis._lines["overH_MVlines"])
+    UG_LVline_df, _ = layer2df(cktQgis._lines["underG_LVlines"])
+    UG_MVline_df, _ = layer2df(cktQgis._lines["underG_MVlines"])
 
     #OH_LVline_df_gdf_shp = df2shp(OH_LVline_df, "overH_LVlines")
     #OH_MVline_df_gdf_shp = df2shp(OH_MVline_df, "overH_MVlines")
@@ -2301,7 +2421,7 @@ if __name__ == "__main__":
                          AsymTxData=cktNeplan._AsymTx, 
                          TxData=cktNeplan._Tx)
 
-    Distribution_transformer_df = layer2df(cktQgis._transformers["Distribution_transformer"])
+    Distribution_transformer_df, _ = layer2df(cktQgis._transformers["Distribution_transformer"])
     Subestation_three_phase_transformer_df = layer2df(cktQgis._transformers["Subestation_three_phase_transformer"])
     Subestation_autotransformer_df = layer2df(cktQgis._transformers["Subestation_autotransformer"])
     Subestation_without_modeling_transformer_df = layer2df(cktQgis._transformers["Subestation_without_modeling_transformer"])
@@ -2328,7 +2448,7 @@ if __name__ == "__main__":
 
     cktQgis.add_fuse_layer(cktNeplan._fuses)
 
-    fuse_df = layer2df(cktQgis._fuses["fuses"])
+    fuse_df, _ = layer2df(cktQgis._fuses["fuses"])
 
     #fuse_df_gdf_shp = df2shp(fuse_df, "fuses")
     
@@ -2362,3 +2482,12 @@ if __name__ == "__main__":
 
     #recloser_df_gdf_shp = df2shp(recloser_df, "reclosers")
 
+    ##########################################################
+    ## Turn public lights layer into df to gdf to shapefile ##
+    ##########################################################
+
+    cktQgis.add_PublicLights_layer(cktNeplan._publicLights)
+
+    publicLights_df, _ = layer2df(cktQgis._publicLights["public_Lights"])
+
+    print(publicLights_df)
