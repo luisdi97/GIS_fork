@@ -802,6 +802,7 @@ class CKT_QGIS():
 
         It creats regulators layers attributes suitable to
         be converted to shapefiles.
+
         """
         # Concat columns
         regulatorID = concat_regulatorcols(regulatorData)
@@ -819,26 +820,29 @@ class CKT_QGIS():
 
         return regulator
 
-    def add_PublicLights_layer(self, publicLightsData:dict):
-        """ Missing documentation.
-            
-            Missing description
-        
+    def add_PublicLights_layer(self, publicLightsData: dict) -> PublicLights:
+        """Missing documentation.
+
+        Missing description of this method.
+
         """
 
         # Concatenate columns
-        publicLightsID = concat_publicLightscols(publicLightsData=publicLightsData)
+        publicLightsID = concat_publicLightscols(
+            publicLightsData=publicLightsData)
 
         # Create instance
         public_lights = PublicLights()
 
-        public_lights_layer = self.set_attributes_publicLights(public_lights=public_lights,
-                                                               publicLightsID=publicLightsID)
+        public_lights_layer = self.set_attributes_publicLights(
+            public_lights=public_lights,
+            publicLightsID=publicLightsID)
 
         PL = public_lights_layer._PublicLights_layer
         dictAttrs = public_lights_layer.__dict__
-        self._publicLights[PL] = {cols.strip("_"): vals for cols, vals in dictAttrs.items()}
-        
+        self._publicLights[PL] = {cols.strip("_"): vals
+                                  for cols, vals in dictAttrs.items()}
+
         return public_lights
 
     def set_attributes_lines(self,
@@ -1617,14 +1621,14 @@ class CKT_QGIS():
                                  regulator: Regulator):
         """Unpack data of regulars and set its attributes.
 
-            To assign the unknown attributes given the lack of information
-            in the circuit, the following should be considered:
+        To assign the unknown attributes given the lack of information
+        in the circuit, the following should be considered:
 
-            `VREG:` is typically used 120V in distribution network.
-            `BANDWIDTH:` is typically used 2 in distributon network.
-            `PT_RATIO:` use the nominal voltage of the circuit and regulated
-                        voltage for its calculation.
-            `TAPS:` are asigned as 32.
+        `VREG:` is typically used 120V in distribution network.
+        `BANDWIDTH:` is typically used 2 in distributon network.
+        `PT_RATIO:` use the nominal voltage of the circuit and regulated
+                    voltage for its calculation.
+        `TAPS:` are asigned as 32.
 
         """
         # ["Name", "Node1", "Node2", "Switch1", "Switch2",
@@ -1671,9 +1675,17 @@ class CKT_QGIS():
 
         return (regulator)
 
-    def set_attributes_publicLights(self, public_lights:PublicLights, publicLightsID: list[str]):
+    def set_attributes_publicLights(self,
+                                    public_lights: PublicLights,
+                                    publicLightsID: list[str]) -> PublicLights:
+        """Missing documentation.
 
-        # ["Node1", "Name", "Phase", "Switch1", "Potencia_kW", "Lftype", "Unit", "CosPhi", "CoordX1", "CoordY1", "Un"]
+        Missing description of this method.
+
+        """
+        # ["Node1", "Name", "Phase", "Switch1",
+        # "Potencia_kW", "Lftype", "Unit", "CosPhi",
+        # "CoordX1", "CoordY1", "Un"]
         for row in publicLightsID:
             cols = row.split("&")
 
@@ -1697,8 +1709,9 @@ class CKT_QGIS():
             # Y1
             Y1 = float(cols[9])
             public_lights._Y1.append(Y1)
-        
+
         return (public_lights)
+
 
 def get_PHASEDESIG(phcode) -> int:
     """Phase designation.
@@ -2359,9 +2372,9 @@ def concat_publicLightscols(publicLightsData: dict) -> list[str]:
     ['Node1'&'Name'&'Phase'&... &'attr1M',
     'Node1'&'Name'&'Phase'&... &'attr2M', ...
     ...,
-    'Node1N'&'NameN'&'PhaseN'&... &'attrNM']
-    """
+    'Node1N'&'NameN'&'PhaseN'&... &'attrNM'].
 
+    """
     for k, v in publicLightsData.items():
         if k == "Node1":
             col1 = v
@@ -2386,12 +2399,16 @@ def concat_publicLightscols(publicLightsData: dict) -> list[str]:
         elif k == "Un":
             col11 = v
 
+    cols = zip(col1, col2, col3, col4,
+               col5, col6, col7, col8,
+               col9, col10, col11)
+    publicLightsID = []
+    for attrs in cols:
+        row = ""
+        for attr in attrs:
+            row += f"{attr}&"
+        publicLightsID.append(row)
 
-    cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11)
-
-    publicLightsID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}&{c10}&{c11}"
-               for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11 in cols]
-    
     return publicLightsID
 
 
