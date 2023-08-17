@@ -194,8 +194,8 @@ class Line():
                 }
         """
         # "*" symbol stands for mandator attribute
-        self._ICEobjectID = []   # New (*)
-        self._LibraryName = []   # New (*)
+        self._ICEobjID = []   # New (*)
+        self._LibName = []   # New (*)
         self._NEUTMAT = []       # *
         self._NEUTSIZ = []       # *
         self._PHASEMAT = []      # *
@@ -262,7 +262,7 @@ class Bus():
 
     """
     def __init__(self) -> None:
-        self._ICEobjectID = []
+        self._ICEobjID = []
         self._NOMVOLT = []
         self._X1 = []
         self._Y1 = []
@@ -299,12 +299,12 @@ class Transformer():
 
     """
     def __init__(self) -> None:
-        self._ICEobjectID = []
+        self._ICEobjID = []
         self._NODE1 = []
         self._NODE2 = []
         self._SWITCH1 = []
         self._SWITCH2 = []
-        self._ISREGULATED = []
+        self._ISREG = []       # _ISREGULATED
         self._PHASEDESIG = []
         self._PRIMVOLT = []
         self._SECVOLT = []
@@ -369,7 +369,7 @@ class Load():
 
     """
     def __init__(self):
-        self._ICEobjectID = []
+        self._ICEobjID = []
         self._NODE1 = []
         self._SWITCH1 = []
         self._PHASEDESIG = []
@@ -406,7 +406,7 @@ class Fuse():
     """
     def __init__(self):
         self._fuse_layer = "fuses"
-        self._ICEobjectID = []
+        self._ICEobjID = []
         self._PHASEDESIG = []
         self._ONELEMENT = []
         self._NC = []
@@ -424,7 +424,7 @@ class PV():
     """
     def __init__(self):
         self._PV_layer = "PVs"
-        self._ICEobjectID = []
+        self._ICEobjID = []
         self._NODE1 = []
         self._SWITCH1 = []
         self._TECH = []
@@ -443,7 +443,7 @@ class Recloser():
     """
     def __init__(self):
         self._recloser_layer = "reclosers"
-        self._ICEobjectID = []
+        self._ICEobjID = []
         self._PHASEDESIG = []
         self._NC = []
         self._GRD_D = []
@@ -464,7 +464,7 @@ class Regulator():
     """
     def __init__(self):
         self._regulator_layer = "regulators"
-        self._ICEobjectID = []
+        self._ICEobjID = []
         self._NOMVOLT = []
         self._PHASEDESIG = []
         self._KVA = []
@@ -627,9 +627,14 @@ class CKT_QGIS():
 
         To store the layers of transformers was necessary change
         the name of the attributes MV_MV and TAPMAX_MI to
-        MV/MV and TAPMAX/MI as the manual requests.
+        MV/MV and TAPMAX/MI according to the manual.
 
         """
+        # Number of Trafo2WindingAsym elements in sheet
+        # from Neplan circuit.
+        N_asymTXs = len(list(AsymTxData.values())[0])
+        # Make a single sheet of transformers weather asym or not
+        # by concatenating Trafo2Winding at the end.
         for k, v in TxData.items():
             AsymTxData[k] += v
 
@@ -646,25 +651,28 @@ class CKT_QGIS():
             Sub_three_phase_unit_Tx=Sub_three_phase_unit_Tx,
             Sub_autoTx=Sub_autoTx,
             Sub_without_modeling_Tx=Sub_without_modeling_Tx,
-            txID=txID
+            txID=txID,
+            n_asymTxs=N_asymTXs
         )
 
         for TL in transformer_layers:
             T = TL._Tx_layer
             dictAttrs = TL.__dict__
 
-            dictAttrsMod = {}
+            # Dictionay of modified attributes
+            dictAttrsTx = {}
             for (col, vals) in dictAttrs.items():
-                if col == "_MV_MV":
-                    col1 = col.replace(col, "_MV/MV")
-                    dictAttrsMod[col1.strip("_")] = vals
-                elif col == "_TAPMAX_MI":
-                    col2 = col.replace(col, "_TAPMAX/MI")
-                    dictAttrsMod[col2.strip("_")] = vals
+                col = col.strip("_")
+                if "MV_MV" in col:
+                    col = col.replace("_", "/")
+                    dictAttrsTx[col] = vals
+                elif "TAPMAX_MI" in col:
+                    col = col.replace("_", "/")
+                    dictAttrsTx[col] = vals
                 else:
-                    dictAttrsMod[col.strip("_")] = vals
+                    dictAttrsTx[col] = vals
 
-            self._transformers[T] = dictAttrsMod
+            self._transformers[T] = dictAttrsTx
 
         return (Distribution_transformer,
                 Sub_three_phase_unit_Tx,
@@ -767,7 +775,9 @@ class CKT_QGIS():
 
         return recloser
 
-    def add_regulator_layer(self, busesData, regulatorData) -> Regulator:
+    def add_regulator_layer(self,
+                            busesData,
+                            regulatorData) -> Regulator:
         """Layer of regularos.
 
         It creats regulators layers attributes suitable to
@@ -857,8 +867,8 @@ class CKT_QGIS():
                             attrs = ft.split("_")
                             underG_LVline._INSULMAT.append(attrs[0])
                             underG_LVline._NEUTSIZ.append(attrs[1])
-                    # _LibraryName: LineCode (LC)
-                    underG_LVline._LibraryName.append(f"LC::{lineName}")
+                    # _LibName: LineCode (LC)
+                    underG_LVline._LibName.append(f"LC::{lineName}")
                     # _NEUTMAT
                     underG_LVline._NEUTMAT.append("CU")
                     # _NOMVOLT
@@ -874,9 +884,9 @@ class CKT_QGIS():
                     underG_LVline._Y1.append(Y1)
                     underG_LVline._X2.append(X2)
                     underG_LVline._Y2.append(Y2)
-                    # _ICEobjectID
+                    # _ICEobjID
                     nameID = cols[2]
-                    underG_LVline._ICEobjectID.append(nameID)
+                    underG_LVline._ICEobjID.append(nameID)
                     # _LENGTH
                     length = float(cols[4].strip())
                     underG_LVline._LENGTH.append(length)
@@ -903,8 +913,8 @@ class CKT_QGIS():
                             attrs = ft.split("_")
                             underG_MVline._INSULMAT.append(attrs[0])
                             underG_MVline._NEUTPER.append(attrs[1])
-                    # _LibraryName: LineCode (LC)
-                    underG_MVline._LibraryName.append(f"LC::{lineName}")
+                    # _LibName: LineCode (LC)
+                    underG_MVline._LibName.append(f"LC::{lineName}")
                     # _NEUTMAT
                     underG_MVline._NEUTMAT.append("CU")
                     # _NEUTSIZ
@@ -929,9 +939,9 @@ class CKT_QGIS():
                     underG_MVline._Y1.append(Y1)
                     underG_MVline._X2.append(X2)
                     underG_MVline._Y2.append(Y2)
-                    # _ICEobjectID
+                    # _ICEobjID
                     nameID = cols[2]
-                    underG_MVline._ICEobjectID.append(nameID)
+                    underG_MVline._ICEobjID.append(nameID)
                     # _LENGTH
                     length = float(cols[4].strip())
                     underG_MVline._LENGTH.append(length)
@@ -956,8 +966,8 @@ class CKT_QGIS():
                             overH_LVline._NEUTMAT.append(attrs[1])
                             overH_LVline._NEUTSIZ.append(attrs[2])
                             overH_LVline._TYPE.append(attrs[3])
-                    # _LibraryName: LineCode (LC)
-                    overH_LVline._LibraryName.append(f"LC::{lineName}")
+                    # _LibName: LineCode (LC)
+                    overH_LVline._LibName.append(f"LC::{lineName}")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
                     codenomV = get_NOMVOLT(nomV)
@@ -971,9 +981,9 @@ class CKT_QGIS():
                     overH_LVline._Y1.append(Y1)
                     overH_LVline._X2.append(X2)
                     overH_LVline._Y2.append(Y2)
-                    # _ICEobjectID
+                    # _ICEobjID
                     nameID = cols[2]
-                    overH_LVline._ICEobjectID.append(nameID)
+                    overH_LVline._ICEobjID.append(nameID)
                     # _LENGTH
                     length = float(cols[4].strip())
                     overH_LVline._LENGTH.append(length)
@@ -1001,8 +1011,8 @@ class CKT_QGIS():
                             geo_format = f"{attrs[6]}_{attrs[5]}" \
                                          f"_{attrs[4]}_{attrs[3]}"
                             overH_MVline._LINEGEO.append(geo_format)
-                    # _LibraryName: LineCode (LC)
-                    overH_MVline._LibraryName.append(f"LC::{lineName}")
+                    # _LibName: LineCode (LC)
+                    overH_MVline._LibName.append(f"LC::{lineName}")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
                     codenomV = get_NOMVOLT(nomV)
@@ -1016,9 +1026,9 @@ class CKT_QGIS():
                     overH_MVline._Y1.append(Y1)
                     overH_MVline._X2.append(X2)
                     overH_MVline._Y2.append(Y2)
-                    # _ICEobjectID
+                    # _ICEobjID
                     nameID = cols[2]
-                    overH_MVline._ICEobjectID.append(nameID)
+                    overH_MVline._ICEobjID.append(nameID)
                     # _LENGTH
                     length = float(cols[4].strip())
                     overH_MVline._LENGTH.append(length)
@@ -1041,33 +1051,36 @@ class CKT_QGIS():
             # ["Name", "Un", "CoordX1", "CoordY1"]
             cols = row.split("&")
             bus = cols[0]
-            if "AREA" and "MT" in bus:
-                overH_MVbus._ICEobjectID.append(bus)
-                # _NOMVOLT
-                nomV = float(cols[1].strip())
-                codenomV = get_NOMVOLT(nomV)
-                overH_MVbus._NOMVOLT.append(codenomV)
-                # _X1, _Y1
-                X1 = float(cols[2])
-                Y1 = float(cols[3])
-                overH_MVbus._X1.append(X1)
-                overH_MVbus._Y1.append(Y1)
-
-            elif "AREA" and "BT" in bus:
-                overH_LVbus._ICEobjectID.append(bus)
-                # _NOMVOLT
-                nomV = float(cols[1].strip())
-                codenomV = get_NOMVOLT(nomV)
-                overH_LVbus._NOMVOLT.append(codenomV)
-                # _X1, _Y1
-                X1 = float(cols[2])
-                Y1 = float(cols[3])
-                overH_LVbus._X1.append(X1)
-                overH_LVbus._Y1.append(Y1)
+            # Overhead layers
+            if "AREA" in bus:
+                # MV buses
+                if "MT" in bus:
+                    overH_MVbus._ICEobjID.append(bus)
+                    # _NOMVOLT
+                    nomV = float(cols[1].strip())
+                    codenomV = get_NOMVOLT(nomV)
+                    overH_MVbus._NOMVOLT.append(codenomV)
+                    # _X1, _Y1
+                    X1 = float(cols[2])
+                    Y1 = float(cols[3])
+                    overH_MVbus._X1.append(X1)
+                    overH_MVbus._Y1.append(Y1)
+                # LV buses
+                else:
+                    overH_LVbus._ICEobjID.append(bus)
+                    # _NOMVOLT
+                    nomV = float(cols[1].strip())
+                    codenomV = get_NOMVOLT(nomV)
+                    overH_LVbus._NOMVOLT.append(codenomV)
+                    # _X1, _Y1
+                    X1 = float(cols[2])
+                    Y1 = float(cols[3])
+                    overH_LVbus._X1.append(X1)
+                    overH_LVbus._Y1.append(Y1)
 
             # Odd buses
             elif "_T" in bus:
-                overH_LVbus._ICEobjectID.append(bus.strip("_T"))
+                overH_LVbus._ICEobjID.append(bus.strip("_T"))
                 # _NOMVOLT
                 nomV = float(cols[1].strip())
                 codenomV = get_NOMVOLT(nomV)
@@ -1078,30 +1091,33 @@ class CKT_QGIS():
                 overH_LVbus._X1.append(X1)
                 overH_LVbus._Y1.append(Y1)
 
-            elif "SUB" and "MT" in bus:
-                # MV
-                underG_MVbus._ICEobjectID.append(bus)
-                # _NOMVOLT
-                nomV = float(cols[1].strip())
-                codenomV = get_NOMVOLT(nomV)
-                underG_MVbus._NOMVOLT.append(codenomV)
-                # _X1, _Y1
-                X1 = float(cols[2])
-                Y1 = float(cols[3])
-                underG_MVbus._X1.append(X1)
-                underG_MVbus._Y1.append(Y1)
-
-            elif "SUB" and "BT" in bus:
-                underG_LVbus._ICEobjectID.append(bus)
-                # _NOMVOLT
-                nomV = float(cols[1].strip())
-                codenomV = get_NOMVOLT(nomV)
-                underG_LVbus._NOMVOLT.append(codenomV)
-                # _X1, _Y1
-                X1 = float(cols[2])
-                Y1 = float(cols[3])
-                underG_LVbus._X1.append(X1)
-                underG_LVbus._Y1.append(Y1)
+            # Underground layers
+            else:
+                # MV buses
+                if "MT" in bus:
+                    # MV
+                    underG_MVbus._ICEobjID.append(bus)
+                    # _NOMVOLT
+                    nomV = float(cols[1].strip())
+                    codenomV = get_NOMVOLT(nomV)
+                    underG_MVbus._NOMVOLT.append(codenomV)
+                    # _X1, _Y1
+                    X1 = float(cols[2])
+                    Y1 = float(cols[3])
+                    underG_MVbus._X1.append(X1)
+                    underG_MVbus._Y1.append(Y1)
+                # LV buses
+                else:
+                    underG_LVbus._ICEobjID.append(bus)
+                    # _NOMVOLT
+                    nomV = float(cols[1].strip())
+                    codenomV = get_NOMVOLT(nomV)
+                    underG_LVbus._NOMVOLT.append(codenomV)
+                    # _X1, _Y1
+                    X1 = float(cols[2])
+                    Y1 = float(cols[3])
+                    underG_LVbus._X1.append(X1)
+                    underG_LVbus._Y1.append(Y1)
 
         return (underG_MVbus, underG_LVbus,
                 overH_MVbus, overH_LVbus)
@@ -1111,22 +1127,23 @@ class CKT_QGIS():
                           Sub_three_phase_unit_Tx: Transformer,
                           Sub_autoTx: Transformer,
                           Sub_without_modeling_Tx: Transformer,
-                          txID: list[str]):
+                          txID: list[str],
+                          n_asymTxs: int) -> Transformer:
         """Unpack transformer attributes.
 
         For transformers without subestation `Trafo2WindingAsym` and
-        `Trafo2Winding` we need to diferentiate this transformers when
-        the computer read the txID (rows in the sheet) and we watch
+        `Trafo2Winding` we need to differentiate these transformers when
+        the computer reads the txID (rows in the sheet) and we watch
         that LibraryType in "Trafo2Winding" contain the PRIMCONN and
         SECCONN, so for now we differentiate with this.
 
         Note: The position of the tap is unknown, therefore it is
               set to 1:
-                  `_TAPSETTING:` 1
+                  _TAPSETTING: 1
 
         """
         splitPH_TX = Distribution_transformer
-        for row in txID:
+        for i, row in enumerate(txID):
             # ["Name", "Node1", "Node2", "Switch1", "Switch2",
             # "IsRegulated", "Un1", "Un2", "Sr",
             # "LibraryType", "CoordX1", "CoordY1"]
@@ -1134,14 +1151,15 @@ class CKT_QGIS():
             # LibraryType
             LLype = cols[9]
             LLype2 = set_Label_Tx(LLype)
-            # Asym case: [PHASEDESIG, Sr, PRIMVOLT,
-            # kV, SECVOLT, kV, TxType]
-            # Tx case: [PHASEDESIG, Sr, PRIMVOLT, kV,
-            # SECVOLT, kV, TxType, PRIMCONN, SECCONN]
+            # Asym case: ->
+            # [PHASEDESIG, Sr, PRIMVOLT, kV, SECVOLT, kV, TxType]
+            # Tx case: ->
+            # [PHASEDESIG, Sr, PRIMVOLT, kV, SECVOLT, kV, TxType,
+            # PRIMCONN, SECCONN]
             LLype3 = LLype2.split("_")
 
             # Trafo2Winding
-            if len(LLype3) > 7:
+            if i >= n_asymTxs:
                 for n, ft in enumerate(LLype3):
                     # PHASEDESIGN
                     if n == 0:
@@ -1150,18 +1168,18 @@ class CKT_QGIS():
                         splitPH_TX._PHASEDESIG.append(phcode)
 
                         # KVAPHASEA
-                        # KVAPHASEB
-                        # KVAPHASEC
                         if ph == "A":
                             kvaphaseA = float(cols[8].strip())
                             splitPH_TX._KVAPHASEA.append(kvaphaseA)
                             splitPH_TX._KVAPHASEB.append(float(0))
                             splitPH_TX._KVAPHASEC.append(float(0))
+                        # KVAPHASEB
                         elif ph == "B":
                             kvaphaseB = float(cols[8].strip())
                             splitPH_TX._KVAPHASEA.append(float(0))
                             splitPH_TX._KVAPHASEB.append(kvaphaseB)
                             splitPH_TX._KVAPHASEC.append(float(0))
+                        # KVAPHASEC
                         elif ph == "C":
                             kvaphaseC = float(cols[8].strip())
                             splitPH_TX._KVAPHASEA.append(float(0))
@@ -1192,6 +1210,11 @@ class CKT_QGIS():
                             splitPH_TX._KVAPHASEA.append(kvaphaseA)
                             splitPH_TX._KVAPHASEB.append(kvaphaseB)
                             splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                    # TTYPE
+                    elif n == 6:
+                        txtype = ft.strip()
+                        txtypecode = get_TxType(txtype)
+                        splitPH_TX._TTYPE.append(txtypecode)
                     # PRIMCONN
                     elif n == 7:
                         primconn = ft
@@ -1202,11 +1225,6 @@ class CKT_QGIS():
                         secconn = ft
                         secconncode = secconn.strip()
                         splitPH_TX._SECCONN.append(secconncode)
-                    # TTYPE
-                    elif n == 6:
-                        txtype = ft.strip()
-                        txtypecode = get_TxType(txtype)
-                        splitPH_TX._TTYPE.append(txtypecode)
 
                 # PRIMVOLT
                 pnomv = float(cols[6].strip())
@@ -1236,7 +1254,7 @@ class CKT_QGIS():
                 splitPH_TX._Y1.append(Y1)
                 # ICEobjectID
                 name = cols[0]
-                splitPH_TX._ICEobjectID.append(name.strip("_T"))
+                splitPH_TX._ICEobjID.append(name.strip("_T"))
                 # SWITCH1
                 switch1 = cols[3].strip()
                 splitPH_TX._SWITCH1.append(switch1)
@@ -1245,14 +1263,14 @@ class CKT_QGIS():
                 splitPH_TX._SWITCH2.append(switch2)
                 # ISREGULATED
                 isregulated = cols[5].strip()
-                splitPH_TX._ISREGULATED.append(isregulated)
+                splitPH_TX._ISREG.append(isregulated)
 
             # Trafo2WindingAsym
             else:
                 for n, ft in enumerate(LLype3):
                     # PHASEDESIGN
                     if n == 0:
-                        ph = ft
+                        ph = ft.strip()
                         phcode = get_PHASEDESIG(ph)
                         splitPH_TX._PHASEDESIG.append(phcode)
                         if ph == "AB" or ph == "AC" or ph == "BC":
@@ -1269,22 +1287,22 @@ class CKT_QGIS():
                             primmconncode = "LG"
                             splitPH_TX._PRIMCONN.append(primmconncode)
                             # SECCONN
-                            secconncode = "SP"   # Split Phase
+                            secconncode = "SP"     # Split Phase
                             splitPH_TX._SECCONN.append(secconncode)
 
                         # KVAPHASEA
-                        # KVAPHASEB
-                        # KVAPHASEC
                         if ph == "A":
                             kvaphaseA = float(cols[8].strip())
                             splitPH_TX._KVAPHASEA.append(kvaphaseA)
                             splitPH_TX._KVAPHASEB.append(float(0))
                             splitPH_TX._KVAPHASEC.append(float(0))
+                        # KVAPHASEB
                         elif ph == "B":
                             kvaphaseB = float(cols[8].strip())
                             splitPH_TX._KVAPHASEA.append(float(0))
                             splitPH_TX._KVAPHASEB.append(kvaphaseB)
                             splitPH_TX._KVAPHASEC.append(float(0))
+                        # KVAPHASEC
                         elif ph == "C":
                             kvaphaseC = float(cols[8].strip())
                             splitPH_TX._KVAPHASEA.append(float(0))
@@ -1349,7 +1367,7 @@ class CKT_QGIS():
                 splitPH_TX._Y1.append(Y1)
                 # ICEobject_ID
                 name = cols[0]
-                splitPH_TX._ICEobjectID.append(name.strip("_T"))
+                splitPH_TX._ICEobjID.append(name.strip("_T"))
                 # SWITCH1
                 switch1 = cols[3].strip()
                 splitPH_TX._SWITCH1.append(switch1)
@@ -1358,7 +1376,7 @@ class CKT_QGIS():
                 splitPH_TX._SWITCH2.append(switch2)
                 # ISREGULATED
                 isregulated = cols[5].strip()
-                splitPH_TX._ISREGULATED.append(isregulated)
+                splitPH_TX._ISREG.append(isregulated)
 
         return (splitPH_TX,
                 Sub_three_phase_unit_Tx,
@@ -1410,7 +1428,7 @@ class CKT_QGIS():
                 LVload._PF.append(pf)
                 # ICEobjectID
                 objectID = cols[1].strip()
-                LVload._ICEobjectID.append(objectID)
+                LVload._ICEobjID.append(objectID)
                 # X1
                 X1 = float(cols[10].strip())
                 LVload._X1.append(X1)
@@ -1445,7 +1463,7 @@ class CKT_QGIS():
                 LVload._PF.append(pf)
                 # ICEobjectID
                 objectID = cols[1].strip()
-                LVload._ICEobjectID.append(objectID)
+                LVload._ICEobjID.append(objectID)
                 # X1
                 X1 = float(cols[10].strip())
                 LVload._X1.append(X1)
@@ -1468,12 +1486,12 @@ class CKT_QGIS():
 
         """
         for row in fuseID:
-            # ["Name", "Phase", "IsActive", "OnElement"]
+            # ["Name", "Phase", "IsActive", "OnElement", "X", "Y"]
             cols = row.split("&")
 
             # ICEObjectID
             objetID = cols[0].strip("_F")
-            fuse._ICEobjectID.append(objetID)
+            fuse._ICEobjID.append(objetID)
             # PHASEDESIGN
             phasedesign = int(cols[1].strip())
             phasedesigncode = get_PHASEDESIG(phcode=phasedesign)
@@ -1485,7 +1503,10 @@ class CKT_QGIS():
             # ONELEMENT
             onelement = cols[3].strip()
             fuse._ONELEMENT.append(onelement)
-
+            # _X1
+            fuse._X1.append(float(cols[4]))
+            # _Y1
+            fuse._Y1.append(float(cols[5]))
         return (fuse)
 
     def set_attributes_PV(self,
@@ -1505,7 +1526,7 @@ class CKT_QGIS():
 
             # ICEobjectID
             objectID = cols[0].strip("_PV")
-            pv._ICEobjectID.append(objectID)
+            pv._ICEobjID.append(objectID)
             # NODE1
             node1 = cols[1].strip()
             pv._NODE1.append(node1)
@@ -1539,7 +1560,7 @@ class CKT_QGIS():
 
             # ICEobjectID
             objectID = cols[0].strip("R")
-            recloser._ICEobjectID.append(objectID)
+            recloser._ICEobjID.append(objectID)
             # PHASEDESIG
             phasedesig = int(cols[1])
             phasedesigcode = get_PHASEDESIG(phcode=phasedesig)
@@ -1570,7 +1591,7 @@ class CKT_QGIS():
 
             # ICEobjectID
             objectID = cols[0].strip("_R")
-            regulator._ICEobjectID.append(objectID)
+            regulator._ICEobjID.append(objectID)
             # PHASEDESIG
             phasedesig = int(cols[7])
             phasedesigcode = get_PHASEDESIG(phcode=phasedesig)
@@ -1922,30 +1943,32 @@ def set_Label(LibType: str) -> str:
 
 
 def set_Label_Tx(LibType: str) -> str:
-    """Special Tx connections.
+    """Change name of labels.
 
-    For the moment in the circuit read, the
-    transformers do not have the secondary
-    as the manual asks for it.
+    It replaces the original labels (values's name of
+    attributes comming from Neplan) in LibraryType of
+    transformers, for common notation used in the manual of
+    `QGIS2OPENDSS` plug-in.
 
     """
+    # Library Type Modified
     LibTypeMod = LibType
     # NOMVOLT
-    nomvolT = {
+    nomvolt = {
         ".240": "0.24",
         ".208": "0.208",
         ".480": "0.48"
     }
 
-    for (k, v) in nomvolT.items():
+    for (k, v) in nomvolt.items():
         LibTypeMod = LibTypeMod.replace(k, v)
 
     # PRIMCONN
     primconn = {
-        "Estrella": "Y",  # Ready
+        "Estrella": "Y",
         "Delta": "D",
-        "DEFINIR": "OY",
-        "DEFINIR": "LG"
+        "DEFINIR": "OY",    # Open Wey
+        "DEFINIR": "LG"     # Line-Ground
     }
 
     for (k, v) in primconn.items():
@@ -1953,10 +1976,10 @@ def set_Label_Tx(LibType: str) -> str:
 
     # SECCONN
     secconn = {
-        "Estrella": "Y",  # Ready
+        "Estrella": "Y",
         "Delta": "D",
-        "DEFINIR": "4D",
-        "Fase_Partida": "SP"  # Ready
+        "DEFINIR": "4D",     # Delta four threads
+        "Fase_Partida": "SP"
     }
 
     for (k, v) in secconn.items():
@@ -2130,10 +2153,13 @@ def concat_fusecols(fuseData: dict) -> list[str]:
             col3 = v
         elif k == "OnElement":
             col4 = v
-
-    cols = zip(col1, col2, col3, col4)
-    fuseID = [f"{c1}&{c2}&{c3}&{c4}"
-              for c1, c2, c3, c4 in cols]
+        elif k == "X":
+            col5 = v
+        elif k == "Y":
+            col6 = v
+    cols = zip(col1, col2, col3, col4, col5, col6)
+    fuseID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}"
+              for c1, c2, c3, c4, c5, c6 in cols]
 
     return fuseID
 
@@ -2296,12 +2322,21 @@ def layer2df(layer: dict) -> tuple[pd.DataFrame]:
 def df2shp(df: pd.DataFrame, namestr: str):
     """From pandas.DataFrame to shapefile.
 
+    It will create a folder named "GIS" in the current
+    working directory (where your Python script is located),
+    if it doesn't already exist.
+    Then, it will write the specified content to a file
+    named "namestr.shp" within the `GIS` folder.
+    If you encounter any permission-related issues,
+    you might need to adjust the file paths or run the
+    script with appropriate privileges.
     It gets DataFrame as argument to be converted to
-    pd.GeoDataFrame and finally into shapefile `*.shp`.
+    `pd.GeoDataFrame` and finally into shapefile `*.shp`.
     After have been create the DataFrame, add the
     geometry column when create tha GeoDataFrame.
 
-    EPSG = 5367 means that this geographic coordinate
+    The crs argument EPSG = 5367 means that this
+    geographic coordinate
     system is typically used in Costa Rica.
 
     Note: For create the shapefile, create a path
@@ -2309,141 +2344,141 @@ def df2shp(df: pd.DataFrame, namestr: str):
           the other files generated.
 
     """
+    import os
+
+    # Define the folder name
+    folder_name = "GIS"
+
+    # Create the folder if it does not exist
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
+    # Define the file path within the folder
+    file_path = os.path.join(".", folder_name, namestr)
+
     if "X2" and "Y2" in df.columns:
         from_buses = [Point(X1, Y1) for X1, Y1 in zip(df["X1"], df["Y1"])]
         to_buses = [Point(X2, Y2) for X2, Y2 in zip(df["X2"], df["Y2"])]
         lines = [LineString([p1, p2]) for p1, p2 in zip(from_buses, to_buses)]
-        gdf = gpd.GeoDataFrame(df, geometry=lines)
-        gdf.to_file("./GIS/"+namestr+".shp")
-
+        gdf = gpd.GeoDataFrame(df, geometry=lines, crs="EPSG:5367")
+        gdf.to_file(file_path+".shp")
         return gdf
 
     else:
         geometry = [Point(X, Y) for X, Y in zip(df["X1"], df["Y1"])]
         gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:5367")
-        gdf.to_file("./GIS/"+namestr+".shp")
-
+        gdf.to_file(file_path+".shp")
         return gdf
 
 
 if __name__ == "__main__":
-    # Import circuit data
+    # Import Neplan circuit data
     directory = "./data/Circuito.xlsx"
     cktNeplan = CKTdata()
     cktNeplan.call_data(directory)
     # New QGIS circuit
     cktQgis = CKT_QGIS()
-    #_ = cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
-    # Turn OH_LVline layer into df
-    #OH_LVlines_df = layer2df(cktQgis._lines["overH_MVlines"])
-    # Show first & last 10 values
-    #print(OH_LVlines_df.head(10))
-    #print(OH_LVlines_df.tail(10))
 
-    # Jean code
+    # ------------------------
+    # Buses layers *.shp files
+    # ------------------------
+    _ = cktQgis.add_buslayers(cktNeplan._buses)
+    OH_LVbuses_df, _ = layer2df(cktQgis._buses["overH_LVbuses"])
+    OH_MVbuses_df, _ = layer2df(cktQgis._buses["overH_MVbuses"])
+    UG_LVbuses_df, _ = layer2df(cktQgis._buses["underG_LVbuses"])
+    UG_MVbuses_df, _ = layer2df(cktQgis._buses["underG_MVbuses"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    OH_LVbuses_gdf = df2shp(OH_LVbuses_df, "overH_LVbuses")
+    OH_MVbuses_gdf = df2shp(OH_MVbuses_df, "overH_MVbuses")
+    UG_LVbuses_gdf = df2shp(UG_LVbuses_df, "underG_LVbuses")
+    UG_MVbuses_gdf = df2shp(UG_MVbuses_df, "underG_MVbuses")
 
-    #################################################
-    ## Turn bus layers into df to gdf to shapefile ##
-    #################################################
-    cktQgis.add_buslayers(cktNeplan._buses)
+    # -----------------------
+    # Line layers *.shp files
+    # -----------------------
+    _ = cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
+    # Turn layers into df
+    OH_LVlines_df, _ = layer2df(cktQgis._lines["overH_LVlines"])
+    OH_MVlines_df, _ = layer2df(cktQgis._lines["overH_MVlines"])
+    UG_LVlines_df, _ = layer2df(cktQgis._lines["underG_LVlines"])
+    UG_MVlines_df, _ = layer2df(cktQgis._lines["underG_MVlines"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    OH_LVline_gdf = df2shp(OH_LVlines_df, "overH_LVlines")
+    OH_MVline_gdf = df2shp(OH_MVlines_df, "overH_MVlines")
+    UG_LVline_gdf = df2shp(UG_LVlines_df, "underG_LVlines")
+    UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
 
-    OH_LVbus_df = layer2df(cktQgis._buses["overH_LVbuses"])
-    OH_MVbus_df = layer2df(cktQgis._buses["overH_MVbuses"])
-    UG_LVbus_df = layer2df(cktQgis._buses["underG_LVbuses"])
-    UG_MVbus_df = layer2df(cktQgis._buses["underG_MVbuses"])
+    # ------------------------------
+    # Transformer layers *.shp files
+    # ------------------------------
+    _ = cktQgis.add_txlayers(
+        AsymTxData=cktNeplan._AsymTx,
+        TxData=cktNeplan._Tx)
+    # Turn layers into df
+    Distribution_transformer_df, _ = layer2df(
+        cktQgis._transformers["Distribution_transformer"])
+    # Subestation_three_phase_transformer_df, _ = layer2df(
+    #     cktQgis._transformers["Subestation_three_phase_transformer"])
+    # Subestation_autotransformer_df, _ = layer2df(
+    #     cktQgis._transformers["Subestation_autotransformer"])
+    # Subestation_without_modeling_transformer_df, _ = layer2df(
+    #     cktQgis._transformers["Subestation_without_modeling_transformer"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    Distribution_transformer_gdf = df2shp(
+        Distribution_transformer_df, "Distribution_transformer")
+    # Subestation_three_phase_transformer_gdf = df2shp(
+    #     Subestation_three_phase_transformer_df,
+    #     "Subestation_three_phase_transformer")
+    # Subestation_autotransformer_gdf = df2shp(
+    #     Subestation_autotransformer_df,
+    #     "Subestation_autotransformer")
+    # Subestation_without_modeling_transformer_gdf = df2shp(
+    #     Subestation_without_modeling_transformer_df,
+    #     "Subestation_without_modeling_transformer")
 
-    #OH_LVbus_df_gdf_shp = df2shp(OH_LVbus_df, "overH_LVbuses")
-    #OH_MVbus_df_gdf_shp = df2shp(OH_MVbus_df, "overH_MVbuses")
-    #UG_LVbus_df_gdf_shp = df2shp(UG_LVbus_df, "underG_LVbuses")
-    #UG_MVbus_df_gdf_shp = df2shp(UG_MVbus_df, "underG_MVbuses")
+    # -----------------------
+    # Load layers *.shp files
+    # -----------------------
+    _ = cktQgis.add_load_layers(cktNeplan._loads)
+    # Turn layers into df
+    LV_load_df, _ = layer2df(cktQgis._LVloads["LV_load"])
+    MV_load_df, _ = layer2df(cktQgis._MVloads["MV_load"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    LV_load_gdf = df2shp(LV_load_df, "LV_load")
+    # MV_load_gdf = df2shp(MV_load_df, "MV_load")
 
-    ##################################################
-    ## Turn line layers into df to gdf to shapefile ##
-    ##################################################
-    cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
+    # -----------------------
+    # Fuse layers *.shp files
+    # -----------------------
+    _ = cktQgis.add_fuse_layer(cktNeplan._fuses)
+    # Turn layers into df
+    fuse_df, _ = layer2df(cktQgis._fuses["fuses"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    fuse_gdf = df2shp(fuse_df, "fuses")
 
-    OH_LVline_df = layer2df(cktQgis._lines["overH_LVlines"])
-    OH_MVline_df = layer2df(cktQgis._lines["overH_MVlines"])
-    UG_LVline_df = layer2df(cktQgis._lines["underG_LVlines"])
-    UG_MVline_df = layer2df(cktQgis._lines["underG_MVlines"])
+    # ----------------------------
+    # Regulator layers *.shp files
+    # ----------------------------
+    _ = cktQgis.add_regulator_layer(cktNeplan._buses, cktNeplan._regulators)
+    # Turn layers into df
+    regulator_df, _ = layer2df(cktQgis._regulators["regulators"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    regulator_gdf = df2shp(regulator_df, "regulators")
 
-    #OH_LVline_df_gdf_shp = df2shp(OH_LVline_df, "overH_LVlines")
-    #OH_MVline_df_gdf_shp = df2shp(OH_MVline_df, "overH_MVlines")
-    #UG_LVline_df_gdf_shp = df2shp(UG_LVline_df, "underG_LVlines")
-    #UG_MVline_df_gdf_shp = df2shp(UG_MVline_df, "underG_MVlines")
+    # ---------------------
+    # PV layers *.shp files
+    # ---------------------
+    _ = cktQgis.add_PV_layer(cktNeplan._buses, cktNeplan._ders)
+    # Turn layers into df
+    PV_df, _ = layer2df(cktQgis._smallScale_DG["PVs"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    PV_gdf = df2shp(PV_df, "PVs")
 
-    #########################################################
-    ## Turn transformer layers into df to gdf to shapefile ##
-    #########################################################
-
-    """
-    Note: In this case what needs to be executed must be put sequentially
-    because each time .add_layers() is executed, it stores the 
-    attributes of the required layer with the data from the
-    .call_Data() method until the program finishes executing
-    or the method .add_layers() is used again.
-    
-    """
-    cktQgis.add_txlayers(AsymTxData=cktNeplan._AsymTx,
-                         TxData=cktNeplan._Tx)
-
-    Distribution_transformer_df = layer2df(cktQgis._transformers["Distribution_transformer"])
-    Subestation_three_phase_transformer_df = layer2df(cktQgis._transformers["Subestation_three_phase_transformer"])
-    Subestation_autotransformer_df = layer2df(cktQgis._transformers["Subestation_autotransformer"])
-    Subestation_without_modeling_transformer_df = layer2df(cktQgis._transformers["Subestation_without_modeling_transformer"])
-    
-    #Distribution_transformer_df_gdf_shp = df2shp(Distribution_transformer_df, "Distribution_transformer" )
-    #Subestation_three_phase_transformer_df_gdf_shp = df2shp(Subestation_three_phase_transformer_df, "Subestation_three_phase_transformer")
-    #Subestation_autotransformer_df_gdf_shp = df2shp(Subestation_autotransformer_df, "Subestation_autotransformer")
-    #Subestation_without_modeling_transformer_df_gdf_shp = df2shp(Subestation_without_modeling_transformer_df, "Subestation_without_modeling_transformer")
-
-    ##################################################
-    ## Turn load layers into df to gdf to shapefile ##
-    ##################################################
-    cktQgis.add_load_layers(cktNeplan._loads)
-
-    LV_load_df = layer2df(cktQgis._LVloads["LV_load"])
-    MV_load_df = layer2df(cktQgis._MVloads["MV_load"])
-    
-    #LV_load_df_gdf_shp = df2shp(LV_load_df, "LV_load")
-    #MV_load_df_gdf_shp = df2shp(MVload_df, "MV_load")
-    
-    #################################################
-    ## Turn fuse layer into df to gdf to shapefile ##
-    #################################################
-
-    cktQgis.add_fuse_layer(cktNeplan._fuses)
-
-    fuse_df = layer2df(cktQgis._fuses["fuses"])
-
-    #fuse_df_gdf_shp = df2shp(fuse_df, "fuses")
-    
-    ######################################################
-    ## Turn regulator layer into df to gdf to shapefile ##
-    ######################################################
-
-    cktQgis.add_regulator_layer(cktNeplan._buses, cktNeplan._regulators)
-
-    regulator_df = layer2df(cktQgis._regulators["regulators"])
-
-    #regulator_df_gdf_shp = df2shp(regulator_df, "regulators")
-
-    ###############################################
-    ## Turn PV layer into df to gdf to shapefile ##
-    ###############################################
-
-    cktQgis.add_PV_layer(cktNeplan._buses, cktNeplan._ders)
-
-    PV_df = layer2df(cktQgis._smallScale_DG["PVs"])
-
-    #PV_df_gdf_shp = df2shp(PV_df, "PVs")
-
-    #####################################################
-    ## Turn recloser layer into df to gdf to shapefile ##
-    #####################################################
-
-    cktQgis.add_recloser_layer(cktNeplan._reclosers)
-
-    recloser_df = layer2df(cktQgis._reclosers["reclosers"])
-
-    # recloser_df_gdf_shp = df2shp(recloser_df, "reclosers")
+    # # ---------------------------
+    # # Recloser layers *.shp files
+    # # ---------------------------
+    # _ = cktQgis.add_recloser_layer(cktNeplan._reclosers)
+    # # Turn layers into df
+    # recloser_df, _ = layer2df(cktQgis._reclosers["reclosers"])
+    # # Finally write shapefiles within "./GIS/shapename.shp"
+    # recloser_gdf = df2shp(recloser_df, "reclosers")
