@@ -487,6 +487,11 @@ class Regulator():
 
 
 class PublicLights():
+    """Missing documentation.
+
+    Here goes the missing description of this class.
+
+    """
     def __init__(self):
         self._PublicLights_layer = "public_Lights"
         self._ICEobjectID = []
