@@ -487,6 +487,11 @@ class Regulator():
 
 
 class PublicLights():
+    """Missing documentation.
+
+    Here goes the missing description of this class.
+
+    """
     def __init__(self):
         self._PublicLights_layer = "public_Lights"
         self._ICEobjectID = []
@@ -1671,7 +1676,15 @@ class CKT_QGIS():
 
         return (regulator)
 
-    def set_attributes_publicLights(self, public_lights:PublicLights, publicLightsID: list[str]):
+    def set_attributes_publicLights(self, 
+                                    public_lights:PublicLights, 
+                                    publicLightsID: list[str]):
+
+        """Missing documentation.
+
+            Missin description of this method.
+        
+        """
 
         # ["Node1", "Name", "Phase", "Switch1", "Potencia_kW", "Lftype", "Unit", "CosPhi", "CoordX1", "CoordY1", "Un"]
         for row in publicLightsID:
