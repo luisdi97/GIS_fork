@@ -507,6 +507,8 @@ class Recloser():
         self._PH_I = []
         self._GRD_TRIP = []
         self._PH_TRIP = []
+        self._X1 = []
+        self._Y1 = []
 
 
 class Regulator():
@@ -533,11 +535,6 @@ class Regulator():
 
 
 class PublicLights():
-    """Missing documentation.
-
-    Here goes the missing description of this class.
-
-    """
     def __init__(self):
         self._PublicLights_layer = "public_Lights"
         self._ICEobjectID = []
@@ -1502,7 +1499,7 @@ class CKT_QGIS():
         for row in loadID:
             # ["Node1", "Name", "Phase", "Switch1",
             # "Un", "E", "VelanderK1", "LfType", "Unit",
-            # "CosPhi", "CoordX1", "CoordY1"]
+            # "CosPhi", "CoordX1", "CoordY1", "Tipo"]
             cols = row.split("&")
             load = cols[0]
 
@@ -1540,6 +1537,10 @@ class CKT_QGIS():
                 # Y1
                 Y1 = float(cols[11].strip())
                 LVload._Y1.append(Y1)
+                # CLASS
+                loadType = get_CLASS(cols[12])
+                LVload._CLASS.append(loadType)
+
 
             elif "_T" in load:
                 # KWHMONTH
@@ -1575,6 +1576,9 @@ class CKT_QGIS():
                 # Y1
                 Y1 = float(cols[11].strip())
                 LVload._Y1.append(Y1)
+                # CLASS
+                loadType = get_CLASS(cols[12])
+                LVload._CLASS.append(loadType)
 
             elif "MT" in load:
                 # Missing Data
@@ -1659,7 +1663,7 @@ class CKT_QGIS():
         One layer for reclosers only.
 
         """
-        # ["Name", "Phase", "Switch", "OnElement"]
+        # ["Name", "Phase", "Switch", "OnElement", "X", "Y"]
         for row in recloserID:
             cols = row.split("&")
 
@@ -1673,6 +1677,12 @@ class CKT_QGIS():
             # NC
             NC = cols[2].strip()
             recloser._NC.append(NC)
+            # X1
+            X1 = float(cols[4])
+            recloser._X1.append(X1)
+            # Y1
+            Y1 = float(cols[5])
+            recloser._Y1.append(Y1)
 
         return (recloser)
 
@@ -1693,7 +1703,7 @@ class CKT_QGIS():
 
         """
         # ["Name", "Node1", "Node2", "Switch1", "Switch2",
-        # "Un1", "Un2", "Phase", "LibraryType"]
+        # "Un1", "Un2", "Phase", "LibraryType", "X", "Y"]
         for row in regulatorID:
             cols = row.split("&")
             libraryType = cols[8].split("_")
@@ -1721,16 +1731,12 @@ class CKT_QGIS():
             # BANDWIDTH
             bandwidth = float(2)
             regulator._BANDWIDTH.append(bandwidth)
-            # X1, Y1
-            from_bus = cols[1]
-            (X1, Y1) = loc_buscoord(from_bus, busesData)
+            # X1
+            X1 = float(cols[9])
             regulator._X1.append(X1)
+            # Y1
+            Y1 = float(cols[10])
             regulator._Y1.append(Y1)
-            # X2, Y2
-            to_bus = cols[2]
-            (X2, Y2) = loc_buscoord(to_bus, busesData)
-            regulator._X2.append(X2)
-            regulator._Y2.append(Y2)
             # TAPS
             regulator._TAPS.append(int(32))
 
@@ -1994,6 +2000,45 @@ def get_TP_RATIO(vnom: float, vreg: float) -> float:
     """
     tp_ratio = ((vnom*1e3)/np.sqrt(3))*(1/vreg)
     return float(round(tp_ratio))
+
+
+def get_CLASS(code:str) -> str:
+    """
+    Load type designation.
+
+    Set the type code based on the manual either
+    SIRDE code.
+    PARAMETERS:
+        class: Manual description
+        code: SIRDE code
+
+    *--------*--------------------------------------------------------*--------------------*
+    |  Code  |                    Customer class                      |      class         |
+    *--------*--------------------------------------------------------*--------------------*
+    |    1   |    Residencial                                         |       R            |
+    |    2   |    General                                             |       C            |
+    |    3   |    Industrial                                          |       I            |
+    |    4   |    Social                                              |       None         |
+    |   22   |    General                                             |       C            |
+    |   23   |    General                                             |       C            |
+    |   32   |    Industrial                                          |       I            |
+    |   33   |    Industrial                                          |       I            |
+    |   41   |    Social                                              |       None         |
+    |   80   |    Media Tensión A                                     |       None or I    |
+    |   85   |    Media Tensión B                                     |       None or I    |
+    |   15   |    Usuarios Directos del Servicio de Generación ICE    |       None or I    |
+    |   13   |    Ventas a ICE Distribución y CNFL                    |       None         |
+    |   14   |    Ventas al Servicio de Distribución                  |       None         |
+    *--------*--------------------------------------------------------*--------------------*
+
+    """
+
+    if code == "1":
+        return "R"
+    if code == "2":
+        return "C"
+    if code == "3":
+        return "I"
 
 
 def set_Label(LibType: str) -> str:
@@ -2275,6 +2320,8 @@ def concat_loadcols(loadsData: dict) -> list[str]:
             col11 = v
         elif k == "CoordY1":
             col12 = v
+        elif k == "Tipo":
+            col13 = v
 
     cols = zip(col1, col2, col3, col4, col5, col6,
                col7, col8, col9, col10, col11, col12)
@@ -2388,11 +2435,19 @@ def concat_reclosercols(recloserData: dict) -> list[str]:
             col3 = v
         elif k == "OnElement":
             col4 = v
+        elif k == "X":
+            col5 = v
+        elif k == "Y":
+            col6 = v
 
-    cols = zip(col1, col2, col3, col4)
+    cols = zip(col1, col2, col3, col4, col5, col6)
 
-    recloserID = [f"{c1}&{c2}&{c3}&{c4}"
-                  for c1, c2, c3, c4 in cols]
+    recloserID = []
+    for attrs in cols:
+        row = ""
+        for attr in attrs:
+            row += f"{attr}&"
+            recloserID.append(row)
 
     return recloserID
 
@@ -2426,6 +2481,10 @@ def concat_regulatorcols(regulatorData: dict) -> list[str]:
             col8 = v
         elif k == "LibraryType":
             col9 = v
+        elif k == "X":
+            col10 = v
+        elif k == "Y":
+            col11 = v
 
     cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9)
     regulatorID = []
@@ -2690,5 +2749,6 @@ if __name__ == "__main__":
     _ = cktQgis.add_recloser_layer(cktNeplan._reclosers)
     # Turn layers into df
     recloser_df, _ = layer2df(cktQgis._reclosers["reclosers"])
+    print(recloser_df)
     # Finally write shapefiles within "./GIS/shapename.shp"
-    # recloser_gdf = df2shp(recloser_df, "reclosers")
+    recloser_gdf = df2shp(recloser_df, "reclosers")
