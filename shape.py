@@ -484,8 +484,6 @@ class Regulator():
         self._VCAP = []
         self._X1 = []
         self._Y1 = []
-        self._X2 = []
-        self._Y2 = []
 
 
 class PublicLights():
@@ -1615,7 +1613,7 @@ class CKT_QGIS():
             objectID = cols[0].strip("R")
             recloser._ICEobjID.append(objectID)
             # PHASEDESIG
-            phasedesig = int(cols[1])
+            phasedesig = int(cols[1].strip())
             phasedesigcode = get_PHASEDESIG(phcode=phasedesig)
             recloser._PHASEDESIG.append(phasedesigcode)
             # NC
@@ -1862,19 +1860,19 @@ def get_SERVICE(code: int) -> int:
 
     """
     if code == 1:
-        return float(3)
+        return int(3)
     elif code == 2:
-        return float(2)
+        return int(2)
     elif code == 3:
-        return float(23)
+        return int(23)
     elif code == 4:
-        return float(1)
+        return int(1)
     elif code == 5:
-        return float(13)
+        return int(13)
     elif code == 6:
-        return float(12)
+        return int(12)
     elif code == 0 or code == 7:
-        return float(7)
+        return int(7)
 
 
 def get_TxType(txtype: str) -> int:
@@ -2352,7 +2350,7 @@ def concat_PVcols(pvData: dict) -> list[str]:
         row = ""
         for attr in attrs:
             row += f"{attr}&"
-        pvID.append(row)
+        pvID.append(row.strip("&"))
     return pvID
 
 
@@ -2387,7 +2385,7 @@ def concat_reclosercols(recloserData: dict) -> list[str]:
         row = ""
         for attr in attrs:
             row += f"{attr}&"
-            recloserID.append(row)
+        recloserID.append(row.strip("&"))
 
     return recloserID
 
@@ -2434,7 +2432,7 @@ def concat_regulatorcols(regulatorData: dict) -> list[str]:
         row = ""
         for attr in attrs:
             row += f"{attr}&"
-        regulatorID.append(row)
+        regulatorID.append(row.strip("&"))
 
     return regulatorID
 
@@ -2481,7 +2479,7 @@ def concat_publicLightscols(publicLightsData: dict) -> list[str]:
         row = ""
         for attr in attrs:
             row += f"{attr}&"
-        publicLightsID.append(row)
+        publicLightsID.append(row.strip("&"))
 
     return publicLightsID
 
@@ -2686,6 +2684,5 @@ if __name__ == "__main__":
     _ = cktQgis.add_recloser_layer(cktNeplan._reclosers)
     # Turn layers into df
     recloser_df, _ = layer2df(cktQgis._reclosers["reclosers"])
-    print(recloser_df)
     # Finally write shapefiles within "./GIS/shapename.shp"
     recloser_gdf = df2shp(recloser_df, "reclosers")
