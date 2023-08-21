@@ -247,6 +247,52 @@ class OH_LVline(Line):
         super().__init__()
         self._line_layer = "overH_LVlines"
 
+    def split_overHLVlines(self, service_LV: Line) -> Line:
+        """Define services LV lines layers.
+
+        It gets services LV lines layer with empty
+        attributes and returns it with its features
+        by splitting overhead LV lines in general with
+        those ones whose type is "DPX", "TPX" and "QPX"
+        and which will be taken as *service* overhead
+        LV lines layer. See source method
+        :classmethod:`CKT_QGIS.set_attributes_lines`
+        for more details.
+
+        """
+        oh_lvlayer = self.__dict__
+        serviceLayer_data = {}
+        blacklist = {"DPX", "TPX", "QPX"}
+        black_ind = []
+
+        for i, t in enumerate(oh_lvlayer["_TYPE"]):
+            if t in blacklist:
+                black_ind.append(i)
+
+        for attr, ft in oh_lvlayer.items():
+            if (type(ft) is list) and (len(ft) != 0):
+                serv_fts = []
+                for i in black_ind:
+                    serv_fts.append(ft[i])
+                serviceLayer_data[attr] = serv_fts
+
+        # Remove services lines from OH_LVlines layer
+        # Sort in reverse to avoid index shifting
+        black_ind.sort(reverse=True)
+        for attr, ft in oh_lvlayer.items():
+            if (type(ft) is list) and (len(ft) != 0):
+                for i in black_ind:
+                    oh_lvlayer[attr].pop(i)
+
+        # Update attributes for LV secondary lines
+        for attr, fts in oh_lvlayer.items():
+            setattr(self, attr, fts)
+        # Set new attributes for services lines
+        for k, v in serviceLayer_data.items():
+            setattr(service_LV, k, v)
+
+        return service_LV
+
 
 class serv_LVline(Line):
     def __init__(self):
@@ -594,6 +640,16 @@ class CKT_QGIS():
             overH_MVline,
             busesData,
             linesID)
+        # Switch _layer_type attribute for those
+        # Services lines in overH_LVline layer
+        service_LVline = serv_LVline()
+        oh_lvlines = line_layers[2]
+        service_LVline = oh_lvlines.split_overHLVlines(
+            service_LV=service_LVline)
+
+        # Add to line layers
+        line_layers = list(line_layers)
+        line_layers.append(service_LVline)
         # Update attribute
         for LL in line_layers:
             L = LL._line_layer
@@ -602,7 +658,7 @@ class CKT_QGIS():
                               in dictAttrs.items()}
 
         return (underG_LVline, underG_MVline,
-                overH_LVline, overH_MVline)
+                overH_LVline, overH_MVline, service_LVline)
 
     def add_buslayers(self, busesData: dict[list]) -> tuple[Bus]:
         """Create bus layers.
@@ -796,7 +852,6 @@ class CKT_QGIS():
         return recloser
 
     def add_regulator_layer(self,
-                            busesData,
                             regulatorData) -> Regulator:
         """Layer of regularos.
 
@@ -809,7 +864,6 @@ class CKT_QGIS():
         # Create instance
         regulator = Regulator()
         regulator_layer = self.set_attributes_regulator(
-            busesData=busesData,
             regulatorID=regulatorID,
             regulator=regulator)
 
@@ -913,7 +967,7 @@ class CKT_QGIS():
                             underG_LVline._NEUTSIZ.append(attrs[1])
                     # _LibName: LineCode (LC)
                     underG_LVline._LibName.append(f"LC::{lineName}")
-                    # _NEUTMAT
+                    # _NEUTMAT: *Typical Value*
                     underG_LVline._NEUTMAT.append("CU")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
@@ -959,13 +1013,13 @@ class CKT_QGIS():
                             underG_MVline._NEUTPER.append(attrs[1])
                     # _LibName: LineCode (LC)
                     underG_MVline._LibName.append(f"LC::{lineName}")
-                    # _NEUTMAT
+                    # _NEUTMAT: *Typical Value*
                     underG_MVline._NEUTMAT.append("CU")
-                    # _NEUTSIZ
+                    # _NEUTSIZ: *Typical Value*
                     underG_MVline._NEUTSIZ.append("1/0")
                     # _LINEGEO
                     underG_MVline._LINEGEO.append("None")
-                    # _SHIELDING
+                    # _SHIELDING: *Typical Value*
                     underG_MVline._SHIELDING.append("CN")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
@@ -1483,7 +1537,6 @@ class CKT_QGIS():
                 loadType = get_CLASS(cols[12])
                 LVload._CLASS.append(loadType)
 
-
             elif "_T" in load:
                 # KWHMONTH
                 kwhmonth = float(cols[5].strip())
@@ -1629,7 +1682,6 @@ class CKT_QGIS():
         return (recloser)
 
     def set_attributes_regulator(self,
-                                 busesData: dict,
                                  regulatorID: list[str],
                                  regulator: Regulator):
         """Unpack data of regulars and set its attributes.
@@ -1728,9 +1780,9 @@ def get_PHASEDESIG(phcode) -> int:
     Set the phase code based on the manual either
     Neplan code or Phase letter if `phcode` is a string.
 
-    * --------*---------------*
+    +---------+---------------+
     |  code   |      ph       |
-    *---------*---------------*
+    +---------+---------------+
     |    3    |  1: C (T)     |
     |    2    |  2: B (S)     |
     |    6    |  3: BC (ST)   |
@@ -1739,7 +1791,7 @@ def get_PHASEDESIG(phcode) -> int:
     |    4    |  6: AB (RS)   |
     |    0    |  7: ABC (RST) |
     |    7    |  7: ABC (RST) |
-    *---------*---------------*
+    +---------+---------------+
 
     If `phcode` is a integer SIRDE translation will be taken.
 
@@ -1779,9 +1831,9 @@ def get_PHASEDESIG(phcode) -> int:
 def get_NOMVOLT(nomVLL: float) -> int:
     """Nominal voltage.
 
-    *---------*-----------------*-----------------*----------------*
+    +---------+-----------------+-----------------+----------------+
     |  Code   | Voltage LN [kV] | Voltage LL [kV] |   Connection   |
-    *---------*-----------------*-----------------*----------------*
+    +---------+-----------------+-----------------+----------------+
     |   20    |     0.12        |       0.208     |      wye       |
     |   30    |     0.12        |       0.24      |  split-phase   |
     |   35    |     0.254       |       0.44      |      wye       |
@@ -1800,7 +1852,7 @@ def get_NOMVOLT(nomVLL: float) -> int:
     |   270   |     7.97        |       13.8      |      wye       |
     |   340   |     14.38       |       24.9      |      wye       |
     |   380   |     19.92       |       34.5      |      wye       |
-    *---------*-----------------*-----------------*----------------*
+    +---------+-----------------+-----------------+----------------+
     Note: Code 40 refers to special delta of splitted phase.
 
     """
@@ -1845,9 +1897,9 @@ def get_SERVICE(code: int) -> int:
         srvc: Phase (A/R, B/S, C/T) Manual code
         code: Neplan code
 
-    * --------*-----------------*----------------------------------------*
+    +---------+-----------------+----------------------------------------+
     |  code   |      srvc       |              Definition                |
-    *---------*-----------------*----------------------------------------*
+    +---------+-----------------+----------------------------------------+
     |    4    |  1: A (R)       | Load connected to phase 1 and neutral. |
     |    2    |  2: B (S)       | Load connected to phase 2 and neutral. |
     |    1    |  3: C (T)       | Load connected to phase 3 and neutral. |
@@ -1856,7 +1908,7 @@ def get_SERVICE(code: int) -> int:
     |    5    |  13: AC (RT)    | Load connected to phase 1 and phase 3. |
     |    0    |  123: ABC (RST) | Load connected to three phase.         |
     |    7    |  7: ABC (RST)   | Load connected to three phase.         |
-    *---------*-----------------*----------------------------------------*
+    +---------+-----------------+----------------------------------------+
 
     """
     if code == 1:
@@ -1875,7 +1927,7 @@ def get_SERVICE(code: int) -> int:
         return int(7)
 
 
-def get_TxType(txtype: str) -> int:
+def get_TxType(txtype: str) -> str:
     """Transformer type designation.
 
     Set the type code based on the SIRDE either
@@ -1884,15 +1936,15 @@ def get_TxType(txtype: str) -> int:
         Subtipo: Phase (1, 2, 3, 4, 5) SIRDE code
         Descripcion: SIRDE code
 
-    * --------*-----------------*
+    +---------+-----------------+
     | Subtipo |   Descripcion   |
-    *---------*-----------------*
+    +---------+-----------------+
     |    1    |  Tipo poste     |
     |    2    |  Pedestal       |
     |    3    |  Sumergible     |
     |    4    |  Subestacion    |
     |    5    |  Seco           |
-    *---------*-----------------*
+    +---------+-----------------+
 
     """
     if txtype == "1":
@@ -1914,12 +1966,12 @@ def get_NC(nc: str) -> str:
     NEPLAN code : IsActive
     Manual code : NC
 
-    *----------*-------*
+    +----------+-------+
     | IsActive |   NC  |
-    *----------*-------*
+    +----------+-------+
     |    1     |  Yes  |
     |    0     |  No   |
-    *----------*-------*
+    +----------+-------+
 
     """
     if nc == "1":
@@ -1944,7 +1996,7 @@ def get_TP_RATIO(vnom: float, vreg: float) -> float:
     return float(round(tp_ratio))
 
 
-def get_CLASS(code:str) -> str:
+def get_CLASS(code: str) -> str:
     """
     Load type designation.
 
@@ -1954,24 +2006,24 @@ def get_CLASS(code:str) -> str:
         class: Manual description
         code: SIRDE code
 
-    *--------*--------------------------------------------------------*--------------------*
-    |  Code  |                    Customer class                      |      class         |
-    *--------*--------------------------------------------------------*--------------------*
-    |    1   |    Residencial                                         |       R            |
-    |    2   |    General                                             |       C            |
-    |    3   |    Industrial                                          |       I            |
-    |    4   |    Social                                              |       None         |
-    |   22   |    General                                             |       C            |
-    |   23   |    General                                             |       C            |
-    |   32   |    Industrial                                          |       I            |
-    |   33   |    Industrial                                          |       I            |
-    |   41   |    Social                                              |       None         |
-    |   80   |    Media Tensión A                                     |       None or I    |
-    |   85   |    Media Tensión B                                     |       None or I    |
-    |   15   |    Usuarios Directos del Servicio de Generación ICE    |       None or I    |
-    |   13   |    Ventas a ICE Distribución y CNFL                    |       None         |
-    |   14   |    Ventas al Servicio de Distribución                  |       None         |
-    *--------*--------------------------------------------------------*--------------------*
+    +--------+--------------------------------------------------+------------+
+    |  Code  |                 Customer class                   |  class     |
+    +--------+--------------------------------------------------+------------+
+    |    1   | Residencial                                      |  R         |
+    |    2   | General                                          |  C         |
+    |    3   | Industrial                                       |  I         |
+    |    4   | Social                                           |  None      |
+    |   22   | General                                          |  C         |
+    |   23   | General                                          |  C         |
+    |   32   | Industrial                                       |  I         |
+    |   33   | Industrial                                       |  I         |
+    |   41   | Social                                           |  None      |
+    |   80   | Media Tensión A                                  |  None or I |
+    |   85   | Media Tensión B                                  |  None or I |
+    |   15   | Usuarios Directos del Servicio de Generación ICE |  None or I |
+    |   13   | Ventas a ICE Distribución y CNFL                 |  None      |
+    |   14   | Ventas al Servicio de Distribución               |  None      |
+    +--------+--------------------------------------------------+------------+
 
     """
 
@@ -2217,8 +2269,12 @@ def concat_Txcols(TxData: dict) -> list[str]:
 
     cols = zip(col1, col2, col3, col4, col5, col6,
                col7, col8, col9, col10, col11, col12)
-    TxID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}&{c10}&{c11}&{c12}"
-            for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12 in cols]
+    TxID = []
+    for attrs in cols:
+        row = ""
+        for attr in attrs:
+            row += f"{attr}&"
+        TxID.append(row.strip("&"))
 
     return TxID
 
@@ -2263,14 +2319,13 @@ def concat_loadcols(loadsData: dict) -> list[str]:
 
     cols = zip(col1, col2, col3, col4, col5, col6,
                col7, col8, col9, col10, col11, col12, col13)
-    
     loadID = []
-
     for attrs in cols:
         row = ""
         for attr in attrs:
             row += f"{attr}&"
-        loadID.append(row)
+        loadID.append(row.strip("&"))
+
     return loadID
 
 
@@ -2351,6 +2406,7 @@ def concat_PVcols(pvData: dict) -> list[str]:
         for attr in attrs:
             row += f"{attr}&"
         pvID.append(row.strip("&"))
+
     return pvID
 
 
@@ -2424,10 +2480,9 @@ def concat_regulatorcols(regulatorData: dict) -> list[str]:
         elif k == "Y":
             col11 = v
 
-    cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11)
-
+    cols = zip(col1, col2, col3, col4, col5, col6, col7,
+               col8, col9, col10, col11)
     regulatorID = []
-    
     for attrs in cols:
         row = ""
         for attr in attrs:
@@ -2606,11 +2661,15 @@ if __name__ == "__main__":
     OH_MVlines_df, _ = layer2df(cktQgis._lines["overH_MVlines"])
     UG_LVlines_df, _ = layer2df(cktQgis._lines["underG_LVlines"])
     UG_MVlines_df, _ = layer2df(cktQgis._lines["underG_MVlines"])
+    service_LVlines_df, _ = layer2df(cktQgis._lines["service_LVlines"])
     # Finally write shapefiles within "./GIS/shapename.shp"
     OH_LVline_gdf = df2shp(OH_LVlines_df, "overH_LVlines")
     OH_MVline_gdf = df2shp(OH_MVlines_df, "overH_MVlines")
     UG_LVline_gdf = df2shp(UG_LVlines_df, "underG_LVlines")
     UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
+    service_LVlines_gdf = df2shp(
+        service_LVlines_df,
+        "service_LVlines")
 
     # ------------------------------
     # Transformer layers *.shp files
@@ -2663,7 +2722,7 @@ if __name__ == "__main__":
     # ----------------------------
     # Regulator layers *.shp files
     # ----------------------------
-    _ = cktQgis.add_regulator_layer(cktNeplan._buses, cktNeplan._regulators)
+    _ = cktQgis.add_regulator_layer(cktNeplan._regulators)
     # Turn layers into df
     regulator_df, _ = layer2df(cktQgis._regulators["regulators"])
     # Finally write shapefiles within "./GIS/shapename.shp"
