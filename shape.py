@@ -247,6 +247,52 @@ class OH_LVline(Line):
         super().__init__()
         self._line_layer = "overH_LVlines"
 
+    def split_overHLVlines(self, service_LV: Line) -> Line:
+        """Define services LV lines layers.
+
+        It gets services LV lines layer with empty
+        attributes and returns it with its features
+        by splitting overhead LV lines in general with
+        those ones whose type is "DPX", "TPX" and "QPX"
+        and which will be taken as *service* overhead
+        LV lines layer. See source method
+        :classmethod:`CKT_QGIS.set_attributes_lines`
+        for more details.
+
+        """
+        oh_lvlayer = self.__dict__
+        serviceLayer_data = {}
+        blacklist = {"DPX", "TPX", "QPX"}
+        black_ind = []
+
+        for i, t in enumerate(oh_lvlayer["_TYPE"]):
+            if t in blacklist:
+                black_ind.append(i)
+
+        for attr, ft in oh_lvlayer.items():
+            if (type(ft) is list) and (len(ft) != 0):
+                serv_fts = []
+                for i in black_ind:
+                    serv_fts.append(ft[i])
+                serviceLayer_data[attr] = serv_fts
+
+        # Remove services lines from OH_LVlines layer
+        # Sort in reverse to avoid index shifting
+        black_ind.sort(reverse=True)
+        for attr, ft in oh_lvlayer.items():
+            if (type(ft) is list) and (len(ft) != 0):
+                for i in black_ind:
+                    oh_lvlayer[attr].pop(i)
+
+        # Update attributes for LV secondary lines
+        for attr, fts in oh_lvlayer.items():
+            setattr(self, attr, fts)
+        # Set new attributes for services lines
+        for k, v in serviceLayer_data.items():
+            setattr(service_LV, k, v)
+
+        return service_LV
+
 
 class serv_LVline(Line):
     def __init__(self):
@@ -594,6 +640,16 @@ class CKT_QGIS():
             overH_MVline,
             busesData,
             linesID)
+        # Switch _layer_type attribute for those
+        # Services lines in overH_LVline layer
+        service_LVline = serv_LVline()
+        oh_lvlines = line_layers[2]
+        service_LVline = oh_lvlines.split_overHLVlines(
+            service_LV=service_LVline)
+
+        # Add to line layers
+        line_layers = list(line_layers)
+        line_layers.append(service_LVline)
         # Update attribute
         for LL in line_layers:
             L = LL._line_layer
@@ -602,7 +658,7 @@ class CKT_QGIS():
                               in dictAttrs.items()}
 
         return (underG_LVline, underG_MVline,
-                overH_LVline, overH_MVline)
+                overH_LVline, overH_MVline, service_LVline)
 
     def add_buslayers(self, busesData: dict[list]) -> tuple[Bus]:
         """Create bus layers.
@@ -913,7 +969,7 @@ class CKT_QGIS():
                             underG_LVline._NEUTSIZ.append(attrs[1])
                     # _LibName: LineCode (LC)
                     underG_LVline._LibName.append(f"LC::{lineName}")
-                    # _NEUTMAT
+                    # _NEUTMAT: *Typical Value*
                     underG_LVline._NEUTMAT.append("CU")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
@@ -959,13 +1015,13 @@ class CKT_QGIS():
                             underG_MVline._NEUTPER.append(attrs[1])
                     # _LibName: LineCode (LC)
                     underG_MVline._LibName.append(f"LC::{lineName}")
-                    # _NEUTMAT
+                    # _NEUTMAT: *Typical Value*
                     underG_MVline._NEUTMAT.append("CU")
-                    # _NEUTSIZ
+                    # _NEUTSIZ: *Typical Value*
                     underG_MVline._NEUTSIZ.append("1/0")
                     # _LINEGEO
                     underG_MVline._LINEGEO.append("None")
-                    # _SHIELDING
+                    # _SHIELDING: *Typical Value*
                     underG_MVline._SHIELDING.append("CN")
                     # _NOMVOLT
                     nomV = float(cols[5].strip())
@@ -2169,8 +2225,12 @@ def concat_Txcols(TxData: dict) -> list[str]:
 
     cols = zip(col1, col2, col3, col4, col5, col6,
                col7, col8, col9, col10, col11, col12)
-    TxID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}&{c10}&{c11}&{c12}"
-            for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12 in cols]
+    TxID = []
+    for attrs in cols:
+        row = ""
+        for attr in attrs:
+            row += f"{attr}&"
+        TxID.append(row.strip("&"))
 
     return TxID
 
@@ -2213,8 +2273,12 @@ def concat_loadcols(loadsData: dict) -> list[str]:
 
     cols = zip(col1, col2, col3, col4, col5, col6,
                col7, col8, col9, col10, col11, col12)
-    loadID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}&{c10}&{c11}&{c12}"
-              for c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12 in cols]
+    loadID = []
+    for attrs in cols:
+        row = ""
+        for attr in attrs:
+            row += f"{attr}&"
+        loadID.append(row.strip("&"))
 
     return loadID
 
@@ -2295,7 +2359,8 @@ def concat_PVcols(pvData: dict) -> list[str]:
         row = ""
         for attr in attrs:
             row += f"{attr}&"
-        pvID.append(row)
+        pvID.append(row.strip("&"))
+
     return pvID
 
 
@@ -2358,9 +2423,12 @@ def concat_regulatorcols(regulatorData: dict) -> list[str]:
             col9 = v
 
     cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9)
-
-    regulatorID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}&{c7}&{c8}&{c9}"
-                   for c1, c2, c3, c4, c5, c6, c7, c8, c9 in cols]
+    regulatorID = []
+    for attrs in cols:
+        row = ""
+        for attr in attrs:
+            row += f"{attr}&"
+        regulatorID.append(row.strip("&"))
 
     return regulatorID
 
@@ -2407,7 +2475,7 @@ def concat_publicLightscols(publicLightsData: dict) -> list[str]:
         row = ""
         for attr in attrs:
             row += f"{attr}&"
-        publicLightsID.append(row)
+        publicLightsID.append(row.strip("&"))
 
     return publicLightsID
 
@@ -2534,11 +2602,16 @@ if __name__ == "__main__":
     OH_MVlines_df, _ = layer2df(cktQgis._lines["overH_MVlines"])
     UG_LVlines_df, _ = layer2df(cktQgis._lines["underG_LVlines"])
     UG_MVlines_df, _ = layer2df(cktQgis._lines["underG_MVlines"])
+    service_LVlines_df, _ = layer2df(cktQgis._lines["service_LVlines"])
     # Finally write shapefiles within "./GIS/shapename.shp"
     OH_LVline_gdf = df2shp(OH_LVlines_df, "overH_LVlines")
     OH_MVline_gdf = df2shp(OH_MVlines_df, "overH_MVlines")
     UG_LVline_gdf = df2shp(UG_LVlines_df, "underG_LVlines")
     UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
+    service_LVlines_gdf = df2shp(
+        service_LVlines_df,
+        "underG_MVlines"
+    )
 
     # ------------------------------
     # Transformer layers *.shp files
