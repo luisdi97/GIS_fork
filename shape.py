@@ -1539,7 +1539,6 @@ class CKT_QGIS():
                 loadType = get_CLASS(cols[12])
                 LVload._CLASS.append(loadType)
 
-
             elif "_T" in load:
                 # KWHMONTH
                 kwhmonth = float(cols[5].strip())
@@ -1784,9 +1783,9 @@ def get_PHASEDESIG(phcode) -> int:
     Set the phase code based on the manual either
     Neplan code or Phase letter if `phcode` is a string.
 
-    * --------*---------------*
+    +---------+---------------+
     |  code   |      ph       |
-    *---------*---------------*
+    +---------+---------------+
     |    3    |  1: C (T)     |
     |    2    |  2: B (S)     |
     |    6    |  3: BC (ST)   |
@@ -1795,7 +1794,7 @@ def get_PHASEDESIG(phcode) -> int:
     |    4    |  6: AB (RS)   |
     |    0    |  7: ABC (RST) |
     |    7    |  7: ABC (RST) |
-    *---------*---------------*
+    +---------+---------------+
 
     If `phcode` is a integer SIRDE translation will be taken.
 
@@ -1835,9 +1834,9 @@ def get_PHASEDESIG(phcode) -> int:
 def get_NOMVOLT(nomVLL: float) -> int:
     """Nominal voltage.
 
-    *---------*-----------------*-----------------*----------------*
+    +---------+-----------------+-----------------+----------------+
     |  Code   | Voltage LN [kV] | Voltage LL [kV] |   Connection   |
-    *---------*-----------------*-----------------*----------------*
+    +---------+-----------------+-----------------+----------------+
     |   20    |     0.12        |       0.208     |      wye       |
     |   30    |     0.12        |       0.24      |  split-phase   |
     |   35    |     0.254       |       0.44      |      wye       |
@@ -1856,7 +1855,7 @@ def get_NOMVOLT(nomVLL: float) -> int:
     |   270   |     7.97        |       13.8      |      wye       |
     |   340   |     14.38       |       24.9      |      wye       |
     |   380   |     19.92       |       34.5      |      wye       |
-    *---------*-----------------*-----------------*----------------*
+    +---------+-----------------+-----------------+----------------+
     Note: Code 40 refers to special delta of splitted phase.
 
     """
@@ -1901,9 +1900,9 @@ def get_SERVICE(code: int) -> int:
         srvc: Phase (A/R, B/S, C/T) Manual code
         code: Neplan code
 
-    * --------*-----------------*----------------------------------------*
+    +---------+-----------------+----------------------------------------+
     |  code   |      srvc       |              Definition                |
-    *---------*-----------------*----------------------------------------*
+    +---------+-----------------+----------------------------------------+
     |    4    |  1: A (R)       | Load connected to phase 1 and neutral. |
     |    2    |  2: B (S)       | Load connected to phase 2 and neutral. |
     |    1    |  3: C (T)       | Load connected to phase 3 and neutral. |
@@ -1912,7 +1911,7 @@ def get_SERVICE(code: int) -> int:
     |    5    |  13: AC (RT)    | Load connected to phase 1 and phase 3. |
     |    0    |  123: ABC (RST) | Load connected to three phase.         |
     |    7    |  7: ABC (RST)   | Load connected to three phase.         |
-    *---------*-----------------*----------------------------------------*
+    +---------+-----------------+----------------------------------------+
 
     """
     if code == 1:
@@ -1940,15 +1939,15 @@ def get_TxType(txtype: str) -> int:
         Subtipo: Phase (1, 2, 3, 4, 5) SIRDE code
         Descripcion: SIRDE code
 
-    * --------*-----------------*
+    +---------+-----------------+
     | Subtipo |   Descripcion   |
-    *---------*-----------------*
+    +---------+-----------------+
     |    1    |  Tipo poste     |
     |    2    |  Pedestal       |
     |    3    |  Sumergible     |
     |    4    |  Subestacion    |
     |    5    |  Seco           |
-    *---------*-----------------*
+    +---------+-----------------+
 
     """
     if txtype == "1":
@@ -1970,12 +1969,12 @@ def get_NC(nc: str) -> str:
     NEPLAN code : IsActive
     Manual code : NC
 
-    *----------*-------*
+    +----------+-------+
     | IsActive |   NC  |
-    *----------*-------*
+    +----------+-------+
     |    1     |  Yes  |
     |    0     |  No   |
-    *----------*-------*
+    +----------+-------+
 
     """
     if nc == "1":
@@ -2000,7 +1999,7 @@ def get_TP_RATIO(vnom: float, vreg: float) -> float:
     return float(round(tp_ratio))
 
 
-def get_CLASS(code:str) -> str:
+def get_CLASS(code: str) -> str:
     """
     Load type designation.
 
@@ -2010,24 +2009,24 @@ def get_CLASS(code:str) -> str:
         class: Manual description
         code: SIRDE code
 
-    *--------*--------------------------------------------------------*--------------------*
-    |  Code  |                    Customer class                      |      class         |
-    *--------*--------------------------------------------------------*--------------------*
-    |    1   |    Residencial                                         |       R            |
-    |    2   |    General                                             |       C            |
-    |    3   |    Industrial                                          |       I            |
-    |    4   |    Social                                              |       None         |
-    |   22   |    General                                             |       C            |
-    |   23   |    General                                             |       C            |
-    |   32   |    Industrial                                          |       I            |
-    |   33   |    Industrial                                          |       I            |
-    |   41   |    Social                                              |       None         |
-    |   80   |    Media Tensión A                                     |       None or I    |
-    |   85   |    Media Tensión B                                     |       None or I    |
-    |   15   |    Usuarios Directos del Servicio de Generación ICE    |       None or I    |
-    |   13   |    Ventas a ICE Distribución y CNFL                    |       None         |
-    |   14   |    Ventas al Servicio de Distribución                  |       None         |
-    *--------*--------------------------------------------------------*--------------------*
+    +--------+--------------------------------------------------+------------+
+    |  Code  |                 Customer class                   |  class     |
+    +--------+--------------------------------------------------+------------+
+    |    1   | Residencial                                      |  R         |
+    |    2   | General                                          |  C         |
+    |    3   | Industrial                                       |  I         |
+    |    4   | Social                                           |  None      |
+    |   22   | General                                          |  C         |
+    |   23   | General                                          |  C         |
+    |   32   | Industrial                                       |  I         |
+    |   33   | Industrial                                       |  I         |
+    |   41   | Social                                           |  None      |
+    |   80   | Media Tensión A                                  |  None or I |
+    |   85   | Media Tensión B                                  |  None or I |
+    |   15   | Usuarios Directos del Servicio de Generación ICE |  None or I |
+    |   13   | Ventas a ICE Distribución y CNFL                 |  None      |
+    |   14   | Ventas al Servicio de Distribución               |  None      |
+    +--------+--------------------------------------------------+------------+
 
     """
 
@@ -2415,6 +2414,7 @@ def concat_PVcols(pvData: dict) -> list[str]:
         for attr in attrs:
             row += f"{attr}&"
         pvID.append(row.strip("&"))
+
     return pvID
 
 
@@ -2676,8 +2676,7 @@ if __name__ == "__main__":
     UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
     service_LVlines_gdf = df2shp(
         service_LVlines_df,
-        "underG_MVlines"
-    )
+        "service_LVlines")
 
     # ------------------------------
     # Transformer layers *.shp files
