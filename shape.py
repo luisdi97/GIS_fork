@@ -852,7 +852,6 @@ class CKT_QGIS():
         return recloser
 
     def add_regulator_layer(self,
-                            busesData,
                             regulatorData) -> Regulator:
         """Layer of regularos.
 
@@ -865,7 +864,6 @@ class CKT_QGIS():
         # Create instance
         regulator = Regulator()
         regulator_layer = self.set_attributes_regulator(
-            busesData=busesData,
             regulatorID=regulatorID,
             regulator=regulator)
 
@@ -2724,7 +2722,7 @@ if __name__ == "__main__":
     # ----------------------------
     # Regulator layers *.shp files
     # ----------------------------
-    _ = cktQgis.add_regulator_layer(cktNeplan._buses, cktNeplan._regulators)
+    _ = cktQgis.add_regulator_layer(cktNeplan._regulators)
     # Turn layers into df
     regulator_df, _ = layer2df(cktQgis._regulators["regulators"])
     # Finally write shapefiles within "./GIS/shapename.shp"
