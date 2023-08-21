@@ -1282,7 +1282,7 @@ class CKT_QGIS():
                 ratedkva = float(cols[8].strip())
                 splitPH_TX._RATEDKVA.append(ratedkva)
                 # TAPSETTING
-                tapsetting = int(1)
+                tapsetting = float(1)
                 splitPH_TX._TAPSETTING.append(tapsetting)
                 # NODE1
                 from_bus = cols[1].strip()
@@ -1395,7 +1395,7 @@ class CKT_QGIS():
                 ratedkva = float(cols[8].strip())
                 splitPH_TX._RATEDKVA.append(ratedkva)
                 # TAPSETTING
-                tapsetting = int(1)
+                tapsetting = float(1)
                 splitPH_TX._TAPSETTING.append(tapsetting)
                 # NODE1
                 from_bus = cols[1].strip()
