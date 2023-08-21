@@ -1684,7 +1684,6 @@ class CKT_QGIS():
         return (recloser)
 
     def set_attributes_regulator(self,
-                                 busesData: dict,
                                  regulatorID: list[str],
                                  regulator: Regulator):
         """Unpack data of regulars and set its attributes.
@@ -1930,7 +1929,7 @@ def get_SERVICE(code: int) -> int:
         return int(7)
 
 
-def get_TxType(txtype: str) -> int:
+def get_TxType(txtype: str) -> str:
     """Transformer type designation.
 
     Set the type code based on the SIRDE either
@@ -2321,7 +2320,7 @@ def concat_loadcols(loadsData: dict) -> list[str]:
             col13 = v
 
     cols = zip(col1, col2, col3, col4, col5, col6,
-               col7, col8, col9, col10, col11, col12)
+               col7, col8, col9, col10, col11, col12, col13)
     loadID = []
     for attrs in cols:
         row = ""
@@ -2329,11 +2328,6 @@ def concat_loadcols(loadsData: dict) -> list[str]:
             row += f"{attr}&"
         loadID.append(row.strip("&"))
 
-    for attrs in cols:
-        row = ""
-        for attr in attrs:
-            row += f"{attr}&"
-        loadID.append(row)
     return loadID
 
 
@@ -2488,7 +2482,8 @@ def concat_regulatorcols(regulatorData: dict) -> list[str]:
         elif k == "Y":
             col11 = v
 
-    cols = zip(col1, col2, col3, col4, col5, col6, col7, col8, col9)
+    cols = zip(col1, col2, col3, col4, col5, col6, col7,
+               col8, col9, col10, col11)
     regulatorID = []
     for attrs in cols:
         row = ""
