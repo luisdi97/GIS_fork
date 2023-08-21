@@ -262,26 +262,26 @@ class OH_LVline(Line):
         """
         oh_lvlayer = self.__dict__
         serviceLayer_data = {}
-        blacklist = {"DPX", "TPX", "QPX"}
-        black_ind = []
+        servicetype = {"DPX", "TPX", "QPX"}
+        serv_i = []
 
         for i, t in enumerate(oh_lvlayer["_TYPE"]):
-            if t in blacklist:
-                black_ind.append(i)
+            if t in servicetype:
+                serv_i.append(i)
 
         for attr, ft in oh_lvlayer.items():
             if (type(ft) is list) and (len(ft) != 0):
                 serv_fts = []
-                for i in black_ind:
+                for i in serv_i:
                     serv_fts.append(ft[i])
                 serviceLayer_data[attr] = serv_fts
 
         # Remove services lines from OH_LVlines layer
         # Sort in reverse to avoid index shifting
-        black_ind.sort(reverse=True)
+        serv_i.sort(reverse=True)
         for attr, ft in oh_lvlayer.items():
             if (type(ft) is list) and (len(ft) != 0):
-                for i in black_ind:
+                for i in serv_i:
                     oh_lvlayer[attr].pop(i)
 
         # Update attributes for LV secondary lines
@@ -2698,6 +2698,20 @@ if __name__ == "__main__":
     # Subestation_without_modeling_transformer_gdf = df2shp(
     #     Subestation_without_modeling_transformer_df,
     #     "Subestation_without_modeling_transformer")
+
+    # Provisional model of subestation
+    subestation_without_modeling = {"MEDVOLT": [34.5],
+                                    "X1": [427371.8305],
+                                    "Y1": [1102298.898]}
+    freeModel_subEstat_df = pd.DataFrame(subestation_without_modeling)
+    x1, y1 = freeModel_subEstat_df["X1"], freeModel_subEstat_df["Y1"]
+    freeModel_subEstat_gdf = gpd.GeoDataFrame(
+        freeModel_subEstat_df,
+        geometry=gpd.points_from_xy(x1, y1),
+        crs="EPSG:5367")
+
+    freeModel_subEstat_gdf.to_file(
+        "./GIS/freeModel_subEstat.shp")
 
     # -----------------------
     # Load layers *.shp files
