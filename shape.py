@@ -2703,15 +2703,15 @@ if __name__ == "__main__":
     subestation_without_modeling = {"MEDVOLT": [34.5],
                                     "X1": [427371.8305],
                                     "Y1": [1102298.898]}
-    freeModel_subEstat_df = pd.DataFrame(subestation_without_modeling)
-    x1, y1 = freeModel_subEstat_df["X1"], freeModel_subEstat_df["Y1"]
-    freeModel_subEstat_gdf = gpd.GeoDataFrame(
-        freeModel_subEstat_df,
+    modelFree_subEstat_df = pd.DataFrame(subestation_without_modeling)
+    x1, y1 = modelFree_subEstat_df["X1"], modelFree_subEstat_df["Y1"]
+    modelFree_subEstat_gdf = gpd.GeoDataFrame(
+        modelFree_subEstat_df,
         geometry=gpd.points_from_xy(x1, y1),
         crs="EPSG:5367")
 
-    freeModel_subEstat_gdf.to_file(
-        "./GIS/freeModel_subEstat.shp")
+    modelFree_subEstat_gdf.to_file(
+        "./GIS/modelFree_subEstat.shp")
 
     # -----------------------
     # Load layers *.shp files
