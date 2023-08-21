@@ -1,10 +1,12 @@
 """Convert to a suitable Library Name.
 
 It calls ./data/Lineas.xlsx in order to convert it into
-a suitable file to be called for the Blue.
+a suitable file to be called for QGIS2OPENDSS plug-in.
+
 """
 
 import pandas as pd
+
 
 class LineCode():
 
@@ -57,7 +59,7 @@ class LineCode():
             for linecode in LineCodeData:
                 f.write(linecode)
 
-    
+
 if __name__ == "__main__":
 
     # Create instance
