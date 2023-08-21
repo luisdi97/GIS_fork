@@ -2671,8 +2671,7 @@ if __name__ == "__main__":
     UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
     service_LVlines_gdf = df2shp(
         service_LVlines_df,
-        "service_LVlines"
-    )
+        "service_LVlines")
 
     # ------------------------------
     # Transformer layers *.shp files
