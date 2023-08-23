@@ -632,24 +632,17 @@ class CKT_QGIS():
         underG_MVline = UG_MVline()
         overH_LVline = OH_LVline()
         overH_MVline = OH_MVline()
+        service_LVline = serv_LVline()
         # Unpack libraryType
         line_layers = self.set_attributes_lines(
             underG_LVline,
             underG_MVline,
+            service_LVline,
             overH_LVline,
             overH_MVline,
             busesData,
             linesID)
-        # Switch _layer_type attribute for those
-        # Services lines in overH_LVline layer
-        service_LVline = serv_LVline()
-        oh_lvlines = line_layers[2]
-        service_LVline = oh_lvlines.split_overHLVlines(
-            service_LV=service_LVline)
 
-        # Add to line layers
-        line_layers = list(line_layers)
-        line_layers.append(service_LVline)
         # Update attribute
         for LL in line_layers:
             L = LL._line_layer
@@ -902,6 +895,7 @@ class CKT_QGIS():
     def set_attributes_lines(self,
                              underG_LVline: Line,
                              underG_MVline: Line,
+                             service_LVline: Line,
                              overH_LVline: Line,
                              overH_MVline: Line,
                              busesData: dict[list],
@@ -910,7 +904,8 @@ class CKT_QGIS():
 
         It gets some SIRDE code "subtipos" and gives them all
         another Manual format name depending on the zone
-        voltage level.
+        voltage level. Finally it separates overhead LV lines from
+        service lines.
         Note: For Underground MV line next attributes are taking
         as typical values:
         _SHIELDING: "CN"
@@ -1131,7 +1126,12 @@ class CKT_QGIS():
                     length = float(cols[4].strip())
                     overH_MVline._LENGTH.append(length)
 
-        return (underG_LVline, underG_MVline,
+        # Switch _layer_type attribute for those
+        # Services lines within overH_LVline layer
+        service_LVline = overH_LVline.split_overHLVlines(
+            service_LV=service_LVline)
+
+        return (underG_LVline, underG_MVline, service_LVline,
                 overH_LVline, overH_MVline)
 
     def set_attributes_buses(self,
