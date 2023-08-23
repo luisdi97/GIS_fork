@@ -2005,6 +2005,8 @@ def get_CLASS(code: str) -> str:
     PARAMETERS:
         class: Manual description
         code: SIRDE code
+    
+    Note: Manual description does not have Social class
 
     +--------+--------------------------------------------------+------------+
     |  Code  |                 Customer class                   |  class     |
@@ -2018,22 +2020,26 @@ def get_CLASS(code: str) -> str:
     |   32   | Industrial                                       |  I         |
     |   33   | Industrial                                       |  I         |
     |   41   | Social                                           |  None      |
-    |   80   | Media Tensión A                                  |  None or I |
-    |   85   | Media Tensión B                                  |  None or I |
-    |   15   | Usuarios Directos del Servicio de Generación ICE |  None or I |
-    |   13   | Ventas a ICE Distribución y CNFL                 |  None      |
-    |   14   | Ventas al Servicio de Distribución               |  None      |
+    |   80   | Media Tensión A                                  |  I         |
+    |   85   | Media Tensión B                                  |  I         |
+    |   15   | Usuarios Directos del Servicio de Generación ICE |  I         |
+    |   13   | Ventas a ICE Distribución y CNFL                 |  I         |
+    |   14   | Ventas al Servicio de Distribución               |  I         |
     +--------+--------------------------------------------------+------------+
 
     """
 
     if code == "1":
         return "R"
-    if code == "2":
+    
+    elif code in ["2", "22", "23"]:
         return "C"
-    if code == "3":
+    
+    elif code in ["3", "32", "33", "80", "85", "15", "13", "14"]:
         return "I"
-
+    
+    elif code in ["4", "41"]:
+        return "None"
 
 def set_Label(LibType: str) -> str:
     """Replace to labels used in manual.
