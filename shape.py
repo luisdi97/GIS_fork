@@ -2027,6 +2027,7 @@ def get_CLASS(code: str) -> str:
     |   14   | Ventas al Servicio de Distribución               |  I         |
     +--------+--------------------------------------------------+------------+
 
+    
     """
 
     if code == "1":
