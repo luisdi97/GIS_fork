@@ -394,7 +394,7 @@ class Transformer():
 class Distribution_Tx(Transformer):
     def __init__(self):
         super().__init__()
-        self._Tx_layer = "Distribution_transformer"
+        self._Tx_layer = "Distribution_transformers"
 
 
 class Subestation_three_phase_unit_Tx(Transformer):
@@ -710,13 +710,13 @@ class CKT_QGIS():
         # TransformerID
         txID = concat_Txcols(AsymTxData)
         # Create instances
-        Distribution_transformer = Distribution_Tx()
+        Distribution_transformers = Distribution_Tx()
         Sub_three_phase_unit_Tx = Subestation_three_phase_unit_Tx()
         Sub_autoTx = Subestation_auto_Tx()
         Sub_without_modeling_Tx = Subestation_without_modeling_Tx()
 
         transformer_layers = self.set_attributes_tx(
-            Distribution_transformer=Distribution_transformer,
+            Distribution_transformers=Distribution_transformers,
             Sub_three_phase_unit_Tx=Sub_three_phase_unit_Tx,
             Sub_autoTx=Sub_autoTx,
             Sub_without_modeling_Tx=Sub_without_modeling_Tx,
@@ -743,7 +743,7 @@ class CKT_QGIS():
 
             self._transformers[T] = dictAttrsTx
 
-        return (Distribution_transformer,
+        return (Distribution_transformers,
                 Sub_three_phase_unit_Tx,
                 Sub_autoTx,
                 Sub_without_modeling_Tx)
@@ -1221,7 +1221,7 @@ class CKT_QGIS():
                 overH_MVbus, overH_LVbus)
 
     def set_attributes_tx(self,
-                          Distribution_transformer: Transformer,
+                          Distribution_transformers: Transformer,
                           Sub_three_phase_unit_Tx: Transformer,
                           Sub_autoTx: Transformer,
                           Sub_without_modeling_Tx: Transformer,
@@ -1240,7 +1240,7 @@ class CKT_QGIS():
                   _TAPSETTING: 1
 
         """
-        splitPH_TX = Distribution_transformer
+        splitPH_TX = Distribution_transformers
         for i, row in enumerate(txID):
             # ["Name", "Node1", "Node2", "Switch1", "Switch2",
             # "IsRegulated", "Un1", "Un2", "Sr",
@@ -1779,7 +1779,8 @@ def get_PHASEDESIG(phcode) -> int:
 
     Set the phase code based on the manual either
     Neplan code or Phase letter if `phcode` is a string.
-
+    Code: Neplan
+    ph: Manual
     +---------+---------------+
     |  code   |      ph       |
     +---------+---------------+
@@ -2685,8 +2686,8 @@ if __name__ == "__main__":
         AsymTxData=cktNeplan._AsymTx,
         TxData=cktNeplan._Tx)
     # Turn layers into df
-    Distribution_transformer_df, _ = layer2df(
-        cktQgis._transformers["Distribution_transformer"])
+    Distribution_transformers_df, _ = layer2df(
+        cktQgis._transformers["Distribution_transformers"])
     # Subestation_three_phase_transformer_df, _ = layer2df(
     #     cktQgis._transformers["Subestation_three_phase_transformer"])
     # Subestation_autotransformer_df, _ = layer2df(
@@ -2694,8 +2695,8 @@ if __name__ == "__main__":
     # Subestation_without_modeling_transformer_df, _ = layer2df(
     #     cktQgis._transformers["Subestation_without_modeling_transformer"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    Distribution_transformer_gdf = df2shp(
-        Distribution_transformer_df, "Distribution_transformer")
+    Distribution_transformers_gdf = df2shp(
+        Distribution_transformers_df, "Distribution_transformers")
     # Subestation_three_phase_transformer_gdf = df2shp(
     #     Subestation_three_phase_transformer_df,
     #     "Subestation_three_phase_transformer")
