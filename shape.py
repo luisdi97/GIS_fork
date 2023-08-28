@@ -1895,37 +1895,37 @@ def get_SERVICE(code: int) -> int:
     Set the phase code based on the manual either
     Neplan code or Phase letter if `code` is passed.
     PARAMETERS:
-        srvc: Phase (A/R, B/S, C/T) Manual code
+        srvc: Service Manual code
         code: Neplan code
 
     +---------+-----------------+----------------------------------------+
     |  code   |      srvc       |              Definition                |
     +---------+-----------------+----------------------------------------+
-    |    4    |  1: A (R)       | Load connected to phase 1 and neutral. |
+    |    1    |  1: A (R)       | Load connected to phase 1 and neutral. |
     |    2    |  2: B (S)       | Load connected to phase 2 and neutral. |
-    |    1    |  3: C (T)       | Load connected to phase 3 and neutral. |
-    |    6    |  12: AB (RS)    | Load connected to phase 1 and phase 2. |
-    |    3    |  23: BC (ST)    | Load connected to phase 2 and phase 3. |
+    |    3    |  3: C (T)       | Load connected to phase 3 and neutral. |
+    |    4    |  12: AB (RS)    | Load connected to phase 1 and phase 2. |
+    |    6    |  23: BC (ST)    | Load connected to phase 2 and phase 3. |
     |    5    |  13: AC (RT)    | Load connected to phase 1 and phase 3. |
     |    0    |  123: ABC (RST) | Load connected to three phase.         |
-    |    7    |  7: ABC (RST)   | Load connected to three phase.         |
+    |    7    |  123: ABC (RST) | Load connected to three phase.         |
     +---------+-----------------+----------------------------------------+
 
     """
     if code == 1:
-        return int(3)
+        return int(1)
     elif code == 2:
         return int(2)
     elif code == 3:
-        return int(23)
+        return int(3)
     elif code == 4:
-        return int(1)
+        return int(12)
     elif code == 5:
         return int(13)
     elif code == 6:
-        return int(12)
+        return int(23)
     elif code == 0 or code == 7:
-        return int(7)
+        return int(123)
 
 
 def get_TxType(txtype: str) -> str:
