@@ -163,7 +163,11 @@ class Line():
                                 with No LV cable beneath ("N")
                                 whose guard conductor's size is 1/0 but the is
                                 not information about its material.
+<<<<<<< HEAD
                 In case of underground MV kind of line, only the SIRDEcodeID
+=======
+                In case of underground kind of line, only the SIRDEcodeID
+>>>>>>> 3de5c21 (set_Label())
                 will be taken in this attribute.
             TYPE:
                 For Over Head LV
