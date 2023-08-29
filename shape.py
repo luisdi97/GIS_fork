@@ -140,8 +140,8 @@ class Line():
                 - COVER: Half-insulated
                 - INSUL: Insulated
             LINEGEO:
-                *String* datatype. Usually for overhead MV lines if
-                it starts with "Y" or "N" (meaning with LV cable beneath
+                *String* datatype. For overhead MV lines if
+                it starts with "Y" or "N" (meaning with LV Cable beneath
                 the MV conductor or not) then will be followed by
                 a geometry SIRDE code and finally information about the
                 Guard Conductor (material & size). Such attribute has will
@@ -163,9 +163,11 @@ class Line():
                                 with No LV cable beneath ("N")
                                 whose guard conductor's size is 1/0 but the is
                                 not information about its material.
+                In case of underground kind of line, only the SIRDEcodeID
+                will be taken in this attribute.
             TYPE:
                 For Over Head LV
-                - LVC: Low Voltage Cable
+                - LVC: Low Voltage Cable (Three Wire cable)
                 - CC: Concentric Cable
                 - SLC: Street Lighting Cable
                 Other
@@ -911,11 +913,13 @@ class CKT_QGIS():
         _SHIELDING: "CN"
         _NEUTMAT: "CU"
         _NEUTSIZ: "1/0"
-        _LINEGEO: It's "None" but it will adopt
-                  specific code in the future.
+        _INSULEV: String type. "100" For a insulated level of 100%.
+                  This is a default value of for systems
+                  with grounded neutral.
         Note: For Underground LV line next attributes are taking
         as typical values:
-        _NEUTMAT: "CU"
+        _NEUTMAT: "CU".
+    
         """
         # _TYPE
         oh_lvline = {
@@ -955,7 +959,7 @@ class CKT_QGIS():
                         elif n == 2:
                             attr = ft.strip()
                             underG_LVline._PHASEMAT.append(attr)
-                        # [_INSULMAT, _NEUTSIZ]
+                        # [_INSULMAT, _NEUTSIZ, _LINEGEO, _INSULEV]
                         elif n == 3:
                             attrs = ft.split("_")
                             underG_LVline._INSULMAT.append(attrs[0])
@@ -1001,7 +1005,7 @@ class CKT_QGIS():
                         elif n == 2:
                             attr = ft.strip()
                             underG_MVline._PHASEMAT.append(attr)
-                        # [_INSULMAT, _NEUTPER]
+                        # [_INSULMAT, _NEUTPER, _LINEGEO, _INSULEV]
                         elif n == 3:
                             attrs = ft.split("_")
                             underG_MVline._INSULMAT.append(attrs[0])
@@ -2130,7 +2134,7 @@ def set_Label(LibType: str) -> str:
             "SEMIA": "COVER",
             "AISLA": "INSUL",
     }
-    for (k, v) in insulvolt.items():
+    for (k, v) in insulmat.items():
         LibType = LibType.replace(k, v)
 
     return LibType
