@@ -1390,6 +1390,18 @@ class CKT_QGIS():
               set to 1 however is passed as float type:
                   _TAPSETTING: 1.0
 
+        2. Note: In accordance with "Supervisión de la calidad del suministro 
+                 eléctrico en baja y media tensión” (AR-NT-SUCAL) CAPITULO I 
+                 BT =< 1 kV and 1 kV < MT <= 100 kV.
+        
+        3. Note: For transformers with AB, AC, BC phases, the PRIMCONN = OY
+                 and SECCONN = OD.
+        
+        3. Note: For transformers with ABC phases, the PRIMCONN = Y and
+                 SECCONN = 4D. (EXCEL circuit is wrong)
+        
+        5. Note: For transformers with A, B, C phases, the PRIMCONN = LG
+                 and SECCONN = SP.
         """
         distrib_TX = Distribution_transformers
         for i, row in enumerate(txID):
