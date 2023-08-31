@@ -1495,6 +1495,12 @@ class CKT_QGIS():
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
                 distrib_TX._SECVOLT.append(snomvcode)
+                distrib_TX._SECVOLT.append(snomvcode)
+                # MV/MV
+                if pnomv > 1 and snomv <= 100:
+                    distrib_TX._MV_MV.append("YES")
+                else:
+                    distrib_TX._MV_MV.append("NO")
                 # RATEDKVA
                 ratedkva = float(cols[8].strip())
                 distrib_TX._RATEDKVA.append(ratedkva)
