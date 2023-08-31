@@ -348,9 +348,33 @@ class UG_LVbus(Bus):
 
 
 class Transformer():
-    """Missing documentation.
+    """Transformer object.
 
-    Here goes the missing description of this class.
+    Kind of tranformers:
+
+    - Transformadores: "Distribution_transformers"
+
+    - Subestación unidad trifásica: "Subestation_three_phase_transformer"
+
+    - Subestación autotransformador: "Subestation_autotransformer"
+
+    - Subestación sin modelar: "Subestation_without_modeling_transformer"
+
+    New values:
+        SECCONN:
+            - OD: Open Delta
+    
+    1. Note: In case of three phase (ABC) transformer with "SP"
+             replace by connection "4D".
+    
+    2. Note: In case of (AB, BC, AC) phases in Asymetrical transformers
+             their PRIMCONN == "OY" and SECCONN == "OD".
+    
+    3. Note: In case of (A, B, C) phases in Asymetrical 
+             transformers their PRIMCONN == "LG" and SECCONN == "SP".
+    
+    4. Note: There are transformers that do not have  element in the 
+             secondary.
 
     """
     def __init__(self) -> None:
@@ -418,7 +442,13 @@ class Subestation_without_modeling_Tx(Transformer):
 
 
 class Load():
-    """Missing documentation.
+    """Load object.
+
+    Kind of loads:
+
+    - Cargas de media tensión: "MV_load"
+
+    - Cargas de baja tensión: "LV_load"
 
     The bool type attribute _ODDLOAD is `True` only
     for those loads right over a transformer; at
@@ -464,9 +494,13 @@ class MV_load(Load):
 
 
 class Fuse():
-    """Missing documentation.
+    """Fuse object.
 
-    Here goes the missing description of this class.
+    Kind of fuses:
+
+    - Fusibles: "Fuses"
+
+    1. Note: There are not notes.
 
     """
     def __init__(self):
@@ -501,9 +535,13 @@ class PV():
 
 
 class Recloser():
-    """Missing documentation.
+    """Recloser object.
 
-    Here goes the missing description of this class.
+    Kind of reclosers:
+
+    - Reconectadores: "Reclosers"
+
+    1. Note: There are not notes.
 
     """
     def __init__(self):
@@ -524,9 +562,13 @@ class Recloser():
 
 
 class Regulator():
-    """Missing documentation.
+    """Regulator object.
 
-    Here goes the missing description of this class.
+    Kind of regulators:
+
+    - Reguladores: "Regulators"
+
+    1. Note: There are not notes.
 
     """
     def __init__(self):
@@ -545,6 +587,15 @@ class Regulator():
 
 
 class PublicLights():
+    """Public lights object:
+
+    Kind of public lights:
+
+    - Alumbrado Público: "Public_Lights"
+
+    1. Note: There are not notes.
+    
+    """
     def __init__(self):
         self._PublicLights_layer = "Public_Lights"
         self._ICEobjectID = []
