@@ -919,7 +919,7 @@ class CKT_QGIS():
         Note: For Underground LV line next attributes are taking
         as typical values:
         _NEUTMAT: "CU".
-    
+
         """
         # _TYPE
         oh_lvline = {
@@ -1240,8 +1240,8 @@ class CKT_QGIS():
         SECCONN, so for now we differentiate with this.
 
         Note: The position of the tap is unknown, therefore it is
-              set to 1:
-                  _TAPSETTING: 1
+              set to 1 however is passed as float type:
+                  _TAPSETTING: 1.0
 
         """
         splitPH_TX = Distribution_transformers
@@ -1378,7 +1378,7 @@ class CKT_QGIS():
                         if ph == "AB" or ph == "AC" or ph == "BC":
                             # PRIMCONN
                             primconn = ph
-                            primmconncode = "OY"
+                            primmconncode = "OY"    # OpenWye
                             splitPH_TX._PRIMCONN.append(primmconncode)
                             # SECCONN
                             secconncode = "OD"    # OpenDelta
@@ -1386,10 +1386,10 @@ class CKT_QGIS():
                         else:
                             # PRIMCONN
                             primconn = ph
-                            primmconncode = "LG"
+                            primmconncode = "LG"   # Line-Ground
                             splitPH_TX._PRIMCONN.append(primmconncode)
                             # SECCONN
-                            secconncode = "SP"     # Split Phase
+                            secconncode = "SP"     # Split-Phase
                             splitPH_TX._SECCONN.append(secconncode)
 
                         # KVAPHASEA
@@ -1491,9 +1491,7 @@ class CKT_QGIS():
                              MVload: Load):
         """Unpack LV and MV loads attributes.
 
-        The code for differenciate loads of MT underground and MT overhead
-        does not work because there are not these loads in Circuito_2.xlsx
-        and we can not make the code.
+        Missing description of this method.
 
         """
         for row in loadID:
@@ -1567,7 +1565,7 @@ class CKT_QGIS():
                 pf = float(cols[9].strip())
                 LVload._PF.append(pf)
                 # ICEobjectID
-                objectID = cols[1].strip()
+                objectID = cols[1].strip().strip("L")
                 LVload._ICEobjID.append(objectID)
                 # X1
                 X1 = float(cols[10].strip())
@@ -1598,7 +1596,7 @@ class CKT_QGIS():
             cols = row.split("&")
 
             # ICEObjectID
-            objetID = cols[0].strip("_F")
+            objetID = cols[0].strip("F")
             fuse._ICEobjID.append(objetID)
             # PHASEDESIGN
             phasedesign = int(cols[1].strip())
@@ -1777,14 +1775,67 @@ class CKT_QGIS():
 
         return (public_lights)
 
+    def loadTx_matcher(self) -> bool:
+        """Verify consistency of connections.
+
+        This method assesses whether _SECCONN
+        attribute of transformers possess
+        matching features with _SERVICE code of
+        those odd loads right over them taking advantage
+        that such loads _ICEobjectID are labeled
+        with "_T" at tail.
+        It returns True if all load are
+        perfectly align and False otherwise;
+        by following the below criterion:
+
+        matcher = {
+            "OD": {123, 12, 23, 13},
+            "SP": {1, 2, 3, 12, 23, 13},
+            "4D": {123}
+        }
+
+        Where the key is the _SECCONN and
+        the integers set the _SERVICE code.
+
+        """
+        loadsdata = self._LVloads["LV_load"]
+        txsdata = self._transformers["Distribution_transformers"]
+        matcher = {
+            "OD": {123, 12, 23, 13},
+            "SP": {1, 2, 3, 12, 23, 13},
+            "4D": {123}
+        }
+
+        # Odd loads name
+        loadsfree = []
+        for c in loadsdata["ICEobjID"]:
+            if "_T" in c:
+                loadsfree.append(c)
+        loadsfree = [t.strip("_T") for t in loadsfree]
+
+        # Retrieve match attribute
+        for v in loadsfree:
+            i = txsdata["ICEobjID"].index(v)
+            j = loadsdata["ICEobjID"].index(f"{v}_T")
+            for k, c in txsdata.items():
+                if k == "SECCONN":
+                    conn = c[i]
+                    for m, f in loadsdata.items():
+                        if m == "SERVICE":
+                            srvc = f[j]
+                            if srvc not in matcher[conn]:
+                                return False
+        return True
+
 
 def get_PHASEDESIG(phcode) -> int:
     """Phase designation.
 
     Set the phase code based on the manual either
     Neplan code or Phase letter if `phcode` is a string.
-    Code: Neplan
-    ph: Manual
+    Columns:
+        Code: Neplan
+        ph: Manual
     +---------+---------------+
     |  code   |      ph       |
     +---------+---------------+
@@ -1894,21 +1945,27 @@ def get_INSULVOLT(nomVLL: float) -> str:
 
 
 def get_SERVICE(code: int) -> int:
-    """Connection type designation of loads and AP.
+    """Load connection.
 
-    Set the phase code based on the manual either
-    Neplan code or Phase letter if `code` is passed.
-    PARAMETERS:
-        srvc: Service Manual code
+    Connection type designation of Loads and Public
+    Lighting.
+    It Corresponds to the type of connection presented
+    by the load. It must have a type of connection
+    consistent with the type of cable of the phase
+    to which the load is connected.
+    Turns the given Neplan phase code into the one used in
+    the manual also integer.
+    Columns:
+        srvc: Service Plug-in Manual code
         code: Neplan code
 
     +---------+-----------------+----------------------------------------+
-    |  code   |      srvc       |              Definition                |
+    |  code   |      srvc       |              Description               |
     +---------+-----------------+----------------------------------------+
-    |    1    |  1: A (R)       | Load connected to phase 1 and neutral. |
-    |    2    |  2: B (S)       | Load connected to phase 2 and neutral. |
+    |    1    |  1: A (R)       | Load connected to alive 1 and neutral. |
+    |    2    |  2: B (S)       | Load connected to alive 2 and neutral. |
     |    3    |  3: C (T)       | Load connected to phase 3 and neutral. |
-    |    4    |  12: AB (RS)    | Load connected to phase 1 and phase 2. |
+    |    4    |  12: AB (RS)    | Load connected to alive 1 and alive 2. |
     |    6    |  23: BC (ST)    | Load connected to phase 2 and phase 3. |
     |    5    |  13: AC (RT)    | Load connected to phase 1 and phase 3. |
     |    0    |  123: ABC (RST) | Load connected to three phase.         |
@@ -2147,6 +2204,21 @@ def set_Label_Tx(LibType: str) -> str:
     attributes comming from Neplan) in LibraryType of
     transformers, for common notation used in the manual of
     `QGIS2OPENDSS` plug-in.
+    _PRIMCONN
+    primconn = {
+        "Estrella": "Y",
+        "Delta":, "D",
+        "OpenWye":, "OY",
+        "LineGound": "LG"
+    }
+    _SECCONN
+    secconn = {
+        "SplitPhase": "SP",
+        "Fase_Partida": "4D",
+        "OpenDelta": "OD"
+    }
+
+    Note: _SECCONN of 4D means delta of four-wires.
 
     """
     # Library Type Modified
@@ -2161,26 +2233,14 @@ def set_Label_Tx(LibType: str) -> str:
     for (k, v) in nomvolt.items():
         LibTypeMod = LibTypeMod.replace(k, v)
 
-    # PRIMCONN
-    primconn = {
+    # Connection at any side
+    conn = {
         "Estrella": "Y",
         "Delta": "D",
-        "DEFINIR": "OY",    # Open Wey
-        "DEFINIR": "LG"     # Line-Ground
+        "Fase_Partida": "4D"
     }
 
-    for (k, v) in primconn.items():
-        LibTypeMod = LibTypeMod.replace(k, v)
-
-    # SECCONN
-    secconn = {
-        "Estrella": "Y",
-        "Delta": "D",
-        "DEFINIR": "4D",     # Delta four threads
-        "Fase_Partida": "SP"
-    }
-
-    for (k, v) in secconn.items():
+    for (k, v) in conn.items():
         LibTypeMod = LibTypeMod.replace(k, v)
 
     return LibTypeMod
