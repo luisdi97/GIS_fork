@@ -346,9 +346,33 @@ class UG_LVbus(Bus):
 
 
 class Transformer():
-    """Missing documentation.
+    """Transformer object.
 
-    Here goes the missing description of this class.
+    Kind of tranformers:
+
+    - Transformadores: "Distribution_transformers"
+
+    - Subestación unidad trifásica: "Subestation_three_phase_transformer"
+
+    - Subestación autotransformador: "Subestation_autotransformer"
+
+    - Subestación sin modelar: "Subestation_without_modeling_transformer"
+
+    New values:
+        SECCONN:
+            - OD: Open Delta
+    
+    1. Note: In case of three phase (ABC) transformer with "SP"
+             replace by connection "4D".
+    
+    2. Note: In case of (AB, BC, AC) phases in Asymetrical transformers
+             their PRIMCONN == "OY" and SECCONN == "OD".
+    
+    3. Note: In case of (A, B, C) phases in Asymetrical 
+             transformers their PRIMCONN == "LG" and SECCONN == "SP".
+    
+    4. Note: There are transformers that do not have  element in the 
+             secondary.
 
     """
     def __init__(self) -> None:
@@ -416,9 +440,17 @@ class Subestation_without_modeling_Tx(Transformer):
 
 
 class Load():
-    """Missing documentation.
+    """Load object.
 
-    Here goes the missing description of this class.
+    Kind of loads:
+
+    - Cargas de media tensión: "MV_load"
+
+    - Cargas de baja tensión: "LV_load"
+
+    1. Note: There are loads that are not connected to the secondary
+             of the modeled transformer and are assigned with
+             ICEobjID in its Node.
 
     """
     def __init__(self):
@@ -452,13 +484,17 @@ class MV_load(Load):
 
 
 class Fuse():
-    """Missing documentation.
+    """Fuse object.
 
-    Here goes the missing description of this class.
+    Kind of fuses:
+
+    - Fusibles: "Fuses"
+
+    1. Note: There are not notes.
 
     """
     def __init__(self):
-        self._fuse_layer = "fuses"
+        self._fuse_layer = "Fuses"
         self._ICEobjID = []
         self._PHASEDESIG = []
         self._ONELEMENT = []
@@ -489,13 +525,17 @@ class PV():
 
 
 class Recloser():
-    """Missing documentation.
+    """Recloser object.
 
-    Here goes the missing description of this class.
+    Kind of reclosers:
+
+    - Reconectadores: "Reclosers"
+
+    1. Note: There are not notes.
 
     """
     def __init__(self):
-        self._recloser_layer = "reclosers"
+        self._recloser_layer = "Reclosers"
         self._ICEobjID = []
         self._PHASEDESIG = []
         self._NC = []
@@ -512,13 +552,17 @@ class Recloser():
 
 
 class Regulator():
-    """Missing documentation.
+    """Regulator object.
 
-    Here goes the missing description of this class.
+    Kind of regulators:
+
+    - Reguladores: "Regulators"
+
+    1. Note: There are not notes.
 
     """
     def __init__(self):
-        self._regulator_layer = "regulators"
+        self._regulator_layer = "Regulators"
         self._ICEobjID = []
         self._NOMVOLT = []
         self._PHASEDESIG = []
@@ -533,8 +577,17 @@ class Regulator():
 
 
 class PublicLights():
+    """Public lights object:
+
+    Kind of public lights:
+
+    - Alumbrado Público: "Public_Lights"
+
+    1. Note: There are not notes.
+    
+    """
     def __init__(self):
-        self._PublicLights_layer = "public_Lights"
+        self._PublicLights_layer = "Public_Lights"
         self._ICEobjectID = []
         self._SERVICE = []
         self._KW = []
@@ -2144,6 +2197,10 @@ def set_Label_Tx(LibType: str) -> str:
     transformers, for common notation used in the manual of
     `QGIS2OPENDSS` plug-in.
 
+    1. Note: Replace SECCONN three phase transformers with 
+             PRIMCONN = "ESTRELLA" (Y) and SECCONN = "Fase_Partida" (SP) 
+             in LibraryType to SECCONN = "Delta 4 hilos" (4D)
+
     """
     # Library Type Modified
     LibTypeMod = LibType
@@ -2178,6 +2235,8 @@ def set_Label_Tx(LibType: str) -> str:
 
     for (k, v) in secconn.items():
         LibTypeMod = LibTypeMod.replace(k, v)
+        if "ABC" in LibTypeMod:
+            LibTypeMod = LibTypeMod.replace("SP", "4D")
 
     return LibTypeMod
 
@@ -2738,18 +2797,18 @@ if __name__ == "__main__":
     # -----------------------
     _ = cktQgis.add_fuse_layer(cktNeplan._fuses)
     # Turn layers into df
-    fuse_df, _ = layer2df(cktQgis._fuses["fuses"])
+    fuse_df, _ = layer2df(cktQgis._fuses["Fuses"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    fuse_gdf = df2shp(fuse_df, "fuses")
+    fuse_gdf = df2shp(fuse_df, "Fuses")
 
     # ----------------------------
     # Regulator layers *.shp files
     # ----------------------------
     _ = cktQgis.add_regulator_layer(cktNeplan._regulators)
     # Turn layers into df
-    regulator_df, _ = layer2df(cktQgis._regulators["regulators"])
+    regulator_df, _ = layer2df(cktQgis._regulators["Regulators"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    regulator_gdf = df2shp(regulator_df, "regulators")
+    regulator_gdf = df2shp(regulator_df, "Regulators")
 
     # ---------------------
     # PV layers *.shp files
@@ -2765,6 +2824,15 @@ if __name__ == "__main__":
     # ---------------------------
     _ = cktQgis.add_recloser_layer(cktNeplan._reclosers)
     # Turn layers into df
-    recloser_df, _ = layer2df(cktQgis._reclosers["reclosers"])
+    recloser_df, _ = layer2df(cktQgis._reclosers["Reclosers"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    recloser_gdf = df2shp(recloser_df, "reclosers")
+    recloser_gdf = df2shp(recloser_df, "Reclosers")
+
+    #---------------------------------
+    # Public Lights layers *.shp files
+    #---------------------------------
+    _ = cktQgis.add_PublicLights_layer(cktNeplan._publicLights)
+    # Turn layers into df
+    public_Lights_df = layer2df(cktQgis._publicLights["Public_Lights"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    public_Lights_gdf = df2shp(public_Lights_df, "Public_Lights")
