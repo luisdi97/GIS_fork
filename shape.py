@@ -460,7 +460,7 @@ class Fuse():
 
     """
     def __init__(self):
-        self._fuse_layer = "fuses"
+        self._fuse_layer = "Fuses"
         self._ICEobjID = []
         self._PHASEDESIG = []
         self._ONELEMENT = []
@@ -497,7 +497,7 @@ class Recloser():
 
     """
     def __init__(self):
-        self._recloser_layer = "reclosers"
+        self._recloser_layer = "Reclosers"
         self._ICEobjID = []
         self._PHASEDESIG = []
         self._NC = []
@@ -520,7 +520,7 @@ class Regulator():
 
     """
     def __init__(self):
-        self._regulator_layer = "regulators"
+        self._regulator_layer = "Regulators"
         self._ICEobjID = []
         self._NOMVOLT = []
         self._PHASEDESIG = []
@@ -536,7 +536,7 @@ class Regulator():
 
 class PublicLights():
     def __init__(self):
-        self._PublicLights_layer = "public_Lights"
+        self._PublicLights_layer = "Public_Lights"
         self._ICEobjectID = []
         self._SERVICE = []
         self._KW = []
@@ -1244,7 +1244,7 @@ class CKT_QGIS():
                   _TAPSETTING: 1.0
 
         """
-        splitPH_TX = Distribution_transformers
+        distrib_TX = Distribution_transformers
         for i, row in enumerate(txID):
             # ["Name", "Node1", "Node2", "Switch1", "Switch2",
             # "IsRegulated", "Un1", "Un2", "Sr",
@@ -1267,105 +1267,105 @@ class CKT_QGIS():
                     if n == 0:
                         ph = ft.strip()
                         phcode = get_PHASEDESIG(ph)
-                        splitPH_TX._PHASEDESIG.append(phcode)
+                        distrib_TX._PHASEDESIG.append(phcode)
 
                         # KVAPHASEA
                         if ph == "A":
                             kvaphaseA = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(float(0))
                         # KVAPHASEB
                         elif ph == "B":
                             kvaphaseB = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(float(0))
                         # KVAPHASEC
                         elif ph == "C":
                             kvaphaseC = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AB":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseB = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(float(0))
                         elif ph == "BC":
                             kvaphaseB = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AC":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "ABC":
                             kvaphaseA = float(cols[8].strip())/3
                             kvaphaseB = float(cols[8].strip())/3
                             kvaphaseC = float(cols[8].strip())/3
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                     # TTYPE
                     elif n == 6:
                         txtype = ft.strip()
                         txtypecode = get_TxType(txtype)
-                        splitPH_TX._TTYPE.append(txtypecode)
+                        distrib_TX._TTYPE.append(txtypecode)
                     # PRIMCONN
                     elif n == 7:
                         primconn = ft
                         primmconncode = primconn.strip()
-                        splitPH_TX._PRIMCONN.append(primmconncode)
+                        distrib_TX._PRIMCONN.append(primmconncode)
                     # SECCONN
                     elif n == 8:
                         secconn = ft
                         secconncode = secconn.strip()
-                        splitPH_TX._SECCONN.append(secconncode)
+                        distrib_TX._SECCONN.append(secconncode)
 
                 # PRIMVOLT
                 pnomv = float(cols[6].strip())
                 pnomvcode = get_NOMVOLT(pnomv)
-                splitPH_TX._PRIMVOLT.append(pnomvcode)
+                distrib_TX._PRIMVOLT.append(pnomvcode)
                 # SECVOLT
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
-                splitPH_TX._SECVOLT.append(snomvcode)
+                distrib_TX._SECVOLT.append(snomvcode)
                 # RATEDKVA
                 ratedkva = float(cols[8].strip())
-                splitPH_TX._RATEDKVA.append(ratedkva)
+                distrib_TX._RATEDKVA.append(ratedkva)
                 # TAPSETTING
                 tapsetting = float(1)
-                splitPH_TX._TAPSETTING.append(tapsetting)
+                distrib_TX._TAPSETTING.append(tapsetting)
                 # NODE1
                 from_bus = cols[1].strip()
-                splitPH_TX._NODE1.append(from_bus)
+                distrib_TX._NODE1.append(from_bus)
                 # NODE2
                 to_bus = cols[2].strip()
-                splitPH_TX._NODE2.append(to_bus)
+                distrib_TX._NODE2.append(to_bus)
                 # X1
                 X1 = float(cols[10])
-                splitPH_TX._X1.append(X1)
+                distrib_TX._X1.append(X1)
                 # Y1
                 Y1 = float(cols[11])
-                splitPH_TX._Y1.append(Y1)
+                distrib_TX._Y1.append(Y1)
                 # ICEobjectID
                 name = cols[0]
-                splitPH_TX._ICEobjID.append(name.strip("_T"))
+                distrib_TX._ICEobjID.append(name.strip("_T"))
                 # SWITCH1
                 switch1 = cols[3].strip()
-                splitPH_TX._SWITCH1.append(switch1)
+                distrib_TX._SWITCH1.append(switch1)
                 # SWITCH2
                 switch2 = cols[4].strip()
-                splitPH_TX._SWITCH2.append(switch2)
+                distrib_TX._SWITCH2.append(switch2)
                 # ISREGULATED
                 isregulated = cols[5].strip()
-                splitPH_TX._ISREG.append(isregulated)
+                distrib_TX._ISREG.append(isregulated)
 
             # Trafo2WindingAsym
             else:
@@ -1374,113 +1374,113 @@ class CKT_QGIS():
                     if n == 0:
                         ph = ft.strip()
                         phcode = get_PHASEDESIG(ph)
-                        splitPH_TX._PHASEDESIG.append(phcode)
-                        if ph == "AB" or ph == "AC" or ph == "BC":
+                        distrib_TX._PHASEDESIG.append(phcode)
+                        if ph in {"AB", "AC", "BC"}:
                             # PRIMCONN
                             primconn = ph
-                            primmconncode = "OY"    # OpenWye
-                            splitPH_TX._PRIMCONN.append(primmconncode)
+                            primmconncode = "OY"    # Open Wye
+                            distrib_TX._PRIMCONN.append(primmconncode)
                             # SECCONN
-                            secconncode = "OD"    # OpenDelta
-                            splitPH_TX._SECCONN.append(secconncode)
+                            secconncode = "OD"    # Open Delta
+                            distrib_TX._SECCONN.append(secconncode)
                         else:
                             # PRIMCONN
                             primconn = ph
                             primmconncode = "LG"   # Line-Ground
-                            splitPH_TX._PRIMCONN.append(primmconncode)
+                            distrib_TX._PRIMCONN.append(primmconncode)
                             # SECCONN
                             secconncode = "SP"     # Split-Phase
-                            splitPH_TX._SECCONN.append(secconncode)
+                            distrib_TX._SECCONN.append(secconncode)
 
                         # KVAPHASEA
                         if ph == "A":
                             kvaphaseA = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(float(0))
                         # KVAPHASEB
                         elif ph == "B":
                             kvaphaseB = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(float(0))
                         # KVAPHASEC
                         elif ph == "C":
                             kvaphaseC = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AB":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseB = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(float(0))
                         elif ph == "BC":
                             kvaphaseB = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AC":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "ABC":
                             kvaphaseA = float(cols[8].strip())/3
                             kvaphaseB = float(cols[8].strip())/3
                             kvaphaseC = float(cols[8].strip())/3
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                     # TTYPE
                     elif n == 6:
                         txtype = ft.strip()
                         txtypecode = get_TxType(txtype)
-                        splitPH_TX._TTYPE.append(txtypecode)
+                        distrib_TX._TTYPE.append(txtypecode)
 
                 # PRIMVOLT
                 pnomv = float(cols[6].strip())
                 pnomvcode = get_NOMVOLT(pnomv)
-                splitPH_TX._PRIMVOLT.append(pnomvcode)
+                distrib_TX._PRIMVOLT.append(pnomvcode)
                 # SECVOLT
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
-                splitPH_TX._SECVOLT.append(snomvcode)
+                distrib_TX._SECVOLT.append(snomvcode)
                 # RATEDKVA
                 ratedkva = float(cols[8].strip())
-                splitPH_TX._RATEDKVA.append(ratedkva)
+                distrib_TX._RATEDKVA.append(ratedkva)
                 # TAPSETTING
                 tapsetting = float(1)
-                splitPH_TX._TAPSETTING.append(tapsetting)
+                distrib_TX._TAPSETTING.append(tapsetting)
                 # NODE1
                 from_bus = cols[1].strip()
-                splitPH_TX._NODE1.append(from_bus)
+                distrib_TX._NODE1.append(from_bus)
                 # NODE2
                 to_bus = cols[2].strip()
-                splitPH_TX._NODE2.append(to_bus)
+                distrib_TX._NODE2.append(to_bus)
                 # X1
                 X1 = float(cols[10])
-                splitPH_TX._X1.append(X1)
+                distrib_TX._X1.append(X1)
                 # Y1
                 Y1 = float(cols[11])
-                splitPH_TX._Y1.append(Y1)
+                distrib_TX._Y1.append(Y1)
                 # ICEobject_ID
                 name = cols[0]
-                splitPH_TX._ICEobjID.append(name.strip("_T"))
+                distrib_TX._ICEobjID.append(name.strip("_T"))
                 # SWITCH1
                 switch1 = cols[3].strip()
-                splitPH_TX._SWITCH1.append(switch1)
+                distrib_TX._SWITCH1.append(switch1)
                 # SWITCH2
                 switch2 = cols[4].strip()
-                splitPH_TX._SWITCH2.append(switch2)
+                distrib_TX._SWITCH2.append(switch2)
                 # ISREGULATED
                 isregulated = cols[5].strip()
-                splitPH_TX._ISREG.append(isregulated)
+                distrib_TX._ISREG.append(isregulated)
 
-        return (splitPH_TX,
+        return (distrib_TX,
                 Sub_three_phase_unit_Tx,
                 Sub_autoTx,
                 Sub_without_modeling_Tx)
@@ -2222,7 +2222,7 @@ def set_Label_Tx(LibType: str) -> str:
 
     """
     # Library Type Modified
-    LibTypeMod = LibType
+    newTxLibType = LibType
     # NOMVOLT
     nomvolt = {
         ".240": "0.24",
@@ -2231,7 +2231,7 @@ def set_Label_Tx(LibType: str) -> str:
     }
 
     for (k, v) in nomvolt.items():
-        LibTypeMod = LibTypeMod.replace(k, v)
+        newTxLibType = newTxLibType.replace(k, v)
 
     # Connection at any side
     conn = {
@@ -2241,9 +2241,9 @@ def set_Label_Tx(LibType: str) -> str:
     }
 
     for (k, v) in conn.items():
-        LibTypeMod = LibTypeMod.replace(k, v)
+        newTxLibType = newTxLibType.replace(k, v)
 
-    return LibTypeMod
+    return newTxLibType
 
 
 def concat_linecols(linesData: dict) -> list[str]:
@@ -2802,18 +2802,18 @@ if __name__ == "__main__":
     # -----------------------
     _ = cktQgis.add_fuse_layer(cktNeplan._fuses)
     # Turn layers into df
-    fuse_df, _ = layer2df(cktQgis._fuses["fuses"])
+    fuse_df, _ = layer2df(cktQgis._fuses["Fuses"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    fuse_gdf = df2shp(fuse_df, "fuses")
+    fuse_gdf = df2shp(fuse_df, "Fuses")
 
     # ----------------------------
     # Regulator layers *.shp files
     # ----------------------------
     _ = cktQgis.add_regulator_layer(cktNeplan._regulators)
     # Turn layers into df
-    regulator_df, _ = layer2df(cktQgis._regulators["regulators"])
+    regulator_df, _ = layer2df(cktQgis._regulators["Regulators"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    regulator_gdf = df2shp(regulator_df, "regulators")
+    regulator_gdf = df2shp(regulator_df, "Regulators")
 
     # ---------------------
     # PV layers *.shp files
@@ -2829,6 +2829,6 @@ if __name__ == "__main__":
     # ---------------------------
     _ = cktQgis.add_recloser_layer(cktNeplan._reclosers)
     # Turn layers into df
-    recloser_df, _ = layer2df(cktQgis._reclosers["reclosers"])
+    recloser_df, _ = layer2df(cktQgis._reclosers["Reclosers"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    recloser_gdf = df2shp(recloser_df, "reclosers")
+    recloser_gdf = df2shp(recloser_df, "Reclosers")
