@@ -1288,10 +1288,22 @@ class CKT_QGIS():
         that LibraryType in "Trafo2Winding" contain the PRIMCONN and
         SECCONN, so for now we differentiate with this.
 
-        Note: The position of the tap is unknown, therefore it is
+        1. Note: The position of the tap is unknown, therefore it is
               set to 1:
                   _TAPSETTING: 1
 
+        2. Note: In accordance with "Supervisión de la calidad del suministro 
+                 eléctrico en baja y media tensión” (AR-NT-SUCAL) CAPITULO I 
+                 BT =< 1 kV and 1 kV < MT <= 100 kV.
+        
+        3. Note: For transformers with AB, AC, BC phases, the PRIMCONN = OY
+                 and SECCONN = OD.
+        
+        3. Note: For transformers with ABC phases, the PRIMCONN = Y and
+                 SECCONN = 4D. (EXCEL circuit is wrong)
+        
+        5. Note: For transformers with A, B, C phases, the PRIMCONN = LG
+                 and SECCONN = SP.
         """
         splitPH_TX = Distribution_transformers
         for i, row in enumerate(txID):
@@ -1385,6 +1397,11 @@ class CKT_QGIS():
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
                 splitPH_TX._SECVOLT.append(snomvcode)
+                # MV/MV
+                if pnomv > 1 and snomv <= 100:
+                    splitPH_TX._MV_MV.append("YES")
+                else:
+                    splitPH_TX._MV_MV.append("NO")
                 # RATEDKVA
                 ratedkva = float(cols[8].strip())
                 splitPH_TX._RATEDKVA.append(ratedkva)
@@ -1424,18 +1441,19 @@ class CKT_QGIS():
                         ph = ft.strip()
                         phcode = get_PHASEDESIG(ph)
                         splitPH_TX._PHASEDESIG.append(phcode)
-                        if ph == "AB" or ph == "AC" or ph == "BC":
+
+                        if ph in ["AB", "AC", "BC"]:
                             # PRIMCONN
                             primconn = ph
-                            primmconncode = "OY"
+                            primmconncode = "OY"  # Open Wye
                             splitPH_TX._PRIMCONN.append(primmconncode)
                             # SECCONN
-                            secconncode = "OD"    # OpenDelta
+                            secconncode = "OD"    # Open Delta
                             splitPH_TX._SECCONN.append(secconncode)
                         else:
                             # PRIMCONN
                             primconn = ph
-                            primmconncode = "LG"
+                            primmconncode = "LG"   # Line Ground
                             splitPH_TX._PRIMCONN.append(primmconncode)
                             # SECCONN
                             secconncode = "SP"     # Split Phase
@@ -1498,6 +1516,11 @@ class CKT_QGIS():
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
                 splitPH_TX._SECVOLT.append(snomvcode)
+                # MV/MV
+                if pnomv > 1 and snomv <= 100:
+                    splitPH_TX._MV_MV.append("YES")
+                else:
+                    splitPH_TX._MV_MV.append("NO")
                 # RATEDKVA
                 ratedkva = float(cols[8].strip())
                 splitPH_TX._RATEDKVA.append(ratedkva)
