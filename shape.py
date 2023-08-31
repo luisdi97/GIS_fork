@@ -163,11 +163,7 @@ class Line():
                                 with No LV cable beneath ("N")
                                 whose guard conductor's size is 1/0 but the is
                                 not information about its material.
-<<<<<<< HEAD
                 In case of underground MV kind of line, only the SIRDEcodeID
-=======
-                In case of underground kind of line, only the SIRDEcodeID
->>>>>>> 3de5c21 (set_Label())
                 will be taken in this attribute.
             TYPE:
                 For Over Head LV
@@ -1390,7 +1386,7 @@ class CKT_QGIS():
         that LibraryType in "Trafo2Winding" contain the PRIMCONN and
         SECCONN, so for now we differentiate with this.
 
-        Note: The position of the tap is unknown, therefore it is
+        1. Note: Tap position is unknown, therefore it is
               set to 1 however is passed as float type:
                   _TAPSETTING: 1.0
 
@@ -1399,13 +1395,13 @@ class CKT_QGIS():
                  BT =< 1 kV and 1 kV < MT <= 100 kV.
         
         3. Note: For transformers with AB, AC, BC phases, the PRIMCONN = OY
-                 and SECCONN = OD. (EXCEL circuit has not references)
+                 and SECCONN = OD.
         
         3. Note: For transformers with ABC phases, the PRIMCONN = Y and
-                 SECCONN = 4D. (EXCEL circuit is wrong)
+                 SECCONN = 4D.
         
         5. Note: For transformers with A, B, C phases, the PRIMCONN = LG
-                 and SECCONN = SP. (EXCEL circuit has not references)
+                 and SECCONN = SP.
         """
         distrib_TX = Distribution_transformers
         for i, row in enumerate(txID):
@@ -1654,13 +1650,11 @@ class CKT_QGIS():
                              MVload: Load) -> tuple[Load]:
         """Unpack LV and MV loads attributes.
 
-        The code for differenciate loads of MT underground and MT overhead
-        does not work because there are not these loads in Circuito_4.xlsx
-        and we can not make the code.
+        In spite of is possible to retrieve MV loads this
+        no data about such kind of loads currently.
 
-        1. Note: For the moment the attribute "AMI" is NO for all loads
-                 because there are not information in Circuito_4.xlsx
-                 for differenciate this.
+        1. Note: For now attribute "AMI" is "NO" for all loads
+                 since there is no information yet.
 
         """
         for row in loadID:
@@ -2145,7 +2139,7 @@ def get_SERVICE(code: int) -> int:
 
     Connection type designation of Loads and Public
     Lighting.
-    It Corresponds to the type of connection presented
+    It corresponds to the type of connection presented
     by the load. It must have a type of connection
     consistent with the type of cable of the phase
     to which the load is connected.
