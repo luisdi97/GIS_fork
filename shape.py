@@ -204,7 +204,7 @@ class Line():
         """
         # "*" symbol stands for mandator attribute
         self._ICEobjID = []   # New (*)
-        self._LibName = []   # New (*)
+        self._LibName = []    # New (*)
         self._NEUTMAT = []       # *
         self._NEUTSIZ = []       # *
         self._PHASEMAT = []      # *
@@ -420,7 +420,8 @@ class Subestation_without_modeling_Tx(Transformer):
 class Load():
     """Missing documentation.
 
-    Here goes the missing description of this class.
+    The bool type attribute _ODDLOAD is True only
+    for those loads right over a transformer.
 
     """
     def __init__(self):
@@ -439,6 +440,7 @@ class Load():
         self._ID = []
         self._X1 = []
         self._Y1 = []
+        self._ODDLOAD = False
 
 
 class LV_load(Load):
@@ -655,7 +657,90 @@ class CKT_QGIS():
         return (underG_LVline, underG_MVline,
                 overH_LVline, overH_MVline, service_LVline)
 
-    def add_buslayers(self, busesData: dict[list]) -> tuple[Bus]:
+    def add_AuxServLine(self,
+                        service_LV: serv_LVline) -> serv_LVline:
+        """Creat auxiliary lines.
+
+        It connects new fiction service overhead LV
+        line from a transformer to the "odd" load
+        right over it with these typical
+        mandatory features:
+        typic_ft = {
+            "_ICEobjID": [],
+            "_LibName": [
+                "LC::BT_1/0 AAAC_AAAC_2_3_aux",
+                "LC::BT_2 ACSR_ACSR_2_4_aux"
+                ],
+            "_NEUTMAT": ["AAAC", "ACSR"],
+            "_NEUTSIZ": ["2", "2"],
+            "_PHASEMAT": ["AAAC", "ACSR"],
+            "_PHASESIZ": ["1/0", "2"],
+            "_NOMVOLT": [, ],
+            "_TYPE": ["TPX", "QPX"],
+            "_X1": [],
+            "_Y1": [],
+            "_X2": [],
+            "_Y2": [],
+            "_LENGTH: []"
+        }
+        Blank lists will be taken with regard to
+        transformer and odd-load objects.
+
+        Note: While unit of _LENGTH is km unit of X1, Y1
+        X2 and Y2 is meter and it must be i bit bigger than
+        the tolerance in DN-Corrector plug-in.
+
+        """
+        loadsdata = self._LVloads["LV_load"]
+        txsdata = self._transformers["Distribution_transformers"]
+        # Retrieve oddloads ID
+        oddloadsID = [oddL.strip("_T") for oddL
+                    in loadsdata["ICEobjID"] if "_T" in oddL]
+        # Typical features
+        for oddLID in oddloadsID:
+            i = txsdata["ICEobjID"].index(oddLID)
+            j = loadsdata["ICEobjID"].index(f"{oddLID}_T")
+            x1 = txsdata["X1"][i]
+            y1 = txsdata["Y1"][i]
+            # Drag odd load 10cm and update attr
+            x2 = loadsdata["X1"][j] + 10e-2
+            y2 = loadsdata["Y1"][j] + 10e-2
+            # Update attr in LVloads layer
+            self._LVloads["LV_load"]["X1"][j] = x2
+            self._LVloads["LV_load"]["Y1"][j] = y2
+            # _LENGTH to km
+            aux_len = np.sqrt((x2-x1)**2 + (y2-y1)**2) * 1e-3
+            # _NOMVOLT
+            nom_volt = loadsdata["NOMVOLT"][j]
+            # Add feature
+            service_LV._ICEobjID.append(oddLID)
+            service_LV._X1.append(x1)
+            service_LV._Y1.append(y1)
+            service_LV._X2.append(x2)
+            service_LV._Y2.append(y2)
+            service_LV._LENGTH.append(aux_len)
+            service_LV._NOMVOLT.append(nom_volt)
+            # QPX type
+            if loadsdata["SERVICE"][i] in {123, "ABC", "RST"}:
+                service_LV._LibName.append("LC::BT_2 ACSR_ACSR_2_4_aux")
+                service_LV._NEUTMAT.append("ACSR")
+                service_LV._NEUTSIZ.append("2")
+                service_LV._PHASEMAT.append("ACSR")
+                service_LV._PHASESIZ.append("2")
+                service_LV._TYPE.append("QPX")
+            # TPX type
+            else:
+                service_LV._LibName.append("LC::BT_1/0 AAAC_AAAC_2_3_aux")
+                service_LV._NEUTMAT.append("AAAC")
+                service_LV._NEUTSIZ.append("2")
+                service_LV._PHASEMAT.append("AAAC")
+                service_LV._PHASESIZ.append("1/0")
+                service_LV._TYPE.append("TPX")
+
+        return service_LV
+
+    def add_buslayers(self,
+                      busesData: dict[list]) -> tuple[Bus]:
         """Create bus layers.
 
         It gets buses data, create the objects and sets its
@@ -869,7 +954,8 @@ class CKT_QGIS():
 
         return regulator
 
-    def add_PublicLights_layer(self, publicLightsData: dict) -> PublicLights:
+    def add_PublicLights_layer(self,
+                               publicLightsData: dict) -> PublicLights:
         """Missing documentation.
 
         Missing description of this method.
@@ -1135,6 +1221,13 @@ class CKT_QGIS():
         service_LVline = overH_LVline.split_overHLVlines(
             service_LV=service_LVline)
 
+        # Add Aux. LV service lines
+        if not self.loadTx_matcher():
+            print("No able to creat aux. service lines")
+        else:
+            service_LVline = self.add_AuxServLine(
+                service_LV=service_LVline)
+
         return (underG_LVline, underG_MVline, service_LVline,
                 overH_LVline, overH_MVline)
 
@@ -1230,7 +1323,7 @@ class CKT_QGIS():
                           Sub_autoTx: Transformer,
                           Sub_without_modeling_Tx: Transformer,
                           txID: list[str],
-                          n_asymTxs: int) -> Transformer:
+                          n_asymTxs: int) -> tuple[Transformer]:
         """Unpack transformer attributes.
 
         For transformers without subestation `Trafo2WindingAsym` and
@@ -1488,7 +1581,7 @@ class CKT_QGIS():
     def set_attributes_loads(self,
                              loadID: list[str],
                              LVload: Load,
-                             MVload: Load):
+                             MVload: Load) -> tuple[Load]:
         """Unpack LV and MV loads attributes.
 
         Missing description of this method.
@@ -1539,6 +1632,7 @@ class CKT_QGIS():
                 loadType = get_CLASS(cols[12])
                 LVload._CLASS.append(loadType)
 
+            # Odd loads
             elif "_T" in load:
                 # KWHMONTH
                 kwhmonth = float(cols[5].strip())
@@ -1576,6 +1670,8 @@ class CKT_QGIS():
                 # CLASS
                 loadType = get_CLASS(cols[12])
                 LVload._CLASS.append(loadType)
+                # Update _ODDLOAD attr
+                LVload._ODDLOAD = True
 
             elif "MT" in load:
                 # Missing Data
@@ -1585,7 +1681,7 @@ class CKT_QGIS():
 
     def set_attributes_fuse(self,
                             fuse: Fuse,
-                            fuseID: list[str]):
+                            fuseID: list[str]) -> Fuse:
         """Unpack fuses attributes.
 
         One layer of fuses only.
@@ -1618,7 +1714,7 @@ class CKT_QGIS():
     def set_attributes_PV(self,
                           pv: PV,
                           pvID: list[str],
-                          busesData: dict[list]):
+                          busesData: dict[list]) -> PV:
         """Unpack attributes of Photovoltaic technologies.
 
         In order to make hosting capacity in low voltage networks.
@@ -1654,7 +1750,7 @@ class CKT_QGIS():
 
     def set_attributes_recloser(self,
                                 recloser: Recloser,
-                                recloserID: list[str]):
+                                recloserID: list[str]) -> Recloser:
         """"Reclosers (also considered breakers).
 
         One layer for reclosers only.
@@ -1685,7 +1781,7 @@ class CKT_QGIS():
 
     def set_attributes_regulator(self,
                                  regulatorID: list[str],
-                                 regulator: Regulator):
+                                 regulator: Regulator) -> Regulator:
         """Unpack data of regulars and set its attributes.
 
         To assign the unknown attributes given the lack of information
@@ -1784,9 +1880,12 @@ class CKT_QGIS():
         those odd loads right over them taking advantage
         that such loads _ICEobjectID are labeled
         with "_T" at tail.
-        It returns True if all load are
-        perfectly align and False otherwise;
-        by following the below criterion:
+        It returns `True` if all load are
+        perfectly align and `False` otherwise; however,
+        in case either transformer or loads layers
+        do not exist also returns `False`.
+
+        by following below criterion:
 
         matcher = {
             "OD": {123, 12, 23, 13},
@@ -1797,14 +1896,21 @@ class CKT_QGIS():
         Where the key is the _SECCONN and
         the integers set the _SERVICE code.
 
+        Note: This method should be called before
+        creat auxiliary lines.
+
         """
-        loadsdata = self._LVloads["LV_load"]
-        txsdata = self._transformers["Distribution_transformers"]
         matcher = {
             "OD": {123, 12, 23, 13},
             "SP": {1, 2, 3, 12, 23, 13},
             "4D": {123}
         }
+        try:
+            loadsdata = self._LVloads["LV_load"]
+            txsdata = self._transformers["Distribution_transformers"]
+        except KeyError as e:
+            print(f"No layer called {e}")
+            return False
 
         # Odd loads name
         loadsfree = []
@@ -1823,7 +1929,14 @@ class CKT_QGIS():
                     for m, f in loadsdata.items():
                         if m == "SERVICE":
                             srvc = f[j]
-                            if srvc not in matcher[conn]:
+                            try:
+                                if srvc not in matcher[conn]:
+                                    raise Exception("ConnError")
+                            except Exception as e:
+                                print(
+                                    (f"{e}:"),
+                                    ("Connection does not match"),
+                                    (f"in object {v}"))
                                 return False
         return True
 
@@ -2725,25 +2838,6 @@ if __name__ == "__main__":
     UG_LVbuses_gdf = df2shp(UG_LVbuses_df, "underG_LVbuses")
     UG_MVbuses_gdf = df2shp(UG_MVbuses_df, "underG_MVbuses")
 
-    # -----------------------
-    # Line layers *.shp files
-    # -----------------------
-    _ = cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
-    # Turn layers into df
-    OH_LVlines_df, _ = layer2df(cktQgis._lines["overH_LVlines"])
-    OH_MVlines_df, _ = layer2df(cktQgis._lines["overH_MVlines"])
-    UG_LVlines_df, _ = layer2df(cktQgis._lines["underG_LVlines"])
-    UG_MVlines_df, _ = layer2df(cktQgis._lines["underG_MVlines"])
-    service_LVlines_df, _ = layer2df(cktQgis._lines["service_LVlines"])
-    # Finally write shapefiles within "./GIS/shapename.shp"
-    OH_LVline_gdf = df2shp(OH_LVlines_df, "overH_LVlines")
-    OH_MVline_gdf = df2shp(OH_MVlines_df, "overH_MVlines")
-    UG_LVline_gdf = df2shp(UG_LVlines_df, "underG_LVlines")
-    UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
-    service_LVlines_gdf = df2shp(
-        service_LVlines_df,
-        "service_LVlines")
-
     # ------------------------------
     # Transformer layers *.shp files
     # ------------------------------
@@ -2796,6 +2890,25 @@ if __name__ == "__main__":
     # Finally write shapefiles within "./GIS/shapename.shp"
     LV_load_gdf = df2shp(LV_load_df, "LV_load")
     # MV_load_gdf = df2shp(MV_load_df, "MV_load")
+
+    # -----------------------
+    # Line layers *.shp files
+    # -----------------------
+    _ = cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
+    # Turn layers into df
+    OH_LVlines_df, _ = layer2df(cktQgis._lines["overH_LVlines"])
+    OH_MVlines_df, _ = layer2df(cktQgis._lines["overH_MVlines"])
+    UG_LVlines_df, _ = layer2df(cktQgis._lines["underG_LVlines"])
+    UG_MVlines_df, _ = layer2df(cktQgis._lines["underG_MVlines"])
+    service_LVlines_df, _ = layer2df(cktQgis._lines["service_LVlines"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    OH_LVline_gdf = df2shp(OH_LVlines_df, "overH_LVlines")
+    OH_MVline_gdf = df2shp(OH_MVlines_df, "overH_MVlines")
+    UG_LVline_gdf = df2shp(UG_LVlines_df, "underG_LVlines")
+    UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
+    service_LVlines_gdf = df2shp(
+        service_LVlines_df,
+        "service_LVlines")
 
     # -----------------------
     # Fuse layers *.shp files
