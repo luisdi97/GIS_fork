@@ -702,12 +702,8 @@ class CKT_QGIS():
             j = loadsdata["ICEobjID"].index(f"{oddLID}_T")
             x1 = txsdata["X1"][i]
             y1 = txsdata["Y1"][i]
-            # Drag odd load 10cm and update attr
-            x2 = loadsdata["X1"][j] + 10e-2
-            y2 = loadsdata["Y1"][j] + 10e-2
-            # Update attr in LVloads layer
-            self._LVloads["LV_load"]["X1"][j] = x2
-            self._LVloads["LV_load"]["Y1"][j] = y2
+            x2 = loadsdata["X1"][j]
+            y2 = loadsdata["Y1"][j]
             # _LENGTH to km
             aux_len = np.sqrt((x2-x1)**2 + (y2-y1)**2) * 1e-3
             # _NOMVOLT
@@ -1662,10 +1658,14 @@ class CKT_QGIS():
                 objectID = cols[1].strip().strip("L")
                 LVload._ICEobjID.append(objectID)
                 # X1
+                # Drag odd load 10cm and update attr
                 X1 = float(cols[10].strip())
+                X1 += 10e-2
                 LVload._X1.append(X1)
                 # Y1
                 Y1 = float(cols[11].strip())
+                # Drag odd load 10cm and update attr
+                Y1 += 10e-2
                 LVload._Y1.append(Y1)
                 # CLASS
                 loadType = get_CLASS(cols[12])
