@@ -1297,13 +1297,13 @@ class CKT_QGIS():
                  BT =< 1 kV and 1 kV < MT <= 100 kV.
         
         3. Note: For transformers with AB, AC, BC phases, the PRIMCONN = OY
-                 and SECCONN = OD.
+                 and SECCONN = OD. (EXCEL circuit has not references)
         
         3. Note: For transformers with ABC phases, the PRIMCONN = Y and
                  SECCONN = 4D. (EXCEL circuit is wrong)
         
         5. Note: For transformers with A, B, C phases, the PRIMCONN = LG
-                 and SECCONN = SP.
+                 and SECCONN = SP. (EXCEL circuit has not references)
         """
         splitPH_TX = Distribution_transformers
         for i, row in enumerate(txID):
@@ -1564,8 +1564,12 @@ class CKT_QGIS():
         """Unpack LV and MV loads attributes.
 
         The code for differenciate loads of MT underground and MT overhead
-        does not work because there are not these loads in Circuito_2.xlsx
+        does not work because there are not these loads in Circuito_4.xlsx
         and we can not make the code.
+
+        1. Note: For the moment the attribute "AMI" is NO for all loads
+                 because there are not information in Circuito_4.xlsx
+                 for differenciate this.
 
         """
         for row in loadID:
@@ -1612,6 +1616,8 @@ class CKT_QGIS():
                 # CLASS
                 loadType = get_CLASS(cols[12])
                 LVload._CLASS.append(loadType)
+                # AMI
+                LVload._AMI.append("NO")
 
             elif "_T" in load:
                 # KWHMONTH
@@ -1650,6 +1656,8 @@ class CKT_QGIS():
                 # CLASS
                 loadType = get_CLASS(cols[12])
                 LVload._CLASS.append(loadType)
+                # AMI
+                LVload._AMI.append("NO")
 
             elif "MT" in load:
                 # Missing Data
