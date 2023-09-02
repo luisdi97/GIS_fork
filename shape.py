@@ -717,7 +717,7 @@ class CKT_QGIS():
             service_LV._LENGTH.append(aux_len)
             service_LV._NOMVOLT.append(nom_volt)
             # QPX type
-            if loadsdata["SERVICE"][i] in {123, "ABC", "RST"}:
+            if (loadsdata["SERVICE"][j] in {123, "ABC", "RST"}):
                 service_LV._LibName.append("LC::BT_2 ACSR_ACSR_2_4_aux")
                 service_LV._NEUTMAT.append("ACSR")
                 service_LV._NEUTSIZ.append("2")
