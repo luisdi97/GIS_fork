@@ -163,7 +163,7 @@ class Line():
                                 with No LV cable beneath ("N")
                                 whose guard conductor's size is 1/0 but the is
                                 not information about its material.
-                In case of underground kind of line, only the SIRDEcodeID
+                In case of underground MV kind of line, only the SIRDEcodeID
                 will be taken in this attribute.
             TYPE:
                 For Over Head LV
@@ -420,8 +420,16 @@ class Subestation_without_modeling_Tx(Transformer):
 class Load():
     """Missing documentation.
 
-    The bool type attribute _ODDLOAD is True only
-    for those loads right over a transformer.
+    The bool type attribute _ODDLOAD is `True` only
+    for those loads right over a transformer; at
+    the same time, such loads will be drag 10cm
+    in X1 then 10cm in Y1 away from the transformer.
+    Hence generate auxiliary lines
+    between them is recommended.
+
+    Note: See method
+          :classmethod:`CKT_QGIS.add_AuxServLine`
+          for more details.
 
     """
     def __init__(self):
@@ -1041,7 +1049,7 @@ class CKT_QGIS():
                         elif n == 2:
                             attr = ft.strip()
                             underG_LVline._PHASEMAT.append(attr)
-                        # [_INSULMAT, _NEUTSIZ, _LINEGEO, _INSULEV]
+                        # [_INSULMAT, _NEUTSIZ]
                         elif n == 3:
                             attrs = ft.split("_")
                             underG_LVline._INSULMAT.append(attrs[0])
@@ -1087,19 +1095,18 @@ class CKT_QGIS():
                         elif n == 2:
                             attr = ft.strip()
                             underG_MVline._PHASEMAT.append(attr)
-                        # [_INSULMAT, _NEUTPER, _LINEGEO, _INSULEV]
+                        # [_INSULMAT, _NEUTPER, _LINEGEO, _INSULVOLT]
                         elif n == 3:
                             attrs = ft.split("_")
                             underG_MVline._INSULMAT.append(attrs[0])
                             underG_MVline._NEUTPER.append(attrs[1])
+                            underG_MVline._LINEGEO.append(attrs[2])
                     # _LibName: LineCode (LC)
                     underG_MVline._LibName.append(f"LC::{lineName}")
                     # _NEUTMAT: *Typical Value*
                     underG_MVline._NEUTMAT.append("CU")
                     # _NEUTSIZ: *Typical Value*
                     underG_MVline._NEUTSIZ.append("1/0")
-                    # _LINEGEO
-                    underG_MVline._LINEGEO.append("None")
                     # _SHIELDING: *Typical Value*
                     underG_MVline._SHIELDING.append("CN")
                     # _NOMVOLT
@@ -1658,14 +1665,13 @@ class CKT_QGIS():
                 objectID = cols[1].strip().strip("L")
                 LVload._ICEobjID.append(objectID)
                 # X1
-                # Drag odd load 10cm and update attr
                 X1 = float(cols[10].strip())
-                X1 += 10e-2
-                LVload._X1.append(X1)
                 # Y1
                 Y1 = float(cols[11].strip())
-                # Drag odd load 10cm and update attr
+                # Drag odd loads 10cm and update attr
+                X1 += 10e-2
                 Y1 += 10e-2
+                LVload._X1.append(X1)
                 LVload._Y1.append(Y1)
                 # CLASS
                 loadType = get_CLASS(cols[12])
