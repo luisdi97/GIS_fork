@@ -457,9 +457,15 @@ class Load():
     Hence generate auxiliary lines
     between them is recommended.
 
+<<<<<<< HEAD
     Note: See method
           :classmethod:`CKT_QGIS.add_AuxServLine`
           for more details.
+=======
+    2. Note: See method
+             :classmethod:`CKT_QGIS.add_AuxServLine`
+             for more details.
+>>>>>>> 4a3ab51 (rebaseeee main: LINEGEO for UG_MVlines)
 
     """
     def __init__(self):
