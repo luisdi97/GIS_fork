@@ -352,29 +352,28 @@ class Transformer():
 
     Kind of tranformers:
 
-    - Transformadores: "Distribution_transformers"
+    - Transformadores:
+        "Distribution_transformers"
 
-    - Subestación unidad trifásica: "Subestation_three_phase_transformer"
+    - Subestación unidad trifásica:
+        "Subestation_three_phase_transformer"
 
-    - Subestación autotransformador: "Subestation_autotransformer"
+    - Subestación autotransformador:
+        "Subestation_autotransformer"
 
-    - Subestación sin modelar: "Subestation_without_modeling_transformer"
+    - Subestación sin modelar:
+        "Subestation_without_modeling_transformer"
 
     New values:
         SECCONN:
             - OD: Open Delta
-    
-    1. Note: In case of three phase (ABC) transformer with "SP"
-             replace by connection "4D".
-    
-    2. Note: In case of (AB, BC, AC) phases in Asymetrical transformers
-             their PRIMCONN == "OY" and SECCONN == "OD".
-    
-    3. Note: In case of (A, B, C) phases in Asymetrical 
-             transformers their PRIMCONN == "LG" and SECCONN == "SP".
-    
-    4. Note: There are transformers that do not have  element in the 
-             secondary.
+            - 4D: Delta four wires
+
+    1. Note: In case of (AB, BC, AC)
+             then PRIMCONN = "OY" and SECCONN = "OD".
+
+    2. Note: In case of (A, B, C)
+             then PRIMCONN = "LG" and SECCONN = "SP".
 
     """
     def __init__(self) -> None:
@@ -504,9 +503,7 @@ class Fuse():
 
     Kind of fuses:
 
-    - Fusibles: "Fuses"
-
-    1. Note: There are not notes.
+    - Fusibles: "Fuses".
 
     """
     def __init__(self):
@@ -545,9 +542,7 @@ class Recloser():
 
     Kind of reclosers:
 
-    - Reconectadores: "Reclosers"
-
-    1. Note: There are not notes.
+    - Reconectadores: "Reclosers".
 
     """
     def __init__(self):
@@ -572,9 +567,7 @@ class Regulator():
 
     Kind of regulators:
 
-    - Reguladores: "Regulators"
-
-    1. Note: There are not notes.
+    - Reguladores: "Regulators".
 
     """
     def __init__(self):
@@ -593,18 +586,16 @@ class Regulator():
 
 
 class PublicLights():
-    """Public lights object:
+    """Public lights object.
 
     Kind of public lights:
 
-    - Alumbrado Público: "Public_Lights"
+    - Alumbrado Público: "Public_Lights".
 
-    1. Note: There are not notes.
-    
     """
     def __init__(self):
         self._PublicLights_layer = "Public_Lights"
-        self._ICEobjectID = []
+        self._ICEobjID = []
         self._SERVICE = []
         self._KW = []
         self._NOMVOLT = []
@@ -760,7 +751,7 @@ class CKT_QGIS():
         txsdata = self._transformers["Distribution_transformers"]
         # Retrieve oddloads ID
         oddloadsID = [oddL.strip("_T") for oddL
-                    in loadsdata["ICEobjID"] if "_T" in oddL]
+                      in loadsdata["ICEobjID"] if "_T" in oddL]
         # Typical features
         for oddLID in oddloadsID:
             i = txsdata["ICEobjID"].index(oddLID)
@@ -1386,28 +1377,27 @@ class CKT_QGIS():
                           n_asymTxs: int) -> tuple[Transformer]:
         """Unpack transformer attributes.
 
-        For transformers without subestation `Trafo2WindingAsym` and
-        `Trafo2Winding` we need to differentiate these transformers when
-        the computer reads the txID (rows in the sheet) and we watch
-        that LibraryType in "Trafo2Winding" contain the PRIMCONN and
-        SECCONN, so for now we differentiate with this.
+        In case of single phase with neutral will be
+        considered as split-phase (A, B, C) in case of
+        single phase with no neutral (AB, BC, AC) it is
+        taken as special connection (OY, OD) in case of
+        three phase transformer (ABC) it will depend on
+        its LibraryType to asign its connection.
 
+<<<<<<< HEAD
         1. Note: Tap position is unknown, therefore it is
               set to 1 however is passed as float type:
+=======
+        1. Note: The position of the tap is unknown, therefore it is
+                 set to 1 however is passed as float type:
+>>>>>>> 87e3a89 (Fixied error)
                   _TAPSETTING: 1.0
 
-        2. Note: In accordance with "Supervisión de la calidad del suministro 
-                 eléctrico en baja y media tensión” (AR-NT-SUCAL) CAPITULO I 
+        2. Note: In accordance with "Supervisión de la calidad
+                 del suministro eléctrico en baja y
+                 media tensión” (AR-NT-SUCAL) CAPITULO I
                  BT =< 1 kV and 1 kV < MT <= 100 kV.
-        
-        3. Note: For transformers with AB, AC, BC phases, the PRIMCONN = OY
-                 and SECCONN = OD.
-        
-        3. Note: For transformers with ABC phases, the PRIMCONN = Y and
-                 SECCONN = 4D.
-        
-        5. Note: For transformers with A, B, C phases, the PRIMCONN = LG
-                 and SECCONN = SP.
+
         """
         distrib_TX = Distribution_transformers
         for i, row in enumerate(txID):
@@ -1501,9 +1491,8 @@ class CKT_QGIS():
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
                 distrib_TX._SECVOLT.append(snomvcode)
-                distrib_TX._SECVOLT.append(snomvcode)
                 # MV/MV
-                if pnomv > 1 and snomv <= 100:
+                if (1 < pnomv < 100) and (1 < snomv <= 100):
                     distrib_TX._MV_MV.append("YES")
                 else:
                     distrib_TX._MV_MV.append("NO")
@@ -1620,6 +1609,11 @@ class CKT_QGIS():
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
                 distrib_TX._SECVOLT.append(snomvcode)
+                # MV/MV
+                if (1 < pnomv < 100) and (1 < snomv <= 100):
+                    distrib_TX._MV_MV.append("YES")
+                else:
+                    distrib_TX._MV_MV.append("NO")
                 # RATEDKVA
                 ratedkva = float(cols[8].strip())
                 distrib_TX._RATEDKVA.append(ratedkva)
@@ -1662,11 +1656,13 @@ class CKT_QGIS():
                              MVload: Load) -> tuple[Load]:
         """Unpack LV and MV loads attributes.
 
-        In spite of is possible to retrieve MV loads this
-        no data about such kind of loads currently.
+        In spite of is possible to retrieve MV loads
+        there is no data about such kind of loads currently.
 
-        1. Note: For now attribute "AMI" is "NO" for all loads
+        1. Note: Attribute "AMI" is "NO" for all loads
                  since there is no information yet.
+                 In case was "YES" a _ID attribute must
+                 he provided so do its curveshape.
 
         """
         for row in loadID:
@@ -1939,7 +1935,7 @@ class CKT_QGIS():
 
             # ICEobjectID
             objectID = cols[1]
-            public_lights._ICEobjectID.append(objectID)
+            public_lights._ICEobjID.append(objectID)
             # SERVICE
             phase = int(cols[2])
             srvc = get_SERVICE(phase)
@@ -1967,7 +1963,7 @@ class CKT_QGIS():
         attribute of transformers possess
         matching features with _SERVICE code of
         those odd loads right over them taking advantage
-        that such loads _ICEobjectID are labeled
+        that such loads _ICEobjID are labeled
         with "_T" at tail.
         It returns `True` if all load are
         perfectly align and `False` otherwise; however,
@@ -3034,3 +3030,15 @@ if __name__ == "__main__":
     recloser_df, _ = layer2df(cktQgis._reclosers["Reclosers"])
     # Finally write shapefiles within "./GIS/shapename.shp"
     recloser_gdf = df2shp(recloser_df, "Reclosers")
+<<<<<<< HEAD
+=======
+
+    # --------------------------------
+    # Public Lights layers *.shp files
+    # --------------------------------
+    _ = cktQgis.add_PublicLights_layer(cktNeplan._publicLights)
+    # Turn layers into df
+    public_Lights_df, _ = layer2df(cktQgis._publicLights["Public_Lights"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    public_Lights_gdf = df2shp(public_Lights_df, "Public_Lights")
+>>>>>>> 87e3a89 (Fixied error)
