@@ -3021,9 +3021,9 @@ if __name__ == "__main__":
     # Finally write shapefiles within "./GIS/shapename.shp"
     recloser_gdf = df2shp(recloser_df, "Reclosers")
 
-    #---------------------------------
+    # ---------------------------------
     # Public Lights layers *.shp files
-    #---------------------------------
+    # ---------------------------------
     _ = cktQgis.add_PublicLights_layer(cktNeplan._publicLights)
     # Turn layers into df
     public_Lights_df, _ = layer2df(cktQgis._publicLights["Public_Lights"])
