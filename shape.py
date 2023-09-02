@@ -163,7 +163,7 @@ class Line():
                                 with No LV cable beneath ("N")
                                 whose guard conductor's size is 1/0 but the is
                                 not information about its material.
-                In case of underground kind of line, only the SIRDEcodeID
+                In case of underground MV kind of line, only the SIRDEcodeID
                 will be taken in this attribute.
             TYPE:
                 For Over Head LV
@@ -204,7 +204,7 @@ class Line():
         """
         # "*" symbol stands for mandator attribute
         self._ICEobjID = []   # New (*)
-        self._LibName = []   # New (*)
+        self._LibName = []    # New (*)
         self._NEUTMAT = []       # *
         self._NEUTSIZ = []       # *
         self._PHASEMAT = []      # *
@@ -352,29 +352,28 @@ class Transformer():
 
     Kind of tranformers:
 
-    - Transformadores: "Distribution_transformers"
+    - Transformadores:
+        "Distribution_transformers"
 
-    - Subestación unidad trifásica: "Subestation_three_phase_transformer"
+    - Subestación unidad trifásica:
+        "Subestation_three_phase_transformer"
 
-    - Subestación autotransformador: "Subestation_autotransformer"
+    - Subestación autotransformador:
+        "Subestation_autotransformer"
 
-    - Subestación sin modelar: "Subestation_without_modeling_transformer"
+    - Subestación sin modelar:
+        "Subestation_without_modeling_transformer"
 
     New values:
         SECCONN:
             - OD: Open Delta
-    
-    1. Note: In case of three phase (ABC) transformer with "SP"
-             replace by connection "4D".
-    
-    2. Note: In case of (AB, BC, AC) phases in Asymetrical transformers
-             their PRIMCONN == "OY" and SECCONN == "OD".
-    
-    3. Note: In case of (A, B, C) phases in Asymetrical 
-             transformers their PRIMCONN == "LG" and SECCONN == "SP".
-    
-    4. Note: There are transformers that do not have  element in the 
-             secondary.
+            - 4D: Delta four wires
+
+    1. Note: In case of (AB, BC, AC)
+             then PRIMCONN = "OY" and SECCONN = "OD".
+
+    2. Note: In case of (A, B, C)
+             then PRIMCONN = "LG" and SECCONN = "SP".
 
     """
     def __init__(self) -> None:
@@ -450,9 +449,16 @@ class Load():
 
     - Cargas de baja tensión: "LV_load"
 
-    1. Note: There are loads that are not connected to the secondary
-             of the modeled transformer and are assigned with
-             ICEobjID in its Node.
+    The bool type attribute _ODDLOAD is `True` only
+    for those loads right over a transformer; at
+    the same time, such loads will be drag 10cm
+    in X1 then 10cm in Y1 away from the transformer.
+    Hence generate auxiliary lines
+    between them is recommended.
+
+    Note: See method
+          :classmethod:`CKT_QGIS.add_AuxServLine`
+          for more details.
 
     """
     def __init__(self):
@@ -471,6 +477,7 @@ class Load():
         self._ID = []
         self._X1 = []
         self._Y1 = []
+        self._ODDLOAD = False
 
 
 class LV_load(Load):
@@ -490,9 +497,7 @@ class Fuse():
 
     Kind of fuses:
 
-    - Fusibles: "Fuses"
-
-    1. Note: There are not notes.
+    - Fusibles: "Fuses".
 
     """
     def __init__(self):
@@ -531,9 +536,7 @@ class Recloser():
 
     Kind of reclosers:
 
-    - Reconectadores: "Reclosers"
-
-    1. Note: There are not notes.
+    - Reconectadores: "Reclosers".
 
     """
     def __init__(self):
@@ -558,9 +561,7 @@ class Regulator():
 
     Kind of regulators:
 
-    - Reguladores: "Regulators"
-
-    1. Note: There are not notes.
+    - Reguladores: "Regulators".
 
     """
     def __init__(self):
@@ -579,18 +580,16 @@ class Regulator():
 
 
 class PublicLights():
-    """Public lights object:
+    """Public lights object.
 
     Kind of public lights:
 
-    - Alumbrado Público: "Public_Lights"
+    - Alumbrado Público: "Public_Lights".
 
-    1. Note: There are not notes.
-    
     """
     def __init__(self):
         self._PublicLights_layer = "Public_Lights"
-        self._ICEobjectID = []
+        self._ICEobjID = []
         self._SERVICE = []
         self._KW = []
         self._NOMVOLT = []
@@ -708,7 +707,86 @@ class CKT_QGIS():
         return (underG_LVline, underG_MVline,
                 overH_LVline, overH_MVline, service_LVline)
 
-    def add_buslayers(self, busesData: dict[list]) -> tuple[Bus]:
+    def add_AuxServLine(self,
+                        service_LV: serv_LVline) -> serv_LVline:
+        """Creat auxiliary lines.
+
+        It connects new fiction service overhead LV
+        line from a transformer to the "odd" load
+        right over it with these typical
+        mandatory features:
+        typic_ft = {
+            "_ICEobjID": [],
+            "_LibName": [
+                "LC::BT_1/0 AAAC_AAAC_2_3_aux",
+                "LC::BT_2 ACSR_ACSR_2_4_aux"
+                ],
+            "_NEUTMAT": ["AAAC", "ACSR"],
+            "_NEUTSIZ": ["2", "2"],
+            "_PHASEMAT": ["AAAC", "ACSR"],
+            "_PHASESIZ": ["1/0", "2"],
+            "_NOMVOLT": [, ],
+            "_TYPE": ["TPX", "QPX"],
+            "_X1": [],
+            "_Y1": [],
+            "_X2": [],
+            "_Y2": [],
+            "_LENGTH: []"
+        }
+        Blank lists will be taken with regard to
+        transformer and odd-load objects.
+
+        Note: While unit of _LENGTH is km unit of X1, Y1
+        X2 and Y2 is meter and it must be i bit bigger than
+        the tolerance in DN-Corrector plug-in.
+
+        """
+        loadsdata = self._LVloads["LV_load"]
+        txsdata = self._transformers["Distribution_transformers"]
+        # Retrieve oddloads ID
+        oddloadsID = [oddL.strip("_T") for oddL
+                      in loadsdata["ICEobjID"] if "_T" in oddL]
+        # Typical features
+        for oddLID in oddloadsID:
+            i = txsdata["ICEobjID"].index(oddLID)
+            j = loadsdata["ICEobjID"].index(f"{oddLID}_T")
+            x1 = txsdata["X1"][i]
+            y1 = txsdata["Y1"][i]
+            x2 = loadsdata["X1"][j]
+            y2 = loadsdata["Y1"][j]
+            # _LENGTH to km
+            aux_len = np.sqrt((x2-x1)**2 + (y2-y1)**2) * 1e-3
+            # _NOMVOLT
+            nom_volt = loadsdata["NOMVOLT"][j]
+            # Add feature
+            service_LV._ICEobjID.append(oddLID)
+            service_LV._X1.append(x1)
+            service_LV._Y1.append(y1)
+            service_LV._X2.append(x2)
+            service_LV._Y2.append(y2)
+            service_LV._LENGTH.append(aux_len)
+            service_LV._NOMVOLT.append(nom_volt)
+            # QPX type
+            if (loadsdata["SERVICE"][j] in {123, "ABC", "RST"}):
+                service_LV._LibName.append("LC::BT_2 ACSR_ACSR_2_4_aux")
+                service_LV._NEUTMAT.append("ACSR")
+                service_LV._NEUTSIZ.append("2")
+                service_LV._PHASEMAT.append("ACSR")
+                service_LV._PHASESIZ.append("2")
+                service_LV._TYPE.append("QPX")
+            # TPX type
+            else:
+                service_LV._LibName.append("LC::BT_1/0 AAAC_AAAC_2_3_aux")
+                service_LV._NEUTMAT.append("AAAC")
+                service_LV._NEUTSIZ.append("2")
+                service_LV._PHASEMAT.append("AAAC")
+                service_LV._PHASESIZ.append("1/0")
+                service_LV._TYPE.append("TPX")
+
+        return service_LV
+
+    def add_buslayers(self,
+                      busesData: dict[list]) -> tuple[Bus]:
         """Create bus layers.
 
         It gets buses data, create the objects and sets its
@@ -922,7 +1000,8 @@ class CKT_QGIS():
 
         return regulator
 
-    def add_PublicLights_layer(self, publicLightsData: dict) -> PublicLights:
+    def add_PublicLights_layer(self,
+                               publicLightsData: dict) -> PublicLights:
         """Missing documentation.
 
         Missing description of this method.
@@ -972,7 +1051,7 @@ class CKT_QGIS():
         Note: For Underground LV line next attributes are taking
         as typical values:
         _NEUTMAT: "CU".
-    
+
         """
         # _TYPE
         oh_lvline = {
@@ -1012,7 +1091,7 @@ class CKT_QGIS():
                         elif n == 2:
                             attr = ft.strip()
                             underG_LVline._PHASEMAT.append(attr)
-                        # [_INSULMAT, _NEUTSIZ, _LINEGEO, _INSULEV]
+                        # [_INSULMAT, _NEUTSIZ]
                         elif n == 3:
                             attrs = ft.split("_")
                             underG_LVline._INSULMAT.append(attrs[0])
@@ -1058,19 +1137,18 @@ class CKT_QGIS():
                         elif n == 2:
                             attr = ft.strip()
                             underG_MVline._PHASEMAT.append(attr)
-                        # [_INSULMAT, _NEUTPER, _LINEGEO, _INSULEV]
+                        # [_INSULMAT, _NEUTPER, _LINEGEO, _INSULVOLT]
                         elif n == 3:
                             attrs = ft.split("_")
                             underG_MVline._INSULMAT.append(attrs[0])
                             underG_MVline._NEUTPER.append(attrs[1])
+                            underG_MVline._LINEGEO.append(attrs[2])
                     # _LibName: LineCode (LC)
                     underG_MVline._LibName.append(f"LC::{lineName}")
                     # _NEUTMAT: *Typical Value*
                     underG_MVline._NEUTMAT.append("CU")
                     # _NEUTSIZ: *Typical Value*
                     underG_MVline._NEUTSIZ.append("1/0")
-                    # _LINEGEO
-                    underG_MVline._LINEGEO.append("None")
                     # _SHIELDING: *Typical Value*
                     underG_MVline._SHIELDING.append("CN")
                     # _NOMVOLT
@@ -1188,6 +1266,13 @@ class CKT_QGIS():
         service_LVline = overH_LVline.split_overHLVlines(
             service_LV=service_LVline)
 
+        # Add Aux. LV service lines
+        if not self.loadTx_matcher():
+            print("No able to creat aux. service lines")
+        else:
+            service_LVline = self.add_AuxServLine(
+                service_LV=service_LVline)
+
         return (underG_LVline, underG_MVline, service_LVline,
                 overH_LVline, overH_MVline)
 
@@ -1283,33 +1368,28 @@ class CKT_QGIS():
                           Sub_autoTx: Transformer,
                           Sub_without_modeling_Tx: Transformer,
                           txID: list[str],
-                          n_asymTxs: int) -> Transformer:
+                          n_asymTxs: int) -> tuple[Transformer]:
         """Unpack transformer attributes.
 
-        For transformers without subestation `Trafo2WindingAsym` and
-        `Trafo2Winding` we need to differentiate these transformers when
-        the computer reads the txID (rows in the sheet) and we watch
-        that LibraryType in "Trafo2Winding" contain the PRIMCONN and
-        SECCONN, so for now we differentiate with this.
+        In case of single phase with neutral will be
+        considered as split-phase (A, B, C) in case of
+        single phase with no neutral (AB, BC, AC) it is
+        taken as special connection (OY, OD) in case of
+        three phase transformer (ABC) it will depend on
+        its LibraryType to asign its connection.
 
-        1. Note: The position of the tap is unknown, therefore it is
-              set to 1:
-                  _TAPSETTING: 1
+        1. Note: Tap position is unknown, therefore it is
+                 set to 1 however is passed as float type:
+                  _TAPSETTING: 1.0
 
-        2. Note: In accordance with "Supervisión de la calidad del suministro 
-                 eléctrico en baja y media tensión” (AR-NT-SUCAL) CAPITULO I 
+        2. Note: Accordance with "Supervisión
+                 de la calidad del suministro
+                 eléctrico en baja y media tensión”
+                 (AR-NT-SUCAL) CAPITULO I
                  BT =< 1 kV and 1 kV < MT <= 100 kV.
-        
-        3. Note: For transformers with AB, AC, BC phases, the PRIMCONN = OY
-                 and SECCONN = OD. (EXCEL circuit has not references)
-        
-        3. Note: For transformers with ABC phases, the PRIMCONN = Y and
-                 SECCONN = 4D. (EXCEL circuit is wrong)
-        
-        5. Note: For transformers with A, B, C phases, the PRIMCONN = LG
-                 and SECCONN = SP. (EXCEL circuit has not references)
+
         """
-        splitPH_TX = Distribution_transformers
+        distrib_TX = Distribution_transformers
         for i, row in enumerate(txID):
             # ["Name", "Node1", "Node2", "Switch1", "Switch2",
             # "IsRegulated", "Un1", "Un2", "Sr",
@@ -1332,110 +1412,110 @@ class CKT_QGIS():
                     if n == 0:
                         ph = ft.strip()
                         phcode = get_PHASEDESIG(ph)
-                        splitPH_TX._PHASEDESIG.append(phcode)
+                        distrib_TX._PHASEDESIG.append(phcode)
 
                         # KVAPHASEA
                         if ph == "A":
                             kvaphaseA = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(float(0))
                         # KVAPHASEB
                         elif ph == "B":
                             kvaphaseB = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(float(0))
                         # KVAPHASEC
                         elif ph == "C":
                             kvaphaseC = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AB":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseB = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(float(0))
                         elif ph == "BC":
                             kvaphaseB = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AC":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "ABC":
                             kvaphaseA = float(cols[8].strip())/3
                             kvaphaseB = float(cols[8].strip())/3
                             kvaphaseC = float(cols[8].strip())/3
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                     # TTYPE
                     elif n == 6:
                         txtype = ft.strip()
                         txtypecode = get_TxType(txtype)
-                        splitPH_TX._TTYPE.append(txtypecode)
+                        distrib_TX._TTYPE.append(txtypecode)
                     # PRIMCONN
                     elif n == 7:
                         primconn = ft
                         primmconncode = primconn.strip()
-                        splitPH_TX._PRIMCONN.append(primmconncode)
+                        distrib_TX._PRIMCONN.append(primmconncode)
                     # SECCONN
                     elif n == 8:
                         secconn = ft
                         secconncode = secconn.strip()
-                        splitPH_TX._SECCONN.append(secconncode)
+                        distrib_TX._SECCONN.append(secconncode)
 
                 # PRIMVOLT
                 pnomv = float(cols[6].strip())
                 pnomvcode = get_NOMVOLT(pnomv)
-                splitPH_TX._PRIMVOLT.append(pnomvcode)
+                distrib_TX._PRIMVOLT.append(pnomvcode)
                 # SECVOLT
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
-                splitPH_TX._SECVOLT.append(snomvcode)
+                distrib_TX._SECVOLT.append(snomvcode)
                 # MV/MV
-                if pnomv > 1 and snomv <= 100:
-                    splitPH_TX._MV_MV.append("YES")
+                if (1 < pnomv < 100) and (1 < snomv <= 100):
+                    distrib_TX._MV_MV.append("YES")
                 else:
-                    splitPH_TX._MV_MV.append("NO")
+                    distrib_TX._MV_MV.append("NO")
                 # RATEDKVA
                 ratedkva = float(cols[8].strip())
-                splitPH_TX._RATEDKVA.append(ratedkva)
+                distrib_TX._RATEDKVA.append(ratedkva)
                 # TAPSETTING
                 tapsetting = float(1)
-                splitPH_TX._TAPSETTING.append(tapsetting)
+                distrib_TX._TAPSETTING.append(tapsetting)
                 # NODE1
                 from_bus = cols[1].strip()
-                splitPH_TX._NODE1.append(from_bus)
+                distrib_TX._NODE1.append(from_bus)
                 # NODE2
                 to_bus = cols[2].strip()
-                splitPH_TX._NODE2.append(to_bus)
+                distrib_TX._NODE2.append(to_bus)
                 # X1
                 X1 = float(cols[10])
-                splitPH_TX._X1.append(X1)
+                distrib_TX._X1.append(X1)
                 # Y1
                 Y1 = float(cols[11])
-                splitPH_TX._Y1.append(Y1)
+                distrib_TX._Y1.append(Y1)
                 # ICEobjectID
                 name = cols[0]
-                splitPH_TX._ICEobjID.append(name.strip("_T"))
+                distrib_TX._ICEobjID.append(name.strip("_T"))
                 # SWITCH1
                 switch1 = cols[3].strip()
-                splitPH_TX._SWITCH1.append(switch1)
+                distrib_TX._SWITCH1.append(switch1)
                 # SWITCH2
                 switch2 = cols[4].strip()
-                splitPH_TX._SWITCH2.append(switch2)
+                distrib_TX._SWITCH2.append(switch2)
                 # ISREGULATED
                 isregulated = cols[5].strip()
-                splitPH_TX._ISREG.append(isregulated)
+                distrib_TX._ISREG.append(isregulated)
 
             # Trafo2WindingAsym
             else:
@@ -1444,119 +1524,118 @@ class CKT_QGIS():
                     if n == 0:
                         ph = ft.strip()
                         phcode = get_PHASEDESIG(ph)
-                        splitPH_TX._PHASEDESIG.append(phcode)
-
-                        if ph in ["AB", "AC", "BC"]:
+                        distrib_TX._PHASEDESIG.append(phcode)
+                        if ph in {"AB", "AC", "BC"}:
                             # PRIMCONN
                             primconn = ph
-                            primmconncode = "OY"  # Open Wye
-                            splitPH_TX._PRIMCONN.append(primmconncode)
+                            primmconncode = "OY"    # Open Wye
+                            distrib_TX._PRIMCONN.append(primmconncode)
                             # SECCONN
                             secconncode = "OD"    # Open Delta
-                            splitPH_TX._SECCONN.append(secconncode)
+                            distrib_TX._SECCONN.append(secconncode)
                         else:
                             # PRIMCONN
                             primconn = ph
-                            primmconncode = "LG"   # Line Ground
-                            splitPH_TX._PRIMCONN.append(primmconncode)
+                            primmconncode = "LG"   # Line-Ground
+                            distrib_TX._PRIMCONN.append(primmconncode)
                             # SECCONN
-                            secconncode = "SP"     # Split Phase
-                            splitPH_TX._SECCONN.append(secconncode)
+                            secconncode = "SP"     # Split-Phase
+                            distrib_TX._SECCONN.append(secconncode)
 
                         # KVAPHASEA
                         if ph == "A":
                             kvaphaseA = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(float(0))
                         # KVAPHASEB
                         elif ph == "B":
                             kvaphaseB = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(float(0))
                         # KVAPHASEC
                         elif ph == "C":
                             kvaphaseC = float(cols[8].strip())
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AB":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseB = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(float(0))
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(float(0))
                         elif ph == "BC":
                             kvaphaseB = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(float(0))
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(float(0))
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "AC":
                             kvaphaseA = float(cols[8].strip())/2
                             kvaphaseC = float(cols[8].strip())/2
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(float(0))
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(float(0))
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                         elif ph == "ABC":
                             kvaphaseA = float(cols[8].strip())/3
                             kvaphaseB = float(cols[8].strip())/3
                             kvaphaseC = float(cols[8].strip())/3
-                            splitPH_TX._KVAPHASEA.append(kvaphaseA)
-                            splitPH_TX._KVAPHASEB.append(kvaphaseB)
-                            splitPH_TX._KVAPHASEC.append(kvaphaseC)
+                            distrib_TX._KVAPHASEA.append(kvaphaseA)
+                            distrib_TX._KVAPHASEB.append(kvaphaseB)
+                            distrib_TX._KVAPHASEC.append(kvaphaseC)
                     # TTYPE
                     elif n == 6:
                         txtype = ft.strip()
                         txtypecode = get_TxType(txtype)
-                        splitPH_TX._TTYPE.append(txtypecode)
+                        distrib_TX._TTYPE.append(txtypecode)
 
                 # PRIMVOLT
                 pnomv = float(cols[6].strip())
                 pnomvcode = get_NOMVOLT(pnomv)
-                splitPH_TX._PRIMVOLT.append(pnomvcode)
+                distrib_TX._PRIMVOLT.append(pnomvcode)
                 # SECVOLT
                 snomv = float(cols[7].strip())
                 snomvcode = get_NOMVOLT(snomv)
-                splitPH_TX._SECVOLT.append(snomvcode)
+                distrib_TX._SECVOLT.append(snomvcode)
                 # MV/MV
-                if pnomv > 1 and snomv <= 100:
-                    splitPH_TX._MV_MV.append("YES")
+                if (1 < pnomv < 100) and (1 < snomv <= 100):
+                    distrib_TX._MV_MV.append("YES")
                 else:
-                    splitPH_TX._MV_MV.append("NO")
+                    distrib_TX._MV_MV.append("NO")
                 # RATEDKVA
                 ratedkva = float(cols[8].strip())
-                splitPH_TX._RATEDKVA.append(ratedkva)
+                distrib_TX._RATEDKVA.append(ratedkva)
                 # TAPSETTING
                 tapsetting = float(1)
-                splitPH_TX._TAPSETTING.append(tapsetting)
+                distrib_TX._TAPSETTING.append(tapsetting)
                 # NODE1
                 from_bus = cols[1].strip()
-                splitPH_TX._NODE1.append(from_bus)
+                distrib_TX._NODE1.append(from_bus)
                 # NODE2
                 to_bus = cols[2].strip()
-                splitPH_TX._NODE2.append(to_bus)
+                distrib_TX._NODE2.append(to_bus)
                 # X1
                 X1 = float(cols[10])
-                splitPH_TX._X1.append(X1)
+                distrib_TX._X1.append(X1)
                 # Y1
                 Y1 = float(cols[11])
-                splitPH_TX._Y1.append(Y1)
+                distrib_TX._Y1.append(Y1)
                 # ICEobject_ID
                 name = cols[0]
-                splitPH_TX._ICEobjID.append(name.strip("_T"))
+                distrib_TX._ICEobjID.append(name.strip("_T"))
                 # SWITCH1
                 switch1 = cols[3].strip()
-                splitPH_TX._SWITCH1.append(switch1)
+                distrib_TX._SWITCH1.append(switch1)
                 # SWITCH2
                 switch2 = cols[4].strip()
-                splitPH_TX._SWITCH2.append(switch2)
+                distrib_TX._SWITCH2.append(switch2)
                 # ISREGULATED
                 isregulated = cols[5].strip()
-                splitPH_TX._ISREG.append(isregulated)
+                distrib_TX._ISREG.append(isregulated)
 
-        return (splitPH_TX,
+        return (distrib_TX,
                 Sub_three_phase_unit_Tx,
                 Sub_autoTx,
                 Sub_without_modeling_Tx)
@@ -1564,16 +1643,16 @@ class CKT_QGIS():
     def set_attributes_loads(self,
                              loadID: list[str],
                              LVload: Load,
-                             MVload: Load):
+                             MVload: Load) -> tuple[Load]:
         """Unpack LV and MV loads attributes.
 
-        The code for differenciate loads of MT underground and MT overhead
-        does not work because there are not these loads in Circuito_4.xlsx
-        and we can not make the code.
+        In spite of is possible to retrieve MV loads
+        there is no data about such kind of loads currently.
 
-        1. Note: For the moment the attribute "AMI" is NO for all loads
-                 because there are not information in Circuito_4.xlsx
-                 for differenciate this.
+        Note: Attribute "AMI" is "NO" for all loads
+              since there is no information yet.
+              In case was "YES" a _ID attribute must
+              be provided so do its curveshape.
 
         """
         for row in loadID:
@@ -1623,6 +1702,7 @@ class CKT_QGIS():
                 # AMI
                 LVload._AMI.append("NO")
 
+            # Odd loads
             elif "_T" in load:
                 # KWHMONTH
                 kwhmonth = float(cols[5].strip())
@@ -1649,17 +1729,22 @@ class CKT_QGIS():
                 pf = float(cols[9].strip())
                 LVload._PF.append(pf)
                 # ICEobjectID
-                objectID = cols[1].strip()
+                objectID = cols[1].strip().strip("L")
                 LVload._ICEobjID.append(objectID)
                 # X1
                 X1 = float(cols[10].strip())
-                LVload._X1.append(X1)
                 # Y1
                 Y1 = float(cols[11].strip())
+                # Drag odd loads 10cm and update attr
+                X1 += 10e-2
+                Y1 += 10e-2
+                LVload._X1.append(X1)
                 LVload._Y1.append(Y1)
                 # CLASS
                 loadType = get_CLASS(cols[12])
                 LVload._CLASS.append(loadType)
+                # Update _ODDLOAD attr
+                LVload._ODDLOAD = True
                 # AMI
                 LVload._AMI.append("NO")
 
@@ -1671,7 +1756,7 @@ class CKT_QGIS():
 
     def set_attributes_fuse(self,
                             fuse: Fuse,
-                            fuseID: list[str]):
+                            fuseID: list[str]) -> Fuse:
         """Unpack fuses attributes.
 
         One layer of fuses only.
@@ -1682,7 +1767,7 @@ class CKT_QGIS():
             cols = row.split("&")
 
             # ICEObjectID
-            objetID = cols[0].strip("_F")
+            objetID = cols[0].strip("F")
             fuse._ICEobjID.append(objetID)
             # PHASEDESIGN
             phasedesign = int(cols[1].strip())
@@ -1704,7 +1789,7 @@ class CKT_QGIS():
     def set_attributes_PV(self,
                           pv: PV,
                           pvID: list[str],
-                          busesData: dict[list]):
+                          busesData: dict[list]) -> PV:
         """Unpack attributes of Photovoltaic technologies.
 
         In order to make hosting capacity in low voltage networks.
@@ -1740,7 +1825,7 @@ class CKT_QGIS():
 
     def set_attributes_recloser(self,
                                 recloser: Recloser,
-                                recloserID: list[str]):
+                                recloserID: list[str]) -> Recloser:
         """"Reclosers (also considered breakers).
 
         One layer for reclosers only.
@@ -1771,7 +1856,7 @@ class CKT_QGIS():
 
     def set_attributes_regulator(self,
                                  regulatorID: list[str],
-                                 regulator: Regulator):
+                                 regulator: Regulator) -> Regulator:
         """Unpack data of regulars and set its attributes.
 
         To assign the unknown attributes given the lack of information
@@ -1840,7 +1925,7 @@ class CKT_QGIS():
 
             # ICEobjectID
             objectID = cols[1]
-            public_lights._ICEobjectID.append(objectID)
+            public_lights._ICEobjID.append(objectID)
             # SERVICE
             phase = int(cols[2])
             srvc = get_SERVICE(phase)
@@ -1861,14 +1946,84 @@ class CKT_QGIS():
 
         return (public_lights)
 
+    def loadTx_matcher(self) -> bool:
+        """Verify consistency of connections.
+
+        This method assesses whether _SECCONN
+        attribute of transformers possess
+        matching features with _SERVICE code of
+        those odd loads right over them taking advantage
+        that such loads _ICEobjID are labeled
+        with "_T" at tail.
+        It returns `True` if all load are
+        perfectly align and `False` otherwise; however,
+        in case either transformer or loads layers
+        do not exist also returns `False`.
+
+        by following below criterion:
+
+        matcher = {
+            "OD": {123, 12, 23, 13},
+            "SP": {1, 2, 3, 12, 23, 13},
+            "4D": {123}
+        }
+
+        Where the key is the _SECCONN and
+        the integers set the _SERVICE code.
+
+        Note: This method should be called before
+        creat auxiliary lines.
+
+        """
+        matcher = {
+            "OD": {123, 12, 23, 13},
+            "SP": {1, 2, 3, 12, 23, 13},
+            "4D": {123}
+        }
+        try:
+            loadsdata = self._LVloads["LV_load"]
+            txsdata = self._transformers["Distribution_transformers"]
+        except KeyError as e:
+            print(f"No layer called {e}")
+            return False
+
+        # Odd loads name
+        loadsfree = []
+        for c in loadsdata["ICEobjID"]:
+            if "_T" in c:
+                loadsfree.append(c)
+        loadsfree = [t.strip("_T") for t in loadsfree]
+
+        # Retrieve match attribute
+        for v in loadsfree:
+            i = txsdata["ICEobjID"].index(v)
+            j = loadsdata["ICEobjID"].index(f"{v}_T")
+            for k, c in txsdata.items():
+                if k == "SECCONN":
+                    conn = c[i]
+                    for m, f in loadsdata.items():
+                        if m == "SERVICE":
+                            srvc = f[j]
+                            try:
+                                if srvc not in matcher[conn]:
+                                    raise Exception("ConnError")
+                            except Exception as e:
+                                print(
+                                    (f"{e}:"),
+                                    ("Connection does not match"),
+                                    (f"in object {v}"))
+                                return False
+        return True
+
 
 def get_PHASEDESIG(phcode) -> int:
     """Phase designation.
 
     Set the phase code based on the manual either
     Neplan code or Phase letter if `phcode` is a string.
-    Code: Neplan
-    ph: Manual
+    Columns:
+        Code: Neplan
+        ph: Manual
     +---------+---------------+
     |  code   |      ph       |
     +---------+---------------+
@@ -1978,21 +2133,27 @@ def get_INSULVOLT(nomVLL: float) -> str:
 
 
 def get_SERVICE(code: int) -> int:
-    """Connection type designation of loads and AP.
+    """Load connection.
 
-    Set the phase code based on the manual either
-    Neplan code or Phase letter if `code` is passed.
-    PARAMETERS:
-        srvc: Service Manual code
+    Connection type designation of Loads and Public
+    Lighting.
+    It corresponds to the type of connection presented
+    by the load. It must have a type of connection
+    consistent with the type of cable of the phase
+    to which the load is connected.
+    Turns the given Neplan phase code into the one used in
+    the manual also integer.
+    Columns:
+        srvc: Service Plug-in Manual code
         code: Neplan code
 
     +---------+-----------------+----------------------------------------+
-    |  code   |      srvc       |              Definition                |
+    |  code   |      srvc       |              Description               |
     +---------+-----------------+----------------------------------------+
-    |    1    |  1: A (R)       | Load connected to phase 1 and neutral. |
-    |    2    |  2: B (S)       | Load connected to phase 2 and neutral. |
+    |    1    |  1: A (R)       | Load connected to alive 1 and neutral. |
+    |    2    |  2: B (S)       | Load connected to alive 2 and neutral. |
     |    3    |  3: C (T)       | Load connected to phase 3 and neutral. |
-    |    4    |  12: AB (RS)    | Load connected to phase 1 and phase 2. |
+    |    4    |  12: AB (RS)    | Load connected to alive 1 and alive 2. |
     |    6    |  23: BC (ST)    | Load connected to phase 2 and phase 3. |
     |    5    |  13: AC (RT)    | Load connected to phase 1 and phase 3. |
     |    0    |  123: ABC (RST) | Load connected to three phase.         |
@@ -2231,14 +2392,25 @@ def set_Label_Tx(LibType: str) -> str:
     attributes comming from Neplan) in LibraryType of
     transformers, for common notation used in the manual of
     `QGIS2OPENDSS` plug-in.
+    _PRIMCONN
+    primconn = {
+        "Estrella": "Y",
+        "Delta":, "D",
+        "OpenWye":, "OY",
+        "LineGound": "LG"
+    }
+    _SECCONN
+    secconn = {
+        "SplitPhase": "SP",
+        "Fase_Partida": "4D",
+        "OpenDelta": "OD"
+    }
 
-    1. Note: Replace SECCONN three phase transformers with 
-             PRIMCONN = "ESTRELLA" (Y) and SECCONN = "Fase_Partida" (SP) 
-             in LibraryType to SECCONN = "Delta 4 hilos" (4D)
+    Note: _SECCONN of 4D means delta of four-wires.
 
     """
     # Library Type Modified
-    LibTypeMod = LibType
+    newTxLibType = LibType
     # NOMVOLT
     nomvolt = {
         ".240": "0.24",
@@ -2247,33 +2419,19 @@ def set_Label_Tx(LibType: str) -> str:
     }
 
     for (k, v) in nomvolt.items():
-        LibTypeMod = LibTypeMod.replace(k, v)
+        newTxLibType = newTxLibType.replace(k, v)
 
-    # PRIMCONN
-    primconn = {
+    # Connection at any side
+    conn = {
         "Estrella": "Y",
         "Delta": "D",
-        "DEFINIR": "OY",    # Open Wey
-        "DEFINIR": "LG"     # Line-Ground
+        "Fase_Partida": "4D"
     }
 
-    for (k, v) in primconn.items():
-        LibTypeMod = LibTypeMod.replace(k, v)
+    for (k, v) in conn.items():
+        newTxLibType = newTxLibType.replace(k, v)
 
-    # SECCONN
-    secconn = {
-        "Estrella": "Y",
-        "Delta": "D",
-        "DEFINIR": "4D",     # Delta four threads
-        "Fase_Partida": "SP"
-    }
-
-    for (k, v) in secconn.items():
-        LibTypeMod = LibTypeMod.replace(k, v)
-        if "ABC" in LibTypeMod:
-            LibTypeMod = LibTypeMod.replace("SP", "4D")
-
-    return LibTypeMod
+    return newTxLibType
 
 
 def concat_linecols(linesData: dict) -> list[str]:
@@ -2755,25 +2913,6 @@ if __name__ == "__main__":
     UG_LVbuses_gdf = df2shp(UG_LVbuses_df, "underG_LVbuses")
     UG_MVbuses_gdf = df2shp(UG_MVbuses_df, "underG_MVbuses")
 
-    # -----------------------
-    # Line layers *.shp files
-    # -----------------------
-    _ = cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
-    # Turn layers into df
-    OH_LVlines_df, _ = layer2df(cktQgis._lines["overH_LVlines"])
-    OH_MVlines_df, _ = layer2df(cktQgis._lines["overH_MVlines"])
-    UG_LVlines_df, _ = layer2df(cktQgis._lines["underG_LVlines"])
-    UG_MVlines_df, _ = layer2df(cktQgis._lines["underG_MVlines"])
-    service_LVlines_df, _ = layer2df(cktQgis._lines["service_LVlines"])
-    # Finally write shapefiles within "./GIS/shapename.shp"
-    OH_LVline_gdf = df2shp(OH_LVlines_df, "overH_LVlines")
-    OH_MVline_gdf = df2shp(OH_MVlines_df, "overH_MVlines")
-    UG_LVline_gdf = df2shp(UG_LVlines_df, "underG_LVlines")
-    UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
-    service_LVlines_gdf = df2shp(
-        service_LVlines_df,
-        "service_LVlines")
-
     # ------------------------------
     # Transformer layers *.shp files
     # ------------------------------
@@ -2828,6 +2967,25 @@ if __name__ == "__main__":
     # MV_load_gdf = df2shp(MV_load_df, "MV_load")
 
     # -----------------------
+    # Line layers *.shp files
+    # -----------------------
+    _ = cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
+    # Turn layers into df
+    OH_LVlines_df, _ = layer2df(cktQgis._lines["overH_LVlines"])
+    OH_MVlines_df, _ = layer2df(cktQgis._lines["overH_MVlines"])
+    UG_LVlines_df, _ = layer2df(cktQgis._lines["underG_LVlines"])
+    UG_MVlines_df, _ = layer2df(cktQgis._lines["underG_MVlines"])
+    service_LVlines_df, _ = layer2df(cktQgis._lines["service_LVlines"])
+    # Finally write shapefiles within "./GIS/shapename.shp"
+    OH_LVline_gdf = df2shp(OH_LVlines_df, "overH_LVlines")
+    OH_MVline_gdf = df2shp(OH_MVlines_df, "overH_MVlines")
+    UG_LVline_gdf = df2shp(UG_LVlines_df, "underG_LVlines")
+    UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
+    service_LVlines_gdf = df2shp(
+        service_LVlines_df,
+        "service_LVlines")
+
+    # -----------------------
     # Fuse layers *.shp files
     # -----------------------
     _ = cktQgis.add_fuse_layer(cktNeplan._fuses)
@@ -2868,6 +3026,6 @@ if __name__ == "__main__":
     #---------------------------------
     _ = cktQgis.add_PublicLights_layer(cktNeplan._publicLights)
     # Turn layers into df
-    public_Lights_df = layer2df(cktQgis._publicLights["Public_Lights"])
+    public_Lights_df, _ = layer2df(cktQgis._publicLights["Public_Lights"])
     # Finally write shapefiles within "./GIS/shapename.shp"
     public_Lights_gdf = df2shp(public_Lights_df, "Public_Lights")
