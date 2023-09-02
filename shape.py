@@ -456,15 +456,9 @@ class Load():
     Hence generate auxiliary lines
     between them is recommended.
 
-<<<<<<< HEAD
     Note: See method
           :classmethod:`CKT_QGIS.add_AuxServLine`
           for more details.
-=======
-    2. Note: See method
-             :classmethod:`CKT_QGIS.add_AuxServLine`
-             for more details.
->>>>>>> 4a3ab51 (rebaseeee main: LINEGEO for UG_MVlines)
 
     """
     def __init__(self):
@@ -1384,18 +1378,14 @@ class CKT_QGIS():
         three phase transformer (ABC) it will depend on
         its LibraryType to asign its connection.
 
-<<<<<<< HEAD
         1. Note: Tap position is unknown, therefore it is
-              set to 1 however is passed as float type:
-=======
-        1. Note: The position of the tap is unknown, therefore it is
                  set to 1 however is passed as float type:
->>>>>>> 87e3a89 (Fixied error)
                   _TAPSETTING: 1.0
 
-        2. Note: In accordance with "Supervisión de la calidad
-                 del suministro eléctrico en baja y
-                 media tensión” (AR-NT-SUCAL) CAPITULO I
+        2. Note: Accordance with "Supervisión
+                 de la calidad del suministro
+                 eléctrico en baja y media tensión”
+                 (AR-NT-SUCAL) CAPITULO I
                  BT =< 1 kV and 1 kV < MT <= 100 kV.
 
         """
@@ -1659,10 +1649,10 @@ class CKT_QGIS():
         In spite of is possible to retrieve MV loads
         there is no data about such kind of loads currently.
 
-        1. Note: Attribute "AMI" is "NO" for all loads
-                 since there is no information yet.
-                 In case was "YES" a _ID attribute must
-                 he provided so do its curveshape.
+        Note: Attribute "AMI" is "NO" for all loads
+              since there is no information yet.
+              In case was "YES" a _ID attribute must
+              be provided so do its curveshape.
 
         """
         for row in loadID:
@@ -3030,15 +3020,3 @@ if __name__ == "__main__":
     recloser_df, _ = layer2df(cktQgis._reclosers["Reclosers"])
     # Finally write shapefiles within "./GIS/shapename.shp"
     recloser_gdf = df2shp(recloser_df, "Reclosers")
-<<<<<<< HEAD
-=======
-
-    # --------------------------------
-    # Public Lights layers *.shp files
-    # --------------------------------
-    _ = cktQgis.add_PublicLights_layer(cktNeplan._publicLights)
-    # Turn layers into df
-    public_Lights_df, _ = layer2df(cktQgis._publicLights["Public_Lights"])
-    # Finally write shapefiles within "./GIS/shapename.shp"
-    public_Lights_gdf = df2shp(public_Lights_df, "Public_Lights")
->>>>>>> 87e3a89 (Fixied error)
