@@ -8,16 +8,18 @@ of "QGIS2OPENDSS" plug-in.
    Mario Roberto Peralta A.
    Universidad de Costa Rica (UCR)
 
+email: Mario.Peralta@ucr.ac.cr
 Electric Power & Energy Research Laboratory (EPERLab).
 
 """
-import pandas as pd
-import geopandas as gpd
+import numpy as np       # To adjacency matrix
+import pandas as pd      # To read and convert data
+# To creat points and lines in coordinates sys
 from shapely.geometry import Point, LineString
-import numpy as np
+import geopandas as gpd   # To generate shapesfiles
 
 
-class CKTdata:
+class CKTdata():
     """Retrieve circuit data.
 
     Class that contains all of the objects (devices) of the circuit
@@ -106,8 +108,393 @@ class CKTdata:
                     # Update attribute
                     self._publicLights[c] = values
 
+    def concat_linecols(self) -> list[str]:
+        """Concatenate columns.
 
-class Line():
+        Resulting shape of a single row:
+        ['NodeFrom1'&'NodeTo1'&'LibraryType1'&... &'attr1M',
+        'NodeFrom2'&'NodeTo2'&'LibraryType2'&... &'attr2M', ...
+        ...,
+        'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
+
+        """
+        linesData = self._lines
+        for k, v in linesData.items():
+            if k == "Node1":
+                col1 = v
+            elif k == "Node2":
+                col2 = v
+            elif k == "Name":
+                col3 = v
+            elif k == "LibraryType":
+                col4 = v
+            elif k == "Length":
+                col5 = v
+            elif k == "Un":
+                col6 = v
+
+        cols = zip(col1, col2, col3, col4, col5, col6)
+        linesID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}"
+                   for c1, c2, c3, c4, c5, c6 in cols]
+
+        return linesID
+
+    def concat_buscols(self) -> list[str]:
+        """Concatenate columns.
+
+        Resulting shape of a single row:
+        ['Name'&'Un'&'CoordX1'&... &'attr1M',
+        'Name'&'Un'&'CoordX1'&... &'attr2M', ...
+        ...,
+        'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
+
+        """
+        busesData = self._buses
+        for k, v in busesData.items():
+            if k == "Name":
+                col1 = v
+            elif k == "Un":
+                col2 = v
+            elif k == "CoordX1":
+                col3 = v
+            elif k == "CoordY2":
+                col4 = v
+
+        cols = zip(col1, col2, col3, col4)
+        busID = [f"{c1}&{c2}&{c3}&{c4}"
+                 for c1, c2, c3, c4 in cols]
+
+        return busID
+
+    def concat_Txcols(self) -> list[str]:
+        """Concatenate columns.
+
+        Resulting shape of a single row:
+        ['Name'&'Node1'&'Node2'&... &'attr1M',
+        'Name'&'Un'&'CoordX1'&... &'attr2M', ...
+        ...,
+        'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
+
+        """
+        TxData = self._AsymTx
+        for k, v in TxData.items():
+            if k == "Name":
+                col1 = v
+            elif k == "Node1":
+                col2 = v
+            elif k == "Node2":
+                col3 = v
+            elif k == "Switch1":
+                col4 = v
+            elif k == "Switch2":
+                col5 = v
+            elif k == "IsRegulated":
+                col6 = v
+            elif k == "Un1":
+                col7 = v
+            elif k == "Un2":
+                col8 = v
+            elif k == "Sr":
+                col9 = v
+            elif k == "LibraryType":
+                col10 = v
+            elif k == "CoordX1":
+                col11 = v
+            elif k == "CoordY1":
+                col12 = v
+
+        cols = zip(col1, col2, col3, col4, col5,
+                   col6, col7, col8, col9, col10,
+                   col11, col12)
+        TxID = []
+        for attrs in cols:
+            row = ""
+            for attr in attrs:
+                row += f"{attr}&"
+            TxID.append(row.strip("&"))
+
+        return TxID
+
+    def concat_loadcols(self) -> list[str]:
+        """Concatenate columns.
+
+        Resulting shape of a single row:
+        ['Name'&'Node1'&'Node2'&... &'attr1M',
+        'Name'&'Un'&'CoordX1'&... &'attr2M', ...
+        ...,
+        'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
+
+        """
+        loadsData = self._loads
+        for k, v in loadsData.items():
+            if k == "Node1":
+                col1 = v
+            elif k == "Name":
+                col2 = v
+            elif k == "Phase":
+                col3 = v
+            elif k == "Switch1":
+                col4 = v
+            elif k == "Un":
+                col5 = v
+            elif k == "E":
+                col6 = v
+            elif k == "VelanderK1":
+                col7 = v
+            elif k == "LfType":
+                col8 = v
+            elif k == "Unit":
+                col9 = v
+            elif k == "CosPhi":
+                col10 = v
+            elif k == "CoordX1":
+                col11 = v
+            elif k == "CoordY1":
+                col12 = v
+            elif k == "Tipo":
+                col13 = v
+
+        cols = zip(col1, col2, col3, col4, col5,
+                   col6, col7, col8, col9, col10,
+                   col11, col12, col13)
+        loadID = []
+        for attrs in cols:
+            row = ""
+            for attr in attrs:
+                row += f"{attr}&"
+            loadID.append(row.strip("&"))
+
+        return loadID
+
+    def concat_fusecols(self) -> list[str]:
+        """Concatenate columns.
+
+        Resulting shape of a single row:
+        ['Name'&'Phase'&'IsActive'&... &'attr1M',
+        'Name'&'Phase'&'IsActive'&... &'attr2M', ...
+        ...,
+        'NameN'&'PhaseN'&'IsActive'&... &'attrNM'].
+
+        """
+        fuseData = self._fuses
+        for k, v in fuseData.items():
+            if k == "Name":
+                col1 = v
+            elif k == "Phase":
+                col2 = v
+            elif k == "IsActive":
+                col3 = v
+            elif k == "OnElement":
+                col4 = v
+            elif k == "X":
+                col5 = v
+            elif k == "Y":
+                col6 = v
+        cols = zip(col1, col2, col3, col4, col5, col6)
+        fuseID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}"
+                  for c1, c2, c3, c4, c5, c6 in cols]
+
+        return fuseID
+
+    def concat_regulatorcols(self) -> list[str]:
+        """Concatenate regulator columns.
+
+        Resulting shape of a single row:
+        ['Name'&'Node1'&'Node2'&... &'attr1M',
+        'Name'&'Node1'&'Node2'&... &'attr2M', ...
+        ...,
+        'NameN'&'Node1N'&'Node2N'&... &'attrNM'].
+
+        """
+        regulatorData = self._regulators
+        for k, v in regulatorData.items():
+            if k == "Name":
+                col1 = v
+            elif k == "Node1":
+                col2 = v
+            elif k == "Node2":
+                col3 = v
+            elif k == "Switch1":
+                col4 = v
+            elif k == "Switch2":
+                col5 = v
+            elif k == "Un1":
+                col6 = v
+            elif k == "Un2":
+                col7 = v
+            elif k == "Phase":
+                col8 = v
+            elif k == "LibraryType":
+                col9 = v
+            elif k == "X":
+                col10 = v
+            elif k == "Y":
+                col11 = v
+
+        cols = zip(col1, col2, col3, col4,
+                   col5, col6, col7,
+                   col8, col9, col10, col11)
+        regulatorID = []
+        for attrs in cols:
+            row = ""
+            for attr in attrs:
+                row += f"{attr}&"
+            regulatorID.append(row.strip("&"))
+
+        return regulatorID
+
+    def concat_PVcols(self) -> list[str]:
+        """Concatenate PV columns.
+
+        Resulting shape of a single row:
+        ['Name'&'Node1'&'Switch1'&... &'attr1M',
+        'Name'&'Node1'&'Switch1'&... &'attr2M', ...
+        ...,
+        'NameN'&'Node1N'&'Switch1N'&... &'attrNM'].
+
+        """
+        pvData = self._ders
+        for k, v in pvData.items():
+            if k == "Name":
+                col1 = v
+            elif k == "Node1":
+                col2 = v
+            elif k == "Switch1":
+                col3 = v
+            elif k == "Pset":
+                col4 = v
+            elif k == "Cosr":
+                col5 = v
+            elif k == "Unit":
+                col6 = v
+            elif k == "Phase":
+                col7 = v
+            elif k == "Sr":
+                col8 = v
+            elif k == "nProductionType":
+                col9 = v
+            elif k == "Ur":
+                col10 = v
+            elif k == "Un":
+                col11 = v
+            elif k == "Sk2max":
+                col12 = v
+            elif k == "Sk2min":
+                col13 = v
+
+        cols = zip(col1, col2, col3, col4, col5, col6,
+                   col7, col8, col9, col10,
+                   col11, col12, col13)
+
+        pvID = []
+        for attrs in cols:
+            row = ""
+            for attr in attrs:
+                row += f"{attr}&"
+            pvID.append(row.strip("&"))
+
+        return pvID
+
+    def concat_reclosercols(self) -> list[str]:
+        """Concatenate recloser columns.
+
+        Resulting shape of a single row:
+        ['Name'&'Phase'&'Switch'&... &'attr1M',
+        'Name'&'Phase'&'Switch'&... &'attr2M', ...
+        ...,
+        'NameN'&'PhaseN'&'SwitchN'&... &'attrNM'].
+
+        """
+        recloserData = self._reclosers
+        for k, v in recloserData.items():
+            if k == "Name":
+                col1 = v
+            elif k == "Phase":
+                col2 = v
+            elif k == "Switch":
+                col3 = v
+            elif k == "OnElement":
+                col4 = v
+            elif k == "X":
+                col5 = v
+            elif k == "Y":
+                col6 = v
+
+        cols = zip(col1, col2, col3, col4, col5, col6)
+
+        recloserID = []
+        for attrs in cols:
+            row = ""
+            for attr in attrs:
+                row += f"{attr}&"
+            recloserID.append(row.strip("&"))
+
+        return recloserID
+
+    def concat_publicLightscols(self) -> list[str]:
+        """Concatenate public lights columns.
+
+        Resulting shape of a single row:
+        ['Node1'&'Name'&'Phase'&... &'attr1M',
+        'Node1'&'Name'&'Phase'&... &'attr2M', ...
+        ...,
+        'Node1N'&'NameN'&'PhaseN'&... &'attrNM'].
+
+        """
+        publicLightsData = self._publicLights
+        for k, v in publicLightsData.items():
+            if k == "Node1":
+                col1 = v
+            elif k == "Name":
+                col2 = v
+            elif k == "Phase":
+                col3 = v
+            elif k == "Switch1":
+                col4 = v
+            elif k == "Potencia_kW":
+                col5 = v
+            elif k == "LfType":
+                col6 = v
+            elif k == "Unit":
+                col7 = v
+            elif k == "CosPhi":
+                col8 = v
+            elif k == "CoordX1":
+                col9 = v
+            elif k == "CoordY1":
+                col10 = v
+            elif k == "Un":
+                col11 = v
+
+        cols = zip(col1, col2, col3, col4,
+                   col5, col6, col7, col8,
+                   col9, col10, col11)
+        publicLightsID = []
+        for attrs in cols:
+            row = ""
+            for attr in attrs:
+                row += f"{attr}&"
+            publicLightsID.append(row.strip("&"))
+
+        return publicLightsID
+
+    def loc_buscoord(self, busname: str) -> tuple[float]:
+        """Localize bus coordinates.
+
+        Given the bus name ID it looks for its
+        X, Y coordinates and return them
+        as floats in a tuple.
+
+        """
+        busesData = self._buses
+        indx = busesData["Name"].index(busname)
+        X = float(busesData["CoordX1"][indx])
+        Y = float(busesData["CoordY1"][indx])
+
+        return (X, Y)
+
+
+class Lines():
     def __init__(self) -> None:
         """Line object.
 
@@ -226,30 +613,30 @@ class Line():
         self._Y2 = []
 
 
-class UG_MVline(Line):
+class UG_MVlines(Lines):
     def __init__(self):
         super().__init__()
         self._line_layer = "underG_MVlines"
 
 
-class OH_MVline(Line):
+class OH_MVlines(Lines):
     def __init__(self):
         super().__init__()
         self._line_layer = "overH_MVlines"
 
 
-class UG_LVline(Line):
+class UG_LVlines(Lines):
     def __init__(self):
         super().__init__()
         self._line_layer = "underG_LVlines"
 
 
-class OH_LVline(Line):
+class OH_LVlines(Lines):
     def __init__(self):
         super().__init__()
         self._line_layer = "overH_LVlines"
 
-    def split_overHLVlines(self, service_LV: Line) -> Line:
+    def split_overHLVlines(self, service_LV: Lines) -> Lines:
         """Define services LV lines layers.
 
         It gets services LV lines layer with empty
@@ -257,8 +644,8 @@ class OH_LVline(Line):
         by splitting overhead LV lines in general with
         those ones whose type is "DPX", "TPX" and "QPX"
         and which will be taken as *service* overhead
-        LV lines layer. See source method
-        :classmethod:`CKT_QGIS.set_attributes_lines`
+        LV lines layer. See method
+        :py:meth:`CKTqgis.set_attributes_lines`
         for more details.
 
         """
@@ -296,13 +683,13 @@ class OH_LVline(Line):
         return service_LV
 
 
-class serv_LVline(Line):
+class serv_LVlines(Lines):
     def __init__(self):
         super().__init__()
         self._line_layer = "service_LVlines"
 
 
-class Bus():
+class Buses():
     """Bus object.
 
     Kind of buses:
@@ -323,31 +710,31 @@ class Bus():
         self._Y1 = []
 
 
-class OH_MVbus(Bus):
+class OH_MVbuses(Buses):
     def __init__(self):
         super().__init__()
         self._bus_layer = "overH_MVbuses"
 
 
-class OH_LVbus(Bus):
+class OH_LVbuses(Buses):
     def __init__(self):
         super().__init__()
         self._bus_layer = "overH_LVbuses"
 
 
-class UG_MVbus(Bus):
+class UG_MVbuses(Buses):
     def __init__(self):
         super().__init__()
         self._bus_layer = "underG_MVbuses"
 
 
-class UG_LVbus(Bus):
+class UG_LVbuses(Buses):
     def __init__(self):
         super().__init__()
         self._bus_layer = "underG_LVbuses"
 
 
-class Transformer():
+class Transformers():
     """Transformer object.
 
     Kind of tranformers:
@@ -416,31 +803,31 @@ class Transformer():
         self._Y1 = []
 
 
-class Distribution_Tx(Transformer):
+class Distribution_Txs(Transformers):
     def __init__(self):
         super().__init__()
         self._Tx_layer = "Distribution_transformers"
 
 
-class Subestation_three_phase_unit_Tx(Transformer):
+class Subestation_three_phase_unit_Tx(Transformers):
     def __init__(self):
         super().__init__()
         self._Tx_layer = "Subestation_three_phase_transformer"
 
 
-class Subestation_auto_Tx(Transformer):
+class Subestation_auto_Tx(Transformers):
     def __init__(self):
         super().__init__()
         self._Tx_layer = "Subestation_autotransformer"
 
 
-class Subestation_without_modeling_Tx(Transformer):
+class Subestation_without_modeling_Tx(Transformers):
     def __init__(self):
         super().__init__()
         self._Tx_layer = "Subestation_without_modeling_transformer"
 
 
-class Load():
+class Loads():
     """Load object.
 
     Kind of loads:
@@ -456,8 +843,7 @@ class Load():
     Hence generate auxiliary lines
     between them is recommended.
 
-    Note: See method
-          :classmethod:`CKT_QGIS.add_AuxServLine`
+    Note: See :py:meth:`CKTqgis.add_AuxServLine`
           for more details.
 
     """
@@ -480,13 +866,13 @@ class Load():
         self._ODDLOAD = False
 
 
-class LV_load(Load):
+class LV_Loads(Loads):
     def __init__(self):
         super().__init__()
         self._load_layer = "LV_load"
 
 
-class MV_load(Load):
+class MV_Loads(Loads):
     def __init__(self):
         super().__init__()
         self._load_layer = "MV_load"
@@ -512,7 +898,7 @@ class Fuse():
         self._Y1 = []
 
 
-class PV():
+class PVs():
     """Missing documentation.
 
     Here goes the missing description of this class.
@@ -531,7 +917,7 @@ class PV():
         self._Y1 = []
 
 
-class Recloser():
+class Reclosers():
     """Recloser object.
 
     Kind of reclosers:
@@ -556,7 +942,7 @@ class Recloser():
         self._Y1 = []
 
 
-class Regulator():
+class Regulators():
     """Regulator object.
 
     Kind of regulators:
@@ -599,7 +985,7 @@ class PublicLights():
         self._Y1 = []
 
 
-class CKT_QGIS():
+class CKTqgis:
     """Result ciruict.
 
     Circuit layers with all data attributes ready to be converted
@@ -668,11 +1054,10 @@ class CKT_QGIS():
         self._smallScale_DG = {}
         self._regulators = {}
         self._capacitors = {}
-        self.EVs = {}
-        self.EbusesC = {}
+        self._EVs = {}
+        self._EbusesC = {}
 
-    def add_linelayers(self, busesData: dict[list],
-                       linesData: dict[list]) -> tuple[Line]:
+    def add_linelayers(self, cktNeplan: CKTdata) -> tuple[Lines]:
         """Creats line layers.
 
         It gets lines data, creat the objects and sets its
@@ -680,13 +1065,14 @@ class CKT_QGIS():
 
         """
         # lineID
-        linesID = concat_linecols(linesData)
+        linesID = cktNeplan.concat_linecols()
+
         # Creat instances
-        underG_LVline = UG_LVline()
-        underG_MVline = UG_MVline()
-        overH_LVline = OH_LVline()
-        overH_MVline = OH_MVline()
-        service_LVline = serv_LVline()
+        underG_LVline = UG_LVlines()
+        underG_MVline = UG_MVlines()
+        overH_LVline = OH_LVlines()
+        overH_MVline = OH_MVlines()
+        service_LVline = serv_LVlines()
         # Unpack libraryType
         line_layers = self.set_attributes_lines(
             underG_LVline,
@@ -694,7 +1080,7 @@ class CKT_QGIS():
             service_LVline,
             overH_LVline,
             overH_MVline,
-            busesData,
+            cktNeplan,
             linesID)
 
         # Update attribute
@@ -708,7 +1094,7 @@ class CKT_QGIS():
                 overH_LVline, overH_MVline, service_LVline)
 
     def add_AuxServLine(self,
-                        service_LV: serv_LVline) -> serv_LVline:
+                        service_LV: serv_LVlines) -> serv_LVlines:
         """Creat auxiliary lines.
 
         It connects new fiction service overhead LV
@@ -716,7 +1102,7 @@ class CKT_QGIS():
         right over it with these typical
         mandatory features:
         typic_ft = {
-            "_ICEobjID": [],
+            "_ICEobjID": [TxObjID__0],
             "_LibName": [
                 "LC::BT_1/0 AAAC_AAAC_2_3_aux",
                 "LC::BT_2 ACSR_ACSR_2_4_aux"
@@ -759,7 +1145,7 @@ class CKT_QGIS():
             # _NOMVOLT
             nom_volt = loadsdata["NOMVOLT"][j]
             # Add feature
-            service_LV._ICEobjID.append(oddLID)
+            service_LV._ICEobjID.append(f"{oddLID}__0")
             service_LV._X1.append(x1)
             service_LV._Y1.append(y1)
             service_LV._X2.append(x2)
@@ -785,8 +1171,7 @@ class CKT_QGIS():
 
         return service_LV
 
-    def add_buslayers(self,
-                      busesData: dict[list]) -> tuple[Bus]:
+    def add_buslayers(self, cktNeplan: CKTdata) -> tuple[Buses]:
         """Create bus layers.
 
         It gets buses data, create the objects and sets its
@@ -794,12 +1179,12 @@ class CKT_QGIS():
 
         """
         # BusID
-        busID = concat_buscols(busesData)
+        busID = cktNeplan.concat_buscols()
         # Create instances
-        underG_LVbus = UG_LVbus()
-        underG_MVbus = UG_MVbus()
-        overH_LVbus = OH_LVbus()
-        overH_MVbus = OH_MVbus()
+        underG_LVbus = UG_LVbuses()
+        underG_MVbus = UG_MVbuses()
+        overH_LVbus = OH_LVbuses()
+        overH_MVbus = OH_MVbuses()
 
         # Unpack
         bus_layers = self.set_attributes_buses(
@@ -819,9 +1204,7 @@ class CKT_QGIS():
         return (underG_LVbus, underG_MVbus,
                 overH_LVbus, overH_MVbus)
 
-    def add_txlayers(self,
-                     AsymTxData: dict[list],
-                     TxData: dict[list]) -> tuple[Transformer]:
+    def add_txlayers(self, cktNeplan: CKTdata) -> tuple[Transformers]:
         """Create transformer layers.
 
         It gets transformer data, create the objects and sets its
@@ -831,19 +1214,23 @@ class CKT_QGIS():
         the name of the attributes MV_MV and TAPMAX_MI to
         MV/MV and TAPMAX/MI according to the manual.
 
+        Make a single sheet of transformers weather asym or not
+        by adding Trafo2Winding at tail tacking advantage
+        both sheets have same columns in CKTdata object.
+
         """
-        # Number of Trafo2WindingAsym elements in sheet
-        # from Neplan circuit.
+        AsymTxData = cktNeplan._AsymTx
+        TxData = cktNeplan._Tx
+        # Number of Trafo2WindingAsym in CKTdata obj
         N_asymTXs = len(list(AsymTxData.values())[0])
-        # Make a single sheet of transformers weather asym or not
-        # by concatenating Trafo2Winding at the end.
+        # Stack
         for k, v in TxData.items():
             AsymTxData[k] += v
 
         # TransformerID
-        txID = concat_Txcols(AsymTxData)
+        txID = cktNeplan.concat_Txcols()
         # Create instances
-        Distribution_transformers = Distribution_Tx()
+        Distribution_transformers = Distribution_Txs()
         Sub_three_phase_unit_Tx = Subestation_three_phase_unit_Tx()
         Sub_autoTx = Subestation_auto_Tx()
         Sub_without_modeling_Tx = Subestation_without_modeling_Tx()
@@ -881,18 +1268,17 @@ class CKT_QGIS():
                 Sub_autoTx,
                 Sub_without_modeling_Tx)
 
-    def add_load_layers(self,
-                        loadsData: dict[list]) -> tuple[Load]:
+    def add_load_layers(self, cktNeplan: CKTdata) -> tuple[Loads]:
         """Missing documentation.
 
         Here goes the missing description of this method.
 
         """
         # Rows
-        loadID = concat_loadcols(loadsData)
+        loadID = cktNeplan.concat_loadcols()
         # Create instances
-        LVload = LV_load()
-        MVload = MV_load()
+        LVload = LV_Loads()
+        MVload = MV_Loads()
 
         load_layers = self.set_attributes_loads(
             LVload=LVload,
@@ -912,14 +1298,14 @@ class CKT_QGIS():
 
         return (LVload, MVload)
 
-    def add_fuse_layer(self, fuseData: dict[list]) -> Fuse:
+    def add_fuse_layer(self, cktNeplan: CKTdata) -> Fuse:
         """Missing documentation.
 
         Here goes the missing description of this method.
 
         """
         # Concat columns
-        fuseID = concat_fusecols(fuseData)
+        fuseID = cktNeplan.concat_fusecols()
         # Create instance
         fuse = Fuse()
 
@@ -932,22 +1318,20 @@ class CKT_QGIS():
 
         return (fuse)
 
-    def add_PV_layer(self,
-                     busesData: dict[list],
-                     pvData: dict[list]) -> PV:
+    def add_PV_layer(self, cktNeplan: CKTdata) -> PVs:
         """Missing documentation.
 
         Here goes the missing description of this method.
 
         """
         # Concat columns
-        pvID = concat_PVcols(pvData)
+        pvID = cktNeplan.concat_PVcols()
         # Create instance
-        pv = PV()
+        pv = PVs()
         pv_layer = self.set_attributes_PV(
             pv=pv,
-            pvID=pvID,
-            busesData=busesData)
+            cktNeplan=cktNeplan,
+            pvID=pvID)
 
         PVL = pv_layer._PV_layer
         dictAttrs = pv_layer.__dict__
@@ -956,17 +1340,16 @@ class CKT_QGIS():
 
         return pv
 
-    def add_recloser_layer(self,
-                           recloserData: dict[list]) -> Recloser:
+    def add_recloser_layer(self, cktNeplan: CKTdata) -> Reclosers:
         """Missing documentation.
 
         Here goes the missing description of this method.
 
         """
         # Concat recloserData rows
-        recloserID = concat_reclosercols(recloserData)
+        recloserID = cktNeplan.concat_reclosercols()
         # Create instance
-        recloser = Recloser()
+        recloser = Reclosers()
         recloser_layer = self.set_attributes_recloser(recloser=recloser,
                                                       recloserID=recloserID)
 
@@ -977,8 +1360,7 @@ class CKT_QGIS():
 
         return recloser
 
-    def add_regulator_layer(self,
-                            regulatorData) -> Regulator:
+    def add_regulator_layer(self, cktNeplan: CKTdata) -> Regulators:
         """Layer of regularos.
 
         It creats regulators layers attributes suitable to
@@ -986,9 +1368,9 @@ class CKT_QGIS():
 
         """
         # Concat columns
-        regulatorID = concat_regulatorcols(regulatorData)
+        regulatorID = cktNeplan.concat_regulatorcols()
         # Create instance
-        regulator = Regulator()
+        regulator = Regulators()
         regulator_layer = self.set_attributes_regulator(
             regulatorID=regulatorID,
             regulator=regulator)
@@ -1000,8 +1382,7 @@ class CKT_QGIS():
 
         return regulator
 
-    def add_PublicLights_layer(self,
-                               publicLightsData: dict) -> PublicLights:
+    def add_PublicLights_layer(self, cktNeplan: CKTdata) -> PublicLights:
         """Missing documentation.
 
         Missing description of this method.
@@ -1009,8 +1390,7 @@ class CKT_QGIS():
         """
 
         # Concatenate columns
-        publicLightsID = concat_publicLightscols(
-            publicLightsData=publicLightsData)
+        publicLightsID = cktNeplan.concat_publicLightscols()
 
         # Create instance
         public_lights = PublicLights()
@@ -1027,13 +1407,13 @@ class CKT_QGIS():
         return public_lights
 
     def set_attributes_lines(self,
-                             underG_LVline: Line,
-                             underG_MVline: Line,
-                             service_LVline: Line,
-                             overH_LVline: Line,
-                             overH_MVline: Line,
-                             busesData: dict[list],
-                             linesID: list[str]) -> tuple[Line]:
+                             underG_LVline: Lines,
+                             underG_MVline: Lines,
+                             service_LVline: Lines,
+                             overH_LVline: Lines,
+                             overH_MVline: Lines,
+                             cktNeplan: CKTdata,
+                             linesID: list[str]) -> tuple[Lines]:
         """Unpack the data of line layers.
 
         It gets some SIRDE code "subtipos" and gives them all
@@ -1107,8 +1487,8 @@ class CKT_QGIS():
                     # _X1, _Y1, _X2, _Y2
                     from_bus = cols[0]
                     to_bus = cols[1]
-                    (X1, Y1) = loc_buscoord(from_bus, busesData)
-                    (X2, Y2) = loc_buscoord(to_bus, busesData)
+                    (X1, Y1) = cktNeplan.loc_buscoord(from_bus)
+                    (X2, Y2) = cktNeplan.loc_buscoord(to_bus)
                     underG_LVline._X1.append(X1)
                     underG_LVline._Y1.append(Y1)
                     underG_LVline._X2.append(X2)
@@ -1161,8 +1541,8 @@ class CKT_QGIS():
                     # _X1, _Y1, _X2, _Y2
                     from_bus = cols[0]
                     to_bus = cols[1]
-                    (X1, Y1) = loc_buscoord(from_bus, busesData)
-                    (X2, Y2) = loc_buscoord(to_bus, busesData)
+                    (X1, Y1) = cktNeplan.loc_buscoord(from_bus)
+                    (X2, Y2) = cktNeplan.loc_buscoord(to_bus)
                     underG_MVline._X1.append(X1)
                     underG_MVline._Y1.append(Y1)
                     underG_MVline._X2.append(X2)
@@ -1203,8 +1583,8 @@ class CKT_QGIS():
                     # _X1, _Y1, _X2, _Y2
                     from_bus = cols[0]
                     to_bus = cols[1]
-                    (X1, Y1) = loc_buscoord(from_bus, busesData)
-                    (X2, Y2) = loc_buscoord(to_bus, busesData)
+                    (X1, Y1) = cktNeplan.loc_buscoord(from_bus)
+                    (X2, Y2) = cktNeplan.loc_buscoord(to_bus)
                     overH_LVline._X1.append(X1)
                     overH_LVline._Y1.append(Y1)
                     overH_LVline._X2.append(X2)
@@ -1248,8 +1628,8 @@ class CKT_QGIS():
                     # _X1, _Y1, _X2, _Y2
                     from_bus = cols[0]
                     to_bus = cols[1]
-                    (X1, Y1) = loc_buscoord(from_bus, busesData)
-                    (X2, Y2) = loc_buscoord(to_bus, busesData)
+                    (X1, Y1) = cktNeplan.loc_buscoord(from_bus)
+                    (X2, Y2) = cktNeplan.loc_buscoord(to_bus)
                     overH_MVline._X1.append(X1)
                     overH_MVline._Y1.append(Y1)
                     overH_MVline._X2.append(X2)
@@ -1277,11 +1657,11 @@ class CKT_QGIS():
                 overH_LVline, overH_MVline)
 
     def set_attributes_buses(self,
-                             underG_LVbus: Bus,
-                             underG_MVbus: Bus,
-                             overH_LVbus: Bus,
-                             overH_MVbus: Bus,
-                             busID: list[str]) -> tuple[Bus]:
+                             underG_LVbus: Buses,
+                             underG_MVbus: Buses,
+                             overH_LVbus: Buses,
+                             overH_MVbus: Buses,
+                             busID: list[str]) -> tuple[Buses]:
         """Unpack the data of bus layers.
 
         Optional layer requested for ICE.
@@ -1363,12 +1743,12 @@ class CKT_QGIS():
                 overH_MVbus, overH_LVbus)
 
     def set_attributes_tx(self,
-                          Distribution_transformers: Transformer,
-                          Sub_three_phase_unit_Tx: Transformer,
-                          Sub_autoTx: Transformer,
-                          Sub_without_modeling_Tx: Transformer,
+                          Distribution_transformers: Transformers,
+                          Sub_three_phase_unit_Tx: Transformers,
+                          Sub_autoTx: Transformers,
+                          Sub_without_modeling_Tx: Transformers,
                           txID: list[str],
-                          n_asymTxs: int) -> tuple[Transformer]:
+                          n_asymTxs: int) -> tuple[Transformers]:
         """Unpack transformer attributes.
 
         In case of single phase with neutral will be
@@ -1642,8 +2022,8 @@ class CKT_QGIS():
 
     def set_attributes_loads(self,
                              loadID: list[str],
-                             LVload: Load,
-                             MVload: Load) -> tuple[Load]:
+                             LVload: Loads,
+                             MVload: Loads) -> tuple[Loads]:
         """Unpack LV and MV loads attributes.
 
         In spite of is possible to retrieve MV loads
@@ -1652,7 +2032,7 @@ class CKT_QGIS():
         Note: Attribute "AMI" is "NO" for all loads
               since there is no information yet.
               In case was "YES" a _ID attribute must
-              be provided so do its curveshape.
+              be provided so do its shapeload file.
 
         """
         for row in loadID:
@@ -1787,9 +2167,9 @@ class CKT_QGIS():
         return (fuse)
 
     def set_attributes_PV(self,
-                          pv: PV,
-                          pvID: list[str],
-                          busesData: dict[list]) -> PV:
+                          pv: PVs,
+                          cktNeplan: CKTdata,
+                          pvID: list[str]) -> PVs:
         """Unpack attributes of Photovoltaic technologies.
 
         In order to make hosting capacity in low voltage networks.
@@ -1817,15 +2197,15 @@ class CKT_QGIS():
             pv._TECH.append(PV)
             # X1, Y1
             busname = cols[1].strip()
-            (X1, Y1) = loc_buscoord(busname, busesData)
+            (X1, Y1) = cktNeplan.loc_buscoord(busname)
             pv._X1.append(X1)
             pv._Y1.append(Y1)
 
         return (pv)
 
     def set_attributes_recloser(self,
-                                recloser: Recloser,
-                                recloserID: list[str]) -> Recloser:
+                                recloser: Reclosers,
+                                recloserID: list[str]) -> Reclosers:
         """"Reclosers (also considered breakers).
 
         One layer for reclosers only.
@@ -1856,7 +2236,7 @@ class CKT_QGIS():
 
     def set_attributes_regulator(self,
                                  regulatorID: list[str],
-                                 regulator: Regulator) -> Regulator:
+                                 regulator: Regulators) -> Regulators:
         """Unpack data of regulars and set its attributes.
 
         To assign the unknown attributes given the lack of information
@@ -2257,6 +2637,9 @@ def get_CLASS(code: str) -> str:
         code: SIRDE code
 
     Note: Manual description does not have Social class
+        R: Residential
+        C: Commercial
+        I: Industrial
 
     +--------+--------------------------------------------------+------------+
     |  Code  |                 Customer class                   |  class     |
@@ -2434,388 +2817,6 @@ def set_Label_Tx(LibType: str) -> str:
     return newTxLibType
 
 
-def concat_linecols(linesData: dict) -> list[str]:
-    """Concatenate columns.
-
-    Resulting shape of a single element
-    ['NodeFrom1'&'NodeTo1'&'LibraryType1'&... &'attr1M',
-    'NodeFrom2'&'NodeTo2'&'LibraryType2'&... &'attr2M', ...
-    ...,
-    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
-
-    """
-    for k, v in linesData.items():
-        if k == "Node1":
-            col1 = v
-        elif k == "Node2":
-            col2 = v
-        elif k == "Name":
-            col3 = v
-        elif k == "LibraryType":
-            col4 = v
-        elif k == "Length":
-            col5 = v
-        elif k == "Un":
-            col6 = v
-
-    cols = zip(col1, col2, col3, col4, col5, col6)
-    linesID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}"
-               for c1, c2, c3, c4, c5, c6 in cols]
-
-    return linesID
-
-
-def concat_buscols(busesData: dict) -> list[str]:
-    """Concatenate columns.
-
-    ResulLing shape of a single element
-    ['Name'&'Un'&'CoordX1'&... &'attr1M',
-    'Name'&'Un'&'CoordX1'&... &'attr2M', ...
-    ...,
-    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
-
-    """
-    for k, v in busesData.items():
-        if k == "Name":
-            col1 = v
-        elif k == "Un":
-            col2 = v
-        elif k == "CoordX1":
-            col3 = v
-        elif k == "CoordY2":
-            col4 = v
-
-    cols = zip(col1, col2, col3, col4)
-    busID = [f"{c1}&{c2}&{c3}&{c4}"
-             for c1, c2, c3, c4 in cols]
-
-    return busID
-
-
-def concat_Txcols(TxData: dict) -> list[str]:
-    """Concatenate columns.
-
-    ResulLing shape of a single element
-    ['Name'&'Node1'&'Node2'&... &'attr1M',
-    'Name'&'Un'&'CoordX1'&... &'attr2M', ...
-    ...,
-    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
-
-    """
-    for k, v in TxData.items():
-        if k == "Name":
-            col1 = v
-        elif k == "Node1":
-            col2 = v
-        elif k == "Node2":
-            col3 = v
-        elif k == "Switch1":
-            col4 = v
-        elif k == "Switch2":
-            col5 = v
-        elif k == "IsRegulated":
-            col6 = v
-        elif k == "Un1":
-            col7 = v
-        elif k == "Un2":
-            col8 = v
-        elif k == "Sr":
-            col9 = v
-        elif k == "LibraryType":
-            col10 = v
-        elif k == "CoordX1":
-            col11 = v
-        elif k == "CoordY1":
-            col12 = v
-
-    cols = zip(col1, col2, col3, col4, col5, col6,
-               col7, col8, col9, col10, col11, col12)
-    TxID = []
-    for attrs in cols:
-        row = ""
-        for attr in attrs:
-            row += f"{attr}&"
-        TxID.append(row.strip("&"))
-
-    return TxID
-
-
-def concat_loadcols(loadsData: dict) -> list[str]:
-    """Concatenate columns.
-
-    ResulLing shape of a single element
-    ['Name'&'Node1'&'Node2'&... &'attr1M',
-    'Name'&'Un'&'CoordX1'&... &'attr2M', ...
-    ...,
-    'NodeFromN'&'NodeToN'&'LibraryTypeN'&... &'attrNM'].
-
-    """
-    for k, v in loadsData.items():
-        if k == "Node1":
-            col1 = v
-        elif k == "Name":
-            col2 = v
-        elif k == "Phase":
-            col3 = v
-        elif k == "Switch1":
-            col4 = v
-        elif k == "Un":
-            col5 = v
-        elif k == "E":
-            col6 = v
-        elif k == "VelanderK1":
-            col7 = v
-        elif k == "LfType":
-            col8 = v
-        elif k == "Unit":
-            col9 = v
-        elif k == "CosPhi":
-            col10 = v
-        elif k == "CoordX1":
-            col11 = v
-        elif k == "CoordY1":
-            col12 = v
-        elif k == "Tipo":
-            col13 = v
-
-    cols = zip(col1, col2, col3, col4, col5, col6,
-               col7, col8, col9, col10, col11, col12, col13)
-    loadID = []
-    for attrs in cols:
-        row = ""
-        for attr in attrs:
-            row += f"{attr}&"
-        loadID.append(row.strip("&"))
-
-    return loadID
-
-
-def concat_fusecols(fuseData: dict) -> list[str]:
-    """Concatenate columns.
-
-    ResulLing shape of a single element
-    ['Name'&'Phase'&'IsActive'&... &'attr1M',
-    'Name'&'Phase'&'IsActive'&... &'attr2M', ...
-    ...,
-    'NameN'&'PhaseN'&'IsActive'&... &'attrNM'].
-
-    """
-    for k, v in fuseData.items():
-        if k == "Name":
-            col1 = v
-        elif k == "Phase":
-            col2 = v
-        elif k == "IsActive":
-            col3 = v
-        elif k == "OnElement":
-            col4 = v
-        elif k == "X":
-            col5 = v
-        elif k == "Y":
-            col6 = v
-    cols = zip(col1, col2, col3, col4, col5, col6)
-    fuseID = [f"{c1}&{c2}&{c3}&{c4}&{c5}&{c6}"
-              for c1, c2, c3, c4, c5, c6 in cols]
-
-    return fuseID
-
-
-def concat_PVcols(pvData: dict) -> list[str]:
-    """Concatenate PV columns.
-
-    ResulLing shape of a single element
-    ['Name'&'Node1'&'Switch1'&... &'attr1M',
-    'Name'&'Node1'&'Switch1'&... &'attr2M', ...
-    ...,
-    'NameN'&'Node1N'&'Switch1N'&... &'attrNM'].
-
-    """
-    for k, v in pvData.items():
-        if k == "Name":
-            col1 = v
-        elif k == "Node1":
-            col2 = v
-        elif k == "Switch1":
-            col3 = v
-        elif k == "Pset":
-            col4 = v
-        elif k == "Cosr":
-            col5 = v
-        elif k == "Unit":
-            col6 = v
-        elif k == "Phase":
-            col7 = v
-        elif k == "Sr":
-            col8 = v
-        elif k == "nProductionType":
-            col9 = v
-        elif k == "Ur":
-            col10 = v
-        elif k == "Un":
-            col11 = v
-        elif k == "Sk2max":
-            col12 = v
-        elif k == "Sk2min":
-            col13 = v
-
-    cols = zip(col1, col2, col3, col4, col5, col6,
-               col7, col8, col9, col10, col11, col12, col13)
-
-    pvID = []
-    for attrs in cols:
-        row = ""
-        for attr in attrs:
-            row += f"{attr}&"
-        pvID.append(row.strip("&"))
-
-    return pvID
-
-
-def concat_reclosercols(recloserData: dict) -> list[str]:
-    """Concatenate recloser columns.
-
-    ResulLing shape of a single element
-    ['Name'&'Phase'&'Switch'&... &'attr1M',
-    'Name'&'Phase'&'Switch'&... &'attr2M', ...
-    ...,
-    'NameN'&'PhaseN'&'SwitchN'&... &'attrNM'].
-
-    """
-    for k, v in recloserData.items():
-        if k == "Name":
-            col1 = v
-        elif k == "Phase":
-            col2 = v
-        elif k == "Switch":
-            col3 = v
-        elif k == "OnElement":
-            col4 = v
-        elif k == "X":
-            col5 = v
-        elif k == "Y":
-            col6 = v
-
-    cols = zip(col1, col2, col3, col4, col5, col6)
-
-    recloserID = []
-    for attrs in cols:
-        row = ""
-        for attr in attrs:
-            row += f"{attr}&"
-        recloserID.append(row.strip("&"))
-
-    return recloserID
-
-
-def concat_regulatorcols(regulatorData: dict) -> list[str]:
-    """Concatenate regulator columns.
-
-    ResulLing shape of a single element
-    ['Name'&'Node1'&'Node2'&... &'attr1M',
-    'Name'&'Node1'&'Node2'&... &'attr2M', ...
-    ...,
-    'NameN'&'Node1N'&'Node2N'&... &'attrNM'].
-
-    """
-    for k, v in regulatorData.items():
-        if k == "Name":
-            col1 = v
-        elif k == "Node1":
-            col2 = v
-        elif k == "Node2":
-            col3 = v
-        elif k == "Switch1":
-            col4 = v
-        elif k == "Switch2":
-            col5 = v
-        elif k == "Un1":
-            col6 = v
-        elif k == "Un2":
-            col7 = v
-        elif k == "Phase":
-            col8 = v
-        elif k == "LibraryType":
-            col9 = v
-        elif k == "X":
-            col10 = v
-        elif k == "Y":
-            col11 = v
-
-    cols = zip(col1, col2, col3, col4, col5, col6, col7,
-               col8, col9, col10, col11)
-    regulatorID = []
-    for attrs in cols:
-        row = ""
-        for attr in attrs:
-            row += f"{attr}&"
-        regulatorID.append(row.strip("&"))
-
-    return regulatorID
-
-
-def concat_publicLightscols(publicLightsData: dict) -> list[str]:
-    """Concatenate public lights columns.
-
-    ResulLing shape of a single element
-    ['Node1'&'Name'&'Phase'&... &'attr1M',
-    'Node1'&'Name'&'Phase'&... &'attr2M', ...
-    ...,
-    'Node1N'&'NameN'&'PhaseN'&... &'attrNM'].
-
-    """
-    for k, v in publicLightsData.items():
-        if k == "Node1":
-            col1 = v
-        elif k == "Name":
-            col2 = v
-        elif k == "Phase":
-            col3 = v
-        elif k == "Switch1":
-            col4 = v
-        elif k == "Potencia_kW":
-            col5 = v
-        elif k == "LfType":
-            col6 = v
-        elif k == "Unit":
-            col7 = v
-        elif k == "CosPhi":
-            col8 = v
-        elif k == "CoordX1":
-            col9 = v
-        elif k == "CoordY1":
-            col10 = v
-        elif k == "Un":
-            col11 = v
-
-    cols = zip(col1, col2, col3, col4,
-               col5, col6, col7, col8,
-               col9, col10, col11)
-    publicLightsID = []
-    for attrs in cols:
-        row = ""
-        for attr in attrs:
-            row += f"{attr}&"
-        publicLightsID.append(row.strip("&"))
-
-    return publicLightsID
-
-
-def loc_buscoord(busname: str,
-                 busesData: dict[list]) -> tuple[float]:
-    """Localize bus coordinates.
-
-    Given the bus name ID it looks for its
-    X, Y coordinates and return them
-    as floats in a tuple.
-
-    """
-    indx = busesData["Name"].index(busname)
-    X = float(busesData["CoordX1"][indx])
-    Y = float(busesData["CoordY1"][indx])
-
-    return (X, Y)
-
-
 def layer2df(layer: dict) -> tuple[pd.DataFrame]:
     """Convert to pd.DataFrame.
 
@@ -2897,12 +2898,12 @@ if __name__ == "__main__":
     cktNeplan = CKTdata()
     cktNeplan.call_data(directory)
     # New QGIS circuit
-    cktQgis = CKT_QGIS()
+    cktQgis = CKTqgis
 
     # ------------------------
     # Buses layers *.shp files
     # ------------------------
-    _ = cktQgis.add_buslayers(cktNeplan._buses)
+    _ = cktQgis.add_buslayers(cktNeplan)
     OH_LVbuses_df, _ = layer2df(cktQgis._buses["overH_LVbuses"])
     OH_MVbuses_df, _ = layer2df(cktQgis._buses["overH_MVbuses"])
     UG_LVbuses_df, _ = layer2df(cktQgis._buses["underG_LVbuses"])
@@ -2916,9 +2917,7 @@ if __name__ == "__main__":
     # ------------------------------
     # Transformer layers *.shp files
     # ------------------------------
-    _ = cktQgis.add_txlayers(
-        AsymTxData=cktNeplan._AsymTx,
-        TxData=cktNeplan._Tx)
+    _ = cktQgis.add_txlayers(cktNeplan)
     # Turn layers into df
     Distribution_transformers_df, _ = layer2df(
         cktQgis._transformers["Distribution_transformers"])
@@ -2958,7 +2957,7 @@ if __name__ == "__main__":
     # -----------------------
     # Load layers *.shp files
     # -----------------------
-    _ = cktQgis.add_load_layers(cktNeplan._loads)
+    _ = cktQgis.add_load_layers(cktNeplan)
     # Turn layers into df
     LV_load_df, _ = layer2df(cktQgis._LVloads["LV_load"])
     MV_load_df, _ = layer2df(cktQgis._MVloads["MV_load"])
@@ -2969,7 +2968,7 @@ if __name__ == "__main__":
     # -----------------------
     # Line layers *.shp files
     # -----------------------
-    _ = cktQgis.add_linelayers(cktNeplan._buses, cktNeplan._lines)
+    _ = cktQgis.add_linelayers(cktNeplan)
     # Turn layers into df
     OH_LVlines_df, _ = layer2df(cktQgis._lines["overH_LVlines"])
     OH_MVlines_df, _ = layer2df(cktQgis._lines["overH_MVlines"])
@@ -2988,7 +2987,7 @@ if __name__ == "__main__":
     # -----------------------
     # Fuse layers *.shp files
     # -----------------------
-    _ = cktQgis.add_fuse_layer(cktNeplan._fuses)
+    _ = cktQgis.add_fuse_layer(cktNeplan)
     # Turn layers into df
     fuse_df, _ = layer2df(cktQgis._fuses["Fuses"])
     # Finally write shapefiles within "./GIS/shapename.shp"
@@ -2997,7 +2996,7 @@ if __name__ == "__main__":
     # ----------------------------
     # Regulator layers *.shp files
     # ----------------------------
-    _ = cktQgis.add_regulator_layer(cktNeplan._regulators)
+    _ = cktQgis.add_regulator_layer(cktNeplan)
     # Turn layers into df
     regulator_df, _ = layer2df(cktQgis._regulators["Regulators"])
     # Finally write shapefiles within "./GIS/shapename.shp"
@@ -3006,7 +3005,7 @@ if __name__ == "__main__":
     # ---------------------
     # PV layers *.shp files
     # ---------------------
-    _ = cktQgis.add_PV_layer(cktNeplan._buses, cktNeplan._ders)
+    _ = cktQgis.add_PV_layer(cktNeplan)
     # Turn layers into df
     PV_df, _ = layer2df(cktQgis._smallScale_DG["PVs"])
     # Finally write shapefiles within "./GIS/shapename.shp"
@@ -3015,7 +3014,7 @@ if __name__ == "__main__":
     # ---------------------------
     # Recloser layers *.shp files
     # ---------------------------
-    _ = cktQgis.add_recloser_layer(cktNeplan._reclosers)
+    _ = cktQgis.add_recloser_layer(cktNeplan)
     # Turn layers into df
     recloser_df, _ = layer2df(cktQgis._reclosers["Reclosers"])
     # Finally write shapefiles within "./GIS/shapename.shp"
@@ -3024,7 +3023,7 @@ if __name__ == "__main__":
     # ---------------------------------
     # Public Lights layers *.shp files
     # ---------------------------------
-    _ = cktQgis.add_PublicLights_layer(cktNeplan._publicLights)
+    _ = cktQgis.add_PublicLights_layer(cktNeplan)
     # Turn layers into df
     public_Lights_df, _ = layer2df(cktQgis._publicLights["Public_Lights"])
     # Finally write shapefiles within "./GIS/shapename.shp"
