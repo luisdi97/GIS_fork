@@ -25,6 +25,7 @@ class CKTdata():
     Class that contains all of the objects (devices) of the circuit
     and its data regarding the sheets of the *.xlsx file whose
     attributes come in Naplan notation.
+
     """
     def __init__(self):
         self._buses = {}

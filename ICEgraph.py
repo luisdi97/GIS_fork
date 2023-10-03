@@ -219,7 +219,7 @@ class CKTgraph():
         """
         v = dotObj
         IDname = dotObj.ICEobjID
-        hevier_types = (Transformer, Load)
+        heavier_types = (Transformer, Load)
         flyweight_types = (Bus, Node)
 
         # In case dotObj is a light vertex
@@ -229,7 +229,7 @@ class CKTgraph():
                 # Get old vertex
                 vold = self._vertices[self._vertices.index(v)]
                 # Not to add
-                if isinstance(vold, hevier_types) or isinstance(vold, Bus):
+                if isinstance(vold, heavier_types) or isinstance(vold, Bus):
                     return v
                 # Update Node
                 elif isinstance(vold, Node):
