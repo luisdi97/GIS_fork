@@ -50,7 +50,7 @@ class LineCode():
         Note 2: The Linecode matrix was build with the linecode 
         OpenDSS structure so was necessary assign some string elements.
 
-        Note 2: For LibraryTypes that does not has
+        Note 3: For LibraryTypes that does not has
         phase designation, we count the zeros in R mutual impedances
         because all of this Libraries have always R phase.
 
@@ -100,14 +100,17 @@ class LineCode():
                     nphases = 1
                 # Assign the number of phases depending of count of zeros in R mutual phases
                 else:
+                    Ltype = libnameMod[-1]
                     zeros_list = [line["R_RR"], line["R_RS"], line["R_RT"]]
                     zeros_count = zeros_list.count(0)
-                    if zeros_count == 1:
-                        nphases = 2
-                    elif zeros_count == 2:
-                        nphases = 1
-                    elif zeros_count == 0:
+                    if zeros_count == 1 and Ltype=="3":    # Triplex only
                         nphases = 3
+                    elif zeros_count == 1:
+                        nphases = 2      # Reminder: type 6 as duplex
+                    elif zeros_count == 2:
+                        nphases = 1      # Raise exception
+                    elif zeros_count == 0:
+                        nphases = 3      # LV three-ph
 
                 # Create 4x4 zeros matrix (1 neutral line)
                 Zcarson = np.zeros([4,4], dtype=complex)
@@ -199,7 +202,7 @@ class LineCode():
                         rows_linecode_R += f"| {row} |"
 
                 # Putting together the linecode
-                linecode_matrix_R = f"""New Linecode.{line["LibraryType"]} nphases={nphases}
+                linecode_matrix_R = f"""New Linecode.{line["LibraryType"].replace(" ", "")} nphases={nphases} units=km
 ~ rmatrix = {rows_linecode_R}  \n"""
 
                 # Reactances
@@ -245,11 +248,9 @@ class LineCode():
 
                         # Putting together the linecode
                     linecode_matrix_C = f"""~ cmatrix = {rows_linecode_C}
-~ normamps={line["IrLimit1"]}
-~ kron=y \n"""
+~ normamps={line["IrLimit1"]} \n"""
                 else:
-                    linecode_matrix_C = f"""~ normamps={line["IrLimit1"]} 
-~ kron=y \n"""
+                    linecode_matrix_C = f"""~ normamps={line["IrLimit1"]} \n"""
 
                 # Concateing the rmatrix with xmatrix and cmatrix
                 lineCode_Matrix = linecode_matrix_R + linecode_matrix_X + linecode_matrix_C + "\n"
@@ -285,10 +286,15 @@ if __name__ == "__main__":
     linecode = LineCode()
 
     # Input file
-    input_file = "Lineas.xlsx"
+    input_file = "./data/Lineas.xlsx"
 
     # Create a dataframe -> drop_duplicates() delete the duplicate rows
     df = pd.read_excel(input_file, sheet_name= "Lineas", skiprows= 2).drop_duplicates()
+    f = lambda x: x*1e3   # From micro to nano per mile
+    # Convert capacitance from microF to nanoF
+    for c in df.columns:
+        if "C_" in c:
+            df[c] = df[c].apply(f)
 
     # Execute method that obtains LineCodes
     linecode.get_LineCode(df)
