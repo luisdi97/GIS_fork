@@ -7273,10 +7273,11 @@ class QGIS2OpenDSS(object):
                                                         "VOLTAGELN": dataLine["VOLTOPRLN"],
                                                         "PHASES": dataLine["PHASE"]}  #
                                 aviso = "Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (" 
-                                aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y'])+ ")"
+                                aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y']) + ")"
+                                aviso += "in ObjectID: " + f"{dataLine["ICEobjID"]}"
                                 aviso_bus = True
                                 mensaje_mt += aviso + " \n"
-                                
+
                             elif node == dataLine['nodo1']:  #############CONDICION DE MAS CERCANO
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 if node not in busMT_List:
@@ -10166,7 +10167,7 @@ class QGIS2OpenDSS(object):
                                 # out += 'New XYCurve.MyEff npts=4 xarray=[.1 .2 .4 1.0] '
                                 # out += 'yarray=[.86 .9 .93 .97]\n'
                                 # output_shpdss.write(out)
-    
+
                             # if CURVE1 not in shapewritten:
                                 # shapewritten[CURVE1] = 0
                                 # name1 = CURVE1.replace('.txt', '')
