@@ -382,10 +382,15 @@ class CKTdata():
                 col12 = v
             elif k == "Sk2min":
                 col13 = v
+            if k == "CURVE1_P":
+                col14 = v
+            if k == "CURVE2_Q":
+                col15 = v
+            
 
         cols = zip(col1, col2, col3, col4, col5, col6,
                    col7, col8, col9, col10,
-                   col11, col12, col13)
+                   col11, col12, col13, col14, col15)
 
         pvID = []
         for attrs in cols:
@@ -899,23 +904,109 @@ class Fuse():
         self._Y1 = []
 
 
-class PVs():
-    """Missing documentation.
-
-    Here goes the missing description of this class.
+class LSDG():
+    """Large scale distributed generation
+    
+    The main differences between large scale and small scale
+    are the active and reactive power curves and installed power.
+    
+    +-------------+-------------+
+    | Small scale | Large scale |
+    +-------------+-------------+
+    |     KVA     |     MVA     |       
+    |    CURVE1   |    DAILY    |
+    |    CURVE2   |      -      |
+    +-------------+-------------+
 
     """
     def __init__(self):
-        self._PV_layer = "PVs"
+        self._ICEobjID = []
+        self._NODE1 = []
+        self._SWITCH1 = []
+        self._TECH = []
+        self._MVA = [] # LSGD
+        self._XDP = []
+        self._XDPP = []
+        self._DAILY = [] # LSGD
+        self._X1 = []
+        self._Y1 = []
+
+
+class LSDG_PV(LSDG):
+    def __init__(self):
+        super.__init__()
+        self._LSDG_GD_layer = "LSDG_PVs"
+
+
+class LSDG_HYDRO(LSDG):
+    def __init__(self):
+        super().__init__()
+        self._LSDG_GD_layer = "LSDG_HYDROs"
+
+
+class LSDG_WIND(LSDG):
+    def __init__(self):
+        super().__init__()
+        self._LSDG_GD_layer = "LSDG_WINDs"
+
+
+class LSDG_GD(LSDG):
+    def __init__(self):
+        super().__init__()
+        self._LSDG_GD_layer = "LSDG_GDs"
+
+
+class SSDG():
+    """Small scale distributed generation.
+    
+    The main differences between large scale and small scale
+    are the active and reactive power curves and installed power.
+    
+    +-------------+-------------+
+    | Small scale | Large scale |
+    +-------------+-------------+
+    |     KVA     |     MVA     |       
+    |    CURVE1   |    DAILY    |
+    |    CURVE2   |      -      |
+    +-------------+-------------+
+
+    """
+    def __init__(self):
         self._ICEobjID = []
         self._NODE1 = []
         self._SWITCH1 = []
         self._TECH = []
         self._KVA = []
-        self._CURVE1 = []
+        self._XDP = []
+        self._XDPP = []
+        self._CURVE1= []
         self._CURVE2 = []
         self._X1 = []
         self._Y1 = []
+
+
+class SSDG_PV(SSDG):
+    def __init__(self):
+        super().__init__()
+        self._SSDG_GD_layer = "SSDG_PVs"
+
+
+class SSDG_HYDRO(SSDG):
+    def __init__(self):
+        super().__init__()
+        self._SSDG_GD_layer = "SSDG_HYDROs"
+
+
+class SSDG_WIND(SSDG):
+    def __init__(self):
+        super().__init__()
+        self._SSDG_GD_layer = "SSDG_WINDs"
+
+
+class SSDG_GD(SSDG):
+    def __init__(self):
+        super().__init__()
+        self._SSDG_GD_layer = "SSDG_GDs"
 
 
 class Reclosers():
@@ -986,7 +1077,7 @@ class PublicLights():
         self._Y1 = []
 
 
-class CKTqgis:
+class CKTqgis():
     """Result ciruict.
 
     Circuit layers with all data attributes ready to be converted
@@ -1319,7 +1410,7 @@ class CKTqgis:
 
         return (fuse)
 
-    def add_PV_layer(self, cktNeplan: CKTdata) -> PVs:
+    def add_SSDG_PV_layer(self, cktNeplan: CKTdata) -> SSDG_PV:
         """Missing documentation.
 
         Here goes the missing description of this method.
@@ -1328,13 +1419,13 @@ class CKTqgis:
         # Concat columns
         pvID = cktNeplan.concat_PVcols()
         # Create instance
-        pv = PVs()
+        pv = SSDG_PV()
         pv_layer = self.set_attributes_PV(
-            pv=pv,
+            ssdg_pv=pv,
             cktNeplan=cktNeplan,
             pvID=pvID)
 
-        PVL = pv_layer._PV_layer
+        PVL = pv_layer._SSDG_GD_layer
         dictAttrs = pv_layer.__dict__
         self._smallScale_DG[PVL] = {col.strip("_"): vals
                                     for (col, vals) in dictAttrs.items()}
@@ -2168,9 +2259,9 @@ class CKTqgis:
         return (fuse)
 
     def set_attributes_PV(self,
-                          pv: PVs,
+                          ssdg_pv: SSDG_PV,
                           cktNeplan: CKTdata,
-                          pvID: list[str]) -> PVs:
+                          pvID: list[str]) -> SSDG_PV:
         """Unpack attributes of Photovoltaic technologies.
 
         In order to make hosting capacity in low voltage networks.
@@ -2178,31 +2269,35 @@ class CKTqgis:
         """
         for row in pvID:
             # cols: ["Name", "Node1", "Switch1", "Pset", "Cosr", "Unit",
-            # "Phase", "Sr", "nProductionType", "Ur", "Un", "Sk2max", "Sk2min"]
+            # "Phase", "Sr", "nProductionType", "Ur", "Un", "Sk2max", "Sk2min",
+            # CURVE1_P, CURVE2_Q]
             cols = row.split("&")
-            PV = cols[0].split("_")[3]
 
             # ICEobjectID
             objectID = cols[0].strip("_PV")
-            pv._ICEobjID.append(objectID)
+            ssdg_pv._ICEobjID.append(objectID)
             # NODE1
             node1 = cols[1].strip()
-            pv._NODE1.append(node1)
+            ssdg_pv._NODE1.append(node1)
             # SWITCH1
             switch1 = cols[2].strip()
-            pv._SWITCH1.append(switch1)
+            ssdg_pv._SWITCH1.append(switch1)
             # KVA
             kva = float(cols[7].strip())
-            pv._KVA.append(kva)
+            ssdg_pv._KVA.append(kva)
             # TECH
-            pv._TECH.append(PV)
+            ssdg_pv._TECH.append("PV")
             # X1, Y1
             busname = cols[1].strip()
             (X1, Y1) = cktNeplan.loc_buscoord(busname)
-            pv._X1.append(X1)
-            pv._Y1.append(Y1)
+            ssdg_pv._X1.append(X1)
+            ssdg_pv._Y1.append(Y1)
+            # CURVE1
+            ssdg_pv._CURVE1.append(cols[-2])
+            # CURVE2
+            ssdg_pv._CURVE2.append(cols[-1])
 
-        return (pv)
+        return (ssdg_pv)
 
     def set_attributes_recloser(self,
                                 recloser: Reclosers,
@@ -2674,7 +2769,7 @@ def get_CLASS(code: str) -> str:
         return "I"
 
     elif code in ["4", "41"]:
-        return "None"
+        return "R"
 
 
 def set_Label(LibType: str) -> str:
@@ -2895,11 +2990,11 @@ def df2shp(df: pd.DataFrame, namestr: str):
 
 if __name__ == "__main__":
     # Import Neplan circuit data
-    directory = "./data/Circuito.xlsx"
+    directory = "Circuito.xlsx"
     cktNeplan = CKTdata()
     cktNeplan.call_data(directory)
     # New QGIS circuit
-    cktQgis = CKTqgis
+    cktQgis = CKTqgis()
 
     # ------------------------
     # Buses layers *.shp files
@@ -3006,11 +3101,11 @@ if __name__ == "__main__":
     # ---------------------
     # PV layers *.shp files
     # ---------------------
-    _ = cktQgis.add_PV_layer(cktNeplan)
+    _ = cktQgis.add_SSDG_PV_layer(cktNeplan)
     # Turn layers into df
-    PV_df, _ = layer2df(cktQgis._smallScale_DG["PVs"])
+    PV_df, _ = layer2df(cktQgis._smallScale_DG["SSDG_PVs"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    PV_gdf = df2shp(PV_df, "PVs")
+    PV_gdf = df2shp(PV_df, "SSDG_PVs")
 
     # ---------------------------
     # Recloser layers *.shp files
