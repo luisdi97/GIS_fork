@@ -2674,7 +2674,7 @@ def get_CLASS(code: str) -> str:
         return "I"
 
     elif code in ["4", "41"]:
-        return "None"
+        return "R"
 
 
 def set_Label(LibType: str) -> str:
