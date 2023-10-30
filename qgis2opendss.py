@@ -9174,9 +9174,9 @@ class QGIS2OpenDSS(object):
                             df_temp = pd.DataFrame(data=datos, columns = column_names_trafo)
                             # df_trafo = df_trafo.append(df_temp, ignore_index=True)
                             df_trafo = pd.concat([df_trafo, df_temp], ignore_index=True)
-                            
+
                             n += 1
-                    
+
                     if (Graph_T2F.number_of_nodes()!= 0):  # revisa si hay trafos bifásicos
                         output_trdss.write(
                             '\n//Transformadores bifásicos (Conexiones especiales de dos transformadores)\n') # Escribe el string de salida en el archivo
@@ -9301,8 +9301,8 @@ class QGIS2OpenDSS(object):
                                 line_B +=  normhkva_B + ' !GroupMV=' + grupo_trafo_mv 
                                 line_A += ' !GroupLV=' + grupo_trafo_lv
                                 line_B += ' !GroupLV=' + grupo_trafo_lv
-                                    
-                                    
+
+
                                 output_trdss.write(line_A + " \n")
                                 output_trdss.write(line_B + " \n")
                                 trafName = circuitName + '2U3P_' + str(n + 1)
