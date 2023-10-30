@@ -7276,7 +7276,7 @@ class QGIS2OpenDSS(object):
                                 aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y'])+ ")"
                                 aviso_bus = True
                                 mensaje_mt += aviso + " \n"
-
+                                
                             elif node == dataLine['nodo1']:  #############CONDICION DE MAS CERCANO
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 if node not in busMT_List:
@@ -8895,6 +8895,7 @@ class QGIS2OpenDSS(object):
                             df_trafo = pd.concat([df_trafo, df_temp], ignore_index=True)
     
                             n += 1
+
                     if (Graph_T3F_single.number_of_nodes()!= 0):  # revisa si hay trafos trifásicos Single
                         output_trdss.write(
                             '\n//Transformadores Trifasicos Simples\n') # Escribe el string de salida en el archivo
@@ -9217,9 +9218,9 @@ class QGIS2OpenDSS(object):
                             df_temp = pd.DataFrame(data=datos, columns = column_names_trafo)
                             # df_trafo = df_trafo.append(df_temp, ignore_index=True)
                             df_trafo = pd.concat([df_trafo, df_temp], ignore_index=True)
-
+                            
                             n += 1
-                    
+
                     if (Graph_T2F.number_of_nodes()!= 0):  # revisa si hay trafos bifásicos
                         output_trdss.write(
                             '\n//Transformadores bifásicos (Conexiones especiales de dos transformadores)\n') # Escribe el string de salida en el archivo
@@ -9242,20 +9243,23 @@ class QGIS2OpenDSS(object):
                             kVA_A = str(int(float(dataList['KVA_FA'])))
                             kVA_B = str(int(float(dataList['KVA_FB'])))
                             kVA_C = str(int(float(dataList['KVA_FC'])))
-                            phase = dataList['PHASE']
+                            phase = dataList['PHASE'].strip()
                             tap = str(dataList['TAPS'])
                             # tap="1"
                             grupo_trafo_lv = str(dataList['LV_GROUP'])
                             grupo_trafo_mv = str(dataList['MV_GROUP'])
-                            
-                            if (dataList['CONBA'] == '4D'):  # si el transformador es delta 4 hilos en baja tensión
+
+                            if (dataList['CONBA'] == '4D') or (dataList['CONBA'] == 'OD'):  # si el transformador es delta 4 hilos en baja tensión or OpenDelta
+                                OYnod = False
+                                if (dataList['CONBA'] == 'OD'):
+                                    OYnod = True
                                 if phase == '.1.2':  # Las variables conexME y conexBA se utilizan para escribir a qué nodos de la barra se conecta la estrella abierta
                                     if float(dataList['KVA_FA'])>= float(dataList['KVA_FB']):
                                         buff_kVA_A = kVA_A
                                         buff_kVA_B = kVA_B
                                         kVA_A = buff_kVA_B
                                         kVA_B = buff_kVA_A
-    
+
                                     conexME_trafoA = '.1.0'  # Conexión en barra de media tensión del transformador A
                                     conexBA_trafoA = '.3.1'  # Conexión en barra de baja tensión del transformador A
                                     conexME_trafoB = '.2.0'  # Conexión en barra de media tensión del transformador B
@@ -9683,6 +9687,7 @@ class QGIS2OpenDSS(object):
                         TrafNode = dataLine["TRAFNODE"]
                         busfrom = line[2]['bus1']
                         busto = line[2]['bus2']
+                        libcode = dataLine["LibName"]
 
                         # Si la linea no tiene algun transformador conectado se le asigna la cant de fases que dice en el shape
                         if dataLine['TRAFNPHAS'] == "NULL":
@@ -10161,7 +10166,7 @@ class QGIS2OpenDSS(object):
                                 # out += 'New XYCurve.MyEff npts=4 xarray=[.1 .2 .4 1.0] '
                                 # out += 'yarray=[.86 .9 .93 .97]\n'
                                 # output_shpdss.write(out)
-
+    
                             # if CURVE1 not in shapewritten:
                                 # shapewritten[CURVE1] = 0
                                 # name1 = CURVE1.replace('.txt', '')
