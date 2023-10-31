@@ -9374,12 +9374,12 @@ class QGIS2OpenDSS(object):
                                     line_A +=  busLV + secConnA + ']'
                                     line_A += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoA + ' ' + kVA_trafoA + ']'
                                     line_A += ' conns=[wye wye] Taps=[' + tap + ', 1]' + normhkva_A + ' !GroupMV=' + grupo_trafo_mv
-                                    line_B = 'new transformer.' + trafName2 + ' phases=1 windings=2 ' + imagB
-                                    line_B += ' ' + impedanceA + ' ' + noloadlossB + ' buses=[' + busMV + primConnB
+                                    line_B = 'new transformer.' + trafName2 + ' phases=1 windings=2 ' + imagA
+                                    line_B += ' ' + impedanceA + ' ' + noloadlossA + ' buses=[' + busMV + primConnB
                                     line_B += ' ' + busLV + secConnB 
-                                    line_B += '] kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoB + ' '
-                                    line_B += kVA_trafoB + '] conns=[wye wye] Taps=[' + tap + ', 1]'
-                                    line_B +=  normhkva_B + ' !GroupMV=' + grupo_trafo_mv 
+                                    line_B += '] kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoA + ' '
+                                    line_B += kVA_trafoA + '] conns=[wye wye] Taps=[' + tap + ', 1]'
+                                    line_B +=  normhkva_A + ' !GroupMV=' + grupo_trafo_mv 
                                     line_A += ' !GroupLV=' + grupo_trafo_lv
                                     line_B += ' !GroupLV=' + grupo_trafo_lv        
 
