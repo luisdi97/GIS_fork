@@ -208,7 +208,7 @@ class LineCode():
                 # Reactances
                 clean_rows_X = []
                 for row in Zcarson:
-                    clean_rows_X.append(str(list(np.real(row))).strip("]").strip("[").replace(",", ""))
+                    clean_rows_X.append(str(list(np.imag(row))).strip("]").strip("[").replace(",", ""))
 
                 # Converting each row of the Zcarson matrix in xmatrix LineCode row
                 rows_linecode_X = ""
@@ -286,7 +286,7 @@ if __name__ == "__main__":
     linecode = LineCode()
 
     # Input file
-    input_file = "./data/Lineas.xlsx"
+    input_file = "Lineas.xlsx"
 
     # Create a dataframe -> drop_duplicates() delete the duplicate rows
     df = pd.read_excel(input_file, sheet_name= "Lineas", skiprows= 2).drop_duplicates()
