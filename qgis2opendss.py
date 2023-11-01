@@ -9276,6 +9276,8 @@ class QGIS2OpenDSS(object):
                                     noloadlossB = datos_trafo.get('impB')['PnoloadB']
                                     kVA_trafoA = kVA_A  # Potencia del transformador A
                                     kVA_trafoB = kVA_B  # Potencia del transformador B
+                                    kVA_trafoA_OYOD = kVA_A
+                                    kVA_trafoB_OYOD = kVA_B
                                 elif phase == '.1.3':
                                     if float(dataList['KVA_FA'])>= float(dataList['KVA_FC']):
                                         buff_kVA_A = kVA_A
@@ -9352,6 +9354,8 @@ class QGIS2OpenDSS(object):
 
                                 # Connection OYnod1: Keep secondary lagging 30deg
                                 elif OYnod:
+                                    normhkva_A = " normhkva=" + kVA_trafoA_OYOD
+                                    normhkva_B = " normhkva=" + kVA_trafoB_OYOD
                                     # Define connections primary: OYn
                                     ph = "0" + phase
                                     ph = ph.split(".")
@@ -9372,14 +9376,14 @@ class QGIS2OpenDSS(object):
                                     line_A = 'new transformer.' + trafName1 + ' phases=1 windings=2 ' + imagA + ' '
                                     line_A += impedanceA + ' ' + noloadlossA + ' buses=[' + busMV + primConnA + ' '
                                     line_A +=  busLV + secConnA + ']'
-                                    line_A += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoA + ' ' + kVA_trafoA + ']'
+                                    line_A += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoB_OYOD + ' ' + kVA_trafoB_OYOD + ']'
                                     line_A += ' conns=[wye wye] Taps=[' + tap + ', 1]' + normhkva_A + ' !GroupMV=' + grupo_trafo_mv
                                     line_B = 'new transformer.' + trafName2 + ' phases=1 windings=2 ' + imagA
                                     line_B += ' ' + impedanceA + ' ' + noloadlossA + ' buses=[' + busMV + primConnB
                                     line_B += ' ' + busLV + secConnB 
-                                    line_B += '] kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoA + ' '
-                                    line_B += kVA_trafoA + '] conns=[wye wye] Taps=[' + tap + ', 1]'
-                                    line_B +=  normhkva_A + ' !GroupMV=' + grupo_trafo_mv 
+                                    line_B += '] kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoB_OYOD + ' '
+                                    line_B += kVA_trafoB_OYOD + '] conns=[wye wye] Taps=[' + tap + ', 1]'
+                                    line_B +=  normhkva_B + ' !GroupMV=' + grupo_trafo_mv 
                                     line_A += ' !GroupLV=' + grupo_trafo_lv
                                     line_B += ' !GroupLV=' + grupo_trafo_lv        
 
