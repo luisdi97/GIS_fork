@@ -8496,7 +8496,7 @@ class QGIS2OpenDSS(object):
                         nodo1 = linea[0]
                         nodo2 = linea[1]
 
-                        if "::" in libcode:
+                        if (libcode) and "::" in libcode:
                             equipment =  libcode.split("::")[1]
                         else:
                             # Recibe la informacion del tipo de conductor, cantidad y aislamiento
@@ -8513,7 +8513,7 @@ class QGIS2OpenDSS(object):
                             DATOS['SHLEN'] = 0.0001
                         sh_len = "{0:.4f}".format(DATOS['SHLEN']) # Recibe la longitud de la linea
 
-                        if "::" in libcode:
+                        if (libcode) and "::" in libcode:
                             lineName = DATOS["ICEobjID"]
                         else:
                             if (busfrom == 'BUSMV' + circuitName + str(1))or (busto == 'BUSMV' + circuitName + str(1)):
@@ -8673,11 +8673,11 @@ class QGIS2OpenDSS(object):
                         line = 'new line.' + lineName + ' bus1=' + busfrom + configFase
                         line += ' bus2=' +  busto + configFase  # + ' geometry=' + equipment
                         # New: LineGeometry or LineCode
-                        if "LC::" in libcode:
+                        if (libcode) and "LC::" in libcode:
                             line += ' linecode=' + equipment
-                        elif "LG::" in libcode:
+                        elif (libcode) and "LG::" in libcode:
                             line += ' geometry=' + equipment
-                        elif "::" not in libcode:
+                        elif not libcode:
                             line += ' geometry=' + equipment
                         else:
                             raise Exception(("LibraryName can only be LC:: or LG:: "),
@@ -9562,7 +9562,7 @@ class QGIS2OpenDSS(object):
                                 equipment = 'NONE'
                                 conns = "NONE"
 
-                        if "::" in libcode:
+                        if (libcode) and "::" in libcode:
                             libtype = libcode.split("::")[1]
                             equipment = f"Linecode={libtype}"
 
@@ -9612,7 +9612,7 @@ class QGIS2OpenDSS(object):
                         sh_len = "{0:.4f}".format(dataLine['SHLEN']) # Recibe la longitud de la linea
                         opervoltLN = dataLine["TRAFVOLTLN"]
                         grupo_aco = dataLine['GRUPO']
-                        if "::" in libcode:
+                        if (libcode) and "::" in libcode:
                             lineName = dataLine["ICEobjID"]
                         else:
                             lineName = "LV" + cantFases + 'F' + circuitName + str(n)
@@ -9711,7 +9711,7 @@ class QGIS2OpenDSS(object):
                         else:
                             equipment = 'NONE'
                             conns = "NONE"
-                        if "::" in libcode:
+                        if (libcode) and "::" in libcode:
                             equipment = libcode.split("::")[1]
 
                         if float(dataLine['SHLEN'])== 0:
@@ -9757,7 +9757,7 @@ class QGIS2OpenDSS(object):
                         sh_len = "{0:.4f}".format(dataLine['SHLEN']) # Recibe la longitud de la linea
                         opervoltLN = dataLine['TRAFVOLTLN']  # ,' !1ph_basekV=',opervoltLN
                         grupo_aco = dataLine['GRUPO']
-                        if "::" in libcode:
+                        if (libcode) and "::" in libcode:
                             lineName = dataLine["ICEobjID"]
                         else:
                             lineName = "SRV" + cantFases + 'F' + circuitName + str(n)
