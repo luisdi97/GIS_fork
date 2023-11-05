@@ -9300,6 +9300,8 @@ class QGIS2OpenDSS(object):
                                     noloadlossB = datos_trafo.get('impB')['PnoloadB']
                                     kVA_trafoA = kVA_A
                                     kVA_trafoB = kVA_C
+                                    kVA_trafoA_OYOD = kVA_A
+                                    kVA_trafoB_OYOD = kVA_C
                                 elif phase == '.2.3':
                                     if float(dataList['KVA_FB'])>= float(dataList['KVA_FC']):
                                         buff_kVA_B = kVA_B
@@ -9321,6 +9323,8 @@ class QGIS2OpenDSS(object):
                                     noloadlossB = datos_trafo.get('impB')['PnoloadB']
                                     kVA_trafoA = kVA_B
                                     kVA_trafoB = kVA_C
+                                    kVA_trafoA_OYOD = kVA_B
+                                    kVA_trafoB_OYOD = kVA_C
                                 else:
                                     msg = "Los transformadores "
                                     msg += "con conexión delta 4 hilos "
@@ -9376,7 +9380,7 @@ class QGIS2OpenDSS(object):
                                     line_A = 'new transformer.' + trafName1 + ' phases=1 windings=2 ' + imagA + ' '
                                     line_A += impedanceA + ' ' + noloadlossA + ' buses=[' + busMV + primConnA + ' '
                                     line_A +=  busLV + secConnA + ']'
-                                    line_A += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoB_OYOD + ' ' + kVA_trafoB_OYOD + ']'
+                                    line_A += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoA_OYOD + ' ' + kVA_trafoA_OYOD + ']'
                                     line_A += ' conns=[wye wye] Taps=[' + tap + ', 1]' + normhkva_A + ' !GroupMV=' + grupo_trafo_mv
                                     line_B = 'new transformer.' + trafName2 + ' phases=1 windings=2 ' + imagA
                                     line_B += ' ' + impedanceA + ' ' + noloadlossA + ' buses=[' + busMV + primConnB

@@ -2743,12 +2743,12 @@ def get_CLASS(code: str) -> str:
     |    1   | Residencial                                      |  R         |
     |    2   | General                                          |  C         |
     |    3   | Industrial                                       |  I         |
-    |    4   | Social                                           |  None      |
+    |    4   | Social                                           |  R         |
     |   22   | General                                          |  C         |
     |   23   | General                                          |  C         |
     |   32   | Industrial                                       |  I         |
     |   33   | Industrial                                       |  I         |
-    |   41   | Social                                           |  None      |
+    |   41   | Social                                           |  R         |
     |   80   | Media Tensión A                                  |  I         |
     |   85   | Media Tensión B                                  |  I         |
     |   15   | Usuarios Directos del Servicio de Generación ICE |  I         |
