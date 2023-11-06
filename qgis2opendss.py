@@ -817,20 +817,13 @@ class QGIS2OpenDSS(object):
 
                     # Secondary connection: Open Delta lagging 30deg
                     elif(trafo1['SECCONN'] == 'OD'):
-                        # Define connections secondary: od
-                        if fase == ".1.2":
-                            loadconns = ".1.3"
-                        elif fase == ".1.3":
-                            loadconns = ".1.3"
-                        elif fase == ".2.3":
-                            loadconns = ".2.1"
 
                         datos2F = {"NPHAS": numfase, "MVCODE": MVCode, "LVCODE": LVCode, "TAPS": tap, "INDEXDSS": indexDSS,
                                 'ID': trafo1.id(), "LAYER": layer, "nodo": nodo, 'X1': point[0], 'Y1': point[1],
                                 'PHASE': fase, 'KVA': int(float(trafo1['RATEDKVA'])), 'KVM': trafo1['PRIMVOLT'],
                                 'KVL': trafo1['SECVOLT'], 'CONME': trafo1['PRIMCONN'], 'CONBA': trafo1['SECCONN'],
                                 'KVA_FA': trafo1['KVAPHASEA'], 'KVA_FB': trafo1['KVAPHASEB'], 'KVA_FC': trafo1['KVAPHASEC'],
-                                'LOADCONNS': loadconns, 'LOADCONF': 'wye', 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN,
+                                'LOADCONNS': '.1.2.3', 'LOADCONF': 'delta', 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN,
                                 'MV_GROUP': group_mv, 'LV_GROUP': group_lv, "VOLTMTLL": voltoprLL, "VOLTMTLN": voltoprLN, 
                                 'MV_MV': mv_mv, "INDEXBUS1": indexBus1,
                                 'INDEX_LV_GROUP': indexLvGroup}
@@ -1646,7 +1639,7 @@ class QGIS2OpenDSS(object):
             error_carga = 1
         elif cable_type == "TPX" and conns != ".1.2":
             error_carga = 1
-        elif cable_type == "QPX" and conns != ".1.2.3":
+        elif cable_type == "QPX" and conns not in {".1.2.3", ".1.2", ".2.3", ".1.3"}:
             error_carga = 1
         #"BARE" puede tener cualquier valor válido
         #RHH puede tener cualquier valor válido
@@ -10003,7 +9996,7 @@ class QGIS2OpenDSS(object):
 
                         n += 1
                         
-                        if cantFases == "3" and conns != ".1.2.3":
+                        if cantFases == "3" and conns not in {".1.2.3", ".1.2", ".2.3", ".1.3"}:
                             self.mensaje_log_gral += "Revise la carga " + loadName + " debido a que hay"
                             self.mensaje_log_gral += " inconsistencias entre las fases y el número de nodos a los que está"
                             self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + " \n"
