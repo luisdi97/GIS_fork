@@ -1743,7 +1743,11 @@ class QGIS2OpenDSS(object):
                 all_ami_curves = []
             
             for carga in cargas:
-                # Lee la geometria de la linea
+                # Lee la geometria de la linea <- How?
+                # Deal with overlap loads
+                if not carga["DSSNAME"] and carga["ICEobjID"]:   # <- New commands
+                    carga["DSSNAME"] = carga["ICEobjID"]
+
                 point = carga.geometry().asPoint()
                 id_ = carga.id()
                 try:
@@ -9942,7 +9946,10 @@ class QGIS2OpenDSS(object):
                         idx_dss = dataList["INDEXDSS"]
                         idx_bus1 = dataList['idx_bus1']
                         layer = dataList["LAYER"]
-                        
+                        ICEloadName = ""
+                        if dataList["ICEobjID"]:
+                            ICEloadName = dataList["ICEobjID"]
+
                         # Si la carga no tiene algun transformador conectado se le asigna la cant de fases que dice en el shape
                         if dataList['TRAFNPHAS'] == "NULL":  
                             cantFases = "1"
@@ -9969,7 +9976,7 @@ class QGIS2OpenDSS(object):
                         line += " kW=" + kW + " kvar=" + kvar
                         line += " status=variable phases=" +  cantFases 
                         line += ' ' + daily + " !kWh="  + kWhmonth + " class="
-                        line +=  loadclass + " !Group=" + Grupo +  desc + " \n" 
+                        line +=  loadclass + " !Group=" + Grupo +  desc + "!ICEobjID="+ ICEloadName + " \n" 
                         output_cadss.write(line)
                         layer.changeAttributeValue(id_, idx_dss, loadName)
                         layer.changeAttributeValue(id_, idx_bus1, bus)
