@@ -1745,8 +1745,11 @@ class QGIS2OpenDSS(object):
             for carga in cargas:
                 # Lee la geometria de la linea <- How?
                 # Deal with overlap loads
-                if not carga["DSSNAME"] and carga["ICEobjID"]:   # <- New commands
-                    carga["DSSNAME"] = carga["ICEobjID"]
+                ICEloadName = ""                            # <- Start new commands
+                if "ICEobjID" in cargas:
+                    ICEloadName = carga["ICEobjID"]
+                if not carga["DSSNAME"] and ICEloadName:
+                    carga["DSSNAME"] = carga["ICEobjID"]    # -> End new commands
 
                 point = carga.geometry().asPoint()
                 id_ = carga.id()
@@ -1895,8 +1898,8 @@ class QGIS2OpenDSS(object):
                          'NOMVOLT': nom_volt, 'MODEL': model,
                          'CODE_NOMVOLT': code_nvolt,
                          'AMI': ami, 'ID_CARGA': id_carga,
-                         'idx_bus1': idx_bus1}
-                
+                         'idx_bus1': idx_bus1, "ICEobjID": ICEloadName}
+
                 datosTotal = {"type": "LOAD"}
                 kWhLVload.append(float(carga['KWHMONTH']))
                 datosCAR.append(datos)
@@ -7260,6 +7263,10 @@ class QGIS2OpenDSS(object):
                             dataLine['Y2'] = X2Y2[1]
                             dataLine['nodo1'] = nodeFrom
                             dataLine['nodo2'] = nodeTo
+                            nameIDobj = ""
+                            if "ICEobjID" in dataLine:
+                                nameIDobj = dataLine["ICEobjID"]
+
                             if dataLine['nodo1'] == dataLine['nodo2']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoMT
@@ -7269,10 +7276,21 @@ class QGIS2OpenDSS(object):
                                                         "VOLTAGELL": dataLine["VOLTOPRLL"],
                                                         "VOLTAGELN": dataLine["VOLTOPRLN"],
                                                         "PHASES": dataLine["PHASE"]}  #
-                                aviso = "Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (" 
-                                aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y'])+ ")"
-                                aviso_bus = True
-                                mensaje_mt += aviso + " \n"
+                                    if "ICEobjID" in dataLine:
+                                        nameIDobj = dataLine["ICEobjID"]
+                                        busMT_List[node]["ICEobjID"] = nameIDobj
+
+                                if nameIDobj:
+                                    aviso = "Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (" 
+                                    aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y'])+ ")"
+                                    aviso += "ICEobjID=" + nameIDobj
+                                    aviso_bus = True
+                                    mensaje_mt += aviso + " \n"
+                                else:
+                                    aviso = "Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (" 
+                                    aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y'])+ ")"
+                                    aviso_bus = True
+                                    mensaje_mt += aviso + " \n"
                                 
                             elif node == dataLine['nodo1']:  #############CONDICION DE MAS CERCANO
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
@@ -7317,6 +7335,9 @@ class QGIS2OpenDSS(object):
                             dataLine['Y2'] = X2Y2[1]
                             dataLine['nodo1'] = nodeFrom
                             dataLine['nodo2'] = nodeTo
+                            nameIDobj = ""
+                            if "ICEobjID" in dataLine:
+                                nameIDobj = dataLine["ICEobjID"]
                             if dataLine['nodo1'] == dataLine['nodo2']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoMT
@@ -7326,12 +7347,21 @@ class QGIS2OpenDSS(object):
                                                         "VOLTAGELL": dataLine["VOLTOPRLL"],
                                                         "VOLTAGELN": dataLine["VOLTOPRLN"],
                                                         "PHASES": dataLine["PHASE"]}  #
-                                aviso = QCoreApplication.translate('dialog',
-                                                                   u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
-                                    busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')'
+                                if nameIDobj:
+                                    aviso = QCoreApplication.translate('dialog',
+                                                                    u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
+                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')' + "ICEobjID=" + nameIDobj
+
+                                    aviso_bus = True
+                                    mensaje_mt += aviso + " \n"
+
+                                else:
+                                    aviso = QCoreApplication.translate('dialog',
+                                                                    u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
+                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')'
                                     
-                                aviso_bus = True
-                                mensaje_mt += aviso + " \n"
+                                    aviso_bus = True
+                                    mensaje_mt += aviso + " \n"
                                 
                             elif node == dataLine['nodo1']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
@@ -7372,6 +7402,9 @@ class QGIS2OpenDSS(object):
                             dataLine['Y2'] = X2Y2[1]
                             dataLine['nodo1'] = nodeFrom
                             dataLine['nodo2'] = nodeTo
+                            nameIDobj = ""
+                            if "ICEobjID" in dataLine:
+                                nameIDobj = dataLine["ICEobjID"]
                             if dataLine['nodo1'] == dataLine['nodo2']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoMT
@@ -7381,12 +7414,19 @@ class QGIS2OpenDSS(object):
                                                         "VOLTAGELL": dataLine["VOLTOPRLL"],
                                                         "VOLTAGELN": dataLine["VOLTOPRLN"],
                                                         "PHASES": dataLine["PHASE"]}  #
-                                aviso = QCoreApplication.translate('dialog',
-                                                                   u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
-                                    busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')'
-                                aviso_bus = True
-                                mensaje_mt += aviso + " \n"
-                                
+                                if nameIDobj:
+                                    aviso = QCoreApplication.translate('dialog',
+                                                                    u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
+                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')' + "ICEobjID=" + nameIDobj
+                                    aviso_bus = True
+                                    mensaje_mt += aviso + " \n"
+                                else:
+                                    aviso = QCoreApplication.translate('dialog',
+                                                                    u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
+                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')'
+                                    aviso_bus = True
+                                    mensaje_mt += aviso + " \n"
+
                             elif node == dataLine['nodo1']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 if node not in busMT_List:
@@ -8057,6 +8097,10 @@ class QGIS2OpenDSS(object):
                             dataLine = grafoBT[node][secondNode]  # info de la linea
                             #archivo.write(str(str(dataLine)+ " \n"))
                             #print("Data Line error final", dataLine)
+                            nameIDobj = ""
+                            if "ICEobjID" in dataLine:
+                                nameIDobj = dataLine["ICEobjID"]
+
                             if dataLine['nodo1'] == dataLine['nodo2']:  # Verifica si la línea empieza y termina en el mismo punto
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoBT
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoBT
@@ -8064,10 +8108,17 @@ class QGIS2OpenDSS(object):
                                                     "GRAFO": grafoBT, "VOLTAGELL": dataLine["TRAFVOLTLL"],
                                                     "VOLTAGELN": dataLine['TRAFVOLTLN'],
                                                     "GRUPO": dataLine["GRUPO"]}  #
-                                msg = u'Existe una línea de BT con bus1 igual a bus2 dada su cercanía en ('
-                                aviso = QCoreApplication.translate('dialog', msg) + str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')'
-                                mensaje_bt += aviso + " \n"
-                                aviso_busBT = True
+                                if nameIDobj:
+                                    msg = u'Existe una línea de BT con bus1 igual a bus2 dada su cercanía en ('
+                                    aviso = QCoreApplication.translate('dialog', msg) + str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')' + "ICEobjID=" + nameIDobj
+                                    mensaje_bt += aviso + " \n"
+                                    aviso_busBT = True
+                                else:
+                                    msg = u'Existe una línea de BT con bus1 igual a bus2 dada su cercanía en ('
+                                    aviso = QCoreApplication.translate('dialog', msg) + str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')'
+                                    mensaje_bt += aviso + " \n"
+                                    aviso_busBT = True
+
                             elif node == dataLine['nodo1']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoBT
                                 busBT_List[node] = {'bus': bus, 'X': dataLine['X1'], 'Y': dataLine['Y1'], "GRAFO": grafoBT,
@@ -8104,16 +8155,25 @@ class QGIS2OpenDSS(object):
                             busBTid += 1
                         for secondNode in grafoACO[node]:  # itera sobre las lineas que contienen el nodo. Data es el otro nodo de la linea
                             dataLine = grafoACO[node][secondNode]  # info de la linea
+                            nameIDobj = ""
+                            if "ICEobjID" in dataLine:
+                                nameIDobj = dataLine["ICEobjID"]
                             if dataLine['nodo1'] == dataLine['nodo2']:  # Verifica si la línea empieza y termina en el mismo punto
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoACO
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoACO
                                 busBT_List[node] = {'bus': bus, 'X': dataLine['X1'], 'Y': dataLine['Y1'], "GRAFO": grafoACO,
                                                     "VOLTAGELL": dataLine["TRAFVOLTLL"], "VOLTAGELN": dataLine["TRAFVOLTLN"],
                                                      "GRUPO": dataLine['GRUPO']}
-                                msg = u'Existe una línea de acometidas con bus1 igual a bus2 dada su cercanía en ('
-                                aviso = QCoreApplication.translate('dialog', msg)+ str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')'
-                                mensaje_aco += aviso + " \n"
-                                aviso_busAco = True
+                                if nameIDobj:
+                                    msg = u'Existe una línea de acometidas con bus1 igual a bus2 dada su cercanía en ('
+                                    aviso = QCoreApplication.translate('dialog', msg)+ str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')' + "ICEobjID="+ nameIDobj
+                                    mensaje_aco += aviso + " \n"
+                                    aviso_busAco = True
+                                else:
+                                    msg = u'Existe una línea de acometidas con bus1 igual a bus2 dada su cercanía en ('
+                                    aviso = QCoreApplication.translate('dialog', msg)+ str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')'
+                                    mensaje_aco += aviso + " \n"
+                                    aviso_busAco = True
                             elif node == dataLine['nodo1']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoACO
                                 busBT_List[node] = {'bus': bus, 'X': dataLine['X1'], 'Y': dataLine['Y1'],
