@@ -1745,11 +1745,9 @@ class QGIS2OpenDSS(object):
             for carga in cargas:
                 # Lee la geometria de la linea <- How?
                 # Deal with overlap loads
-                ICEloadName = ""                            # <- Start new commands
-                if "ICEobjID" in cargas:
-                    ICEloadName = carga["ICEobjID"]
-                if not carga["DSSNAME"] and ICEloadName:
-                    carga["DSSNAME"] = carga["ICEobjID"]    # -> End new commands
+                ICEloadName = carga["ICEobjID"]
+                if not carga["DSSNAME"] and ICEloadName:   # <- New commands
+                    carga["DSSNAME"] = carga["ICEobjID"]
 
                 point = carga.geometry().asPoint()
                 id_ = carga.id()
@@ -7003,7 +7001,7 @@ class QGIS2OpenDSS(object):
             Error = False  # Se inicializa esta variable. Cambia a True si ocurre un error crítico.
             # Time meters init
             startTime = time.time()
-            toler = 0.1  # tolerancia para los grafos en metros
+            toler = 0.02  # tolerancia para los grafos en metros
             grafoBTTotal = nx.Graph()
             """1-Se inicia contador de barras MT y BT"""
             busnumMT = 1  # inicializa contador de barras de MT
@@ -7283,7 +7281,7 @@ class QGIS2OpenDSS(object):
                                 if nameIDobj:
                                     aviso = "Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (" 
                                     aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y'])+ ")"
-                                    aviso += "ICEobjID=" + nameIDobj
+                                    aviso += " ICEobjID=" + nameIDobj
                                     aviso_bus = True
                                     mensaje_mt += aviso + " \n"
                                 else:
@@ -7350,7 +7348,7 @@ class QGIS2OpenDSS(object):
                                 if nameIDobj:
                                     aviso = QCoreApplication.translate('dialog',
                                                                     u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
-                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')' + "ICEobjID=" + nameIDobj
+                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')' + " ICEobjID=" + nameIDobj
 
                                     aviso_bus = True
                                     mensaje_mt += aviso + " \n"
@@ -7417,7 +7415,7 @@ class QGIS2OpenDSS(object):
                                 if nameIDobj:
                                     aviso = QCoreApplication.translate('dialog',
                                                                     u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
-                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')' + "ICEobjID=" + nameIDobj
+                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')' + " ICEobjID=" + nameIDobj
                                     aviso_bus = True
                                     mensaje_mt += aviso + " \n"
                                 else:
@@ -8110,7 +8108,7 @@ class QGIS2OpenDSS(object):
                                                     "GRUPO": dataLine["GRUPO"]}  #
                                 if nameIDobj:
                                     msg = u'Existe una línea de BT con bus1 igual a bus2 dada su cercanía en ('
-                                    aviso = QCoreApplication.translate('dialog', msg) + str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')' + "ICEobjID=" + nameIDobj
+                                    aviso = QCoreApplication.translate('dialog', msg) + str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')' + " ICEobjID=" + nameIDobj
                                     mensaje_bt += aviso + " \n"
                                     aviso_busBT = True
                                 else:
@@ -8166,7 +8164,7 @@ class QGIS2OpenDSS(object):
                                                      "GRUPO": dataLine['GRUPO']}
                                 if nameIDobj:
                                     msg = u'Existe una línea de acometidas con bus1 igual a bus2 dada su cercanía en ('
-                                    aviso = QCoreApplication.translate('dialog', msg)+ str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')' + "ICEobjID="+ nameIDobj
+                                    aviso = QCoreApplication.translate('dialog', msg)+ str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')' + " ICEobjID="+ nameIDobj
                                     mensaje_aco += aviso + " \n"
                                     aviso_busAco = True
                                 else:
@@ -8572,6 +8570,9 @@ class QGIS2OpenDSS(object):
 
                         if (libcode) and "::" in libcode:
                             lineName = DATOS["ICEobjID"]
+                            dssLineObjName = ""
+                            if n == 0:
+                                dssLineObjName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
                         else:
                             if (busfrom == 'BUSMV' + circuitName + str(1))or (busto == 'BUSMV' + circuitName + str(1)):
                                 lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
@@ -8726,7 +8727,8 @@ class QGIS2OpenDSS(object):
                         # Escritura Líneas Media Tensión
                         if lineName == "MV" + str(cantFases)+ 'P' + circuitName + '0':
                             busfrom = 'AFTERMETER' #Para coincidir con la línea 00
-
+                        if dssLineObjName:
+                            busfrom = 'AFTERMETER' #Para coincidir con la línea 00
                         line = 'new line.' + lineName + ' bus1=' + busfrom + configFase
                         line += ' bus2=' +  busto + configFase  # + ' geometry=' + equipment
                         # New: LineGeometry or LineCode
@@ -10036,7 +10038,7 @@ class QGIS2OpenDSS(object):
                         line += " kW=" + kW + " kvar=" + kvar
                         line += " status=variable phases=" +  cantFases 
                         line += ' ' + daily + " !kWh="  + kWhmonth + " class="
-                        line +=  loadclass + " !Group=" + Grupo +  desc + "!ICEobjID="+ ICEloadName + " \n" 
+                        line +=  loadclass + " !Group=" + Grupo +  desc + " !ICEobjID="+ ICEloadName + " \n" 
                         output_cadss.write(line)
                         layer.changeAttributeValue(id_, idx_dss, loadName)
                         layer.changeAttributeValue(id_, idx_bus1, bus)
