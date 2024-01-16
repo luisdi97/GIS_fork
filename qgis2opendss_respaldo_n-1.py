@@ -33,8 +33,6 @@ import timeit
 import inspect
 from math import sqrt
 import math
-import subprocess
-import re
 
 import networkx as nx  # Para trabajar con teoria de grafos
 import numpy as np
@@ -59,10 +57,10 @@ from qgis.core import NULL
 from . import auxiliary_functions
 from .LlamarOpenDSS import LlamarOpenDSS
 # from dateTime import *
-from . import lineOperations as lineOperations
+from . import lineOperations
 from . import phaseOperations  # Realiza diferentes tareas con las fases de los elementos electricos.
 #from . import trafoOperations  # Operaciones con transformadores
-from . import trafoOperations as trafoOperations  # Operaciones con transformadores para consultoría con Perú
+from . import trafoOperations_PERU as trafoOperations  # Operaciones con transformadores para consultoría con Perú
 from . import resources
 from . EVsFunctions import CreacionPerfilesEV, AnalizarEncuestas #funciones necesarias para VEs
 from . optimizacion_buses import excel_to_dict #funciones necesarias para buses
@@ -74,9 +72,6 @@ from .qgis2opendss_progress import Ui_Progress
 import sys
 from decimal import Decimal
 import pandas as pd
-
-class TerminateException(Exception):
-    pass
 
 class QGIS2OpenDSS(object):
     """QGIS Plugin Implementation."""
@@ -116,10 +111,10 @@ class QGIS2OpenDSS(object):
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&QGIS2OpenDSS_V3')
+        self.menu = self.tr(u'&QGIS2OpenDSS')
         # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar(u'QGIS2OpenDSS_V3')
-        self.toolbar.setObjectName(u'QGIS2OpenDSS_V3')
+        self.toolbar = self.iface.addToolBar(u'QGIS2OpenDSS')
+        self.toolbar.setObjectName(u'QGIS2OpenDSS')
 
         # Llama al metodo para seleccionar la carpeta de destino
         # self.dlg.lineEdit_nameCircuit.clear()
@@ -252,7 +247,7 @@ class QGIS2OpenDSS(object):
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('dialog', 'QGIS2OpenDSS_V3', message)
+        return QCoreApplication.translate('dialog', 'QGIS2OpenDSS', message)
 
     def add_action(
             self,
@@ -319,7 +314,7 @@ class QGIS2OpenDSS(object):
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
-        icon_path = ':/plugins/GIS_fork/icon.png'
+        icon_path = ':/plugins/QGIS2OpenDSS/icon.png'
         self.add_action(
             icon_path,
             text=self.tr(u'Export circuit to OpenDSS'),
@@ -330,7 +325,7 @@ class QGIS2OpenDSS(object):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr(u'&QGIS2OpenDSS_V3'),
+                self.tr(u'&QGIS2OpenDSS'),
                 action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
@@ -401,90 +396,17 @@ class QGIS2OpenDSS(object):
         Y1 = int(float(point[1] / tolerancia))
         P1 = (X1, Y1)
         return P1
-    
-    def GeometryCode_Verification(self, foldername, lista_geo_MT_aer, lista_geo_MT_sub, lista_geo_BT_aer, lista_geo_BT_sub, lista_geo_AC_aer):
-        
-        aviso = False
-        
-        error_log = "Favor revisar los archivos de capas o bien, agregar el código/geometría faltante en alguno de los archivos de la carpeta 'DSS/Bibliotecas' \n"
-        # Parte 1: Lista de códigos
-        
-        geometry_list = []
-        linecode_list = []
-        spacing_list = []
-
-        file_path = foldername + '\\Bibliotecas'
-        files_names_dss = list(glob.glob(os.path.join(file_path, '*.dss')))
-        files_names_txt = list(glob.glob(os.path.join(file_path, '*.txt')))
-        files_names = files_names_dss + files_names_txt
-        
-        for file_ in files_names:
-            with open(file_, 'r', encoding='utf-8', errors='ignore') as file:
-                lines_e = file.readlines()
-                for line in lines_e:
-                    if (("LineSpacing" in line) or ("Linespacing" in line) or ("linespacing" in line)):
-                        if "new" in line:
-                            spacing_list.append(line.split("new ")[1].split("pacing.")[1].split(" ")[0])
-                        elif "New" in line:
-                            spacing_list.append(line.split("New ")[1].split("pacing.")[1].split(" ")[0])
-                    
-                    elif (("LineCode" in line) or ("Linecode" in line) or ("linecode" in line)):
-                        if "new" in line:
-                            linecode_list.append(line.split("new ")[1].split("ode.")[1].split(" ")[0])
-                        elif "New" in line:
-                            linecode_list.append(line.split("New ")[1].split("ode.")[1].split(" ")[0])
-                    
-                    elif (("LineGeometry" in line) or ("Linegeometry" in line) or ("linegeometry" in line)):
-                        if "new" in line:
-                            geometry_list.append(line.split("new ")[1].split("eometry.")[1].split(" ")[0])
-                        elif "New" in line:
-                            geometry_list.append(line.split("New ")[1].split("eometry.")[1].split(" ")[0])
-                    
-                    else:
-                        pass
-        
-        code_list = geometry_list+linecode_list
-        # Parte 2: Verificación por partes
-        
-        # Media tensión aéreo:
-        for line in lista_geo_MT_aer:
-            if line[2] not in code_list:
-                error_log += "La línea MT aérea con id: "+str(line[0])+" y nombre: "+str(line[1])+" presenta un LineGeometry/LineCode no válido: " +str(line[2])+" \n"
-                aviso = True
-        # Media tensión subterráneo:
-        for line in lista_geo_MT_sub:
-            if line[2] not in code_list:
-                error_log += "La línea MT subt con id: "+str(line[0])+" y nombre: "+str(line[1])+" presenta un LineGeometry/LineCode no válido: " +str(line[2])+" \n"
-                aviso = True
-        # Baja tensión aéreo:
-        for line in lista_geo_BT_aer:
-            if line[2] not in code_list:
-                error_log += "La línea BT aérea con id: "+str(line[0])+" y nombre: "+str(line[1])+" presenta un LineGeometry/LineCode no válido: " +str(line[2])+" \n"
-                aviso = True
-        # Baja tensión subterráneo:
-        for line in lista_geo_BT_sub:
-            if line[2] not in code_list:
-                error_log += "La línea BT subt con id: "+str(line[0])+" y nombre: "+str(line[1])+" presenta un LineGeometry/LineCode no válido: " +str(line[2])+" \n"
-                aviso = True
-        # Acometida aérea:
-        for line in lista_geo_AC_aer:
-            if line[2] not in code_list:
-                error_log += "La Acometida aérea con id: "+str(line[0])+" y nombre: "+str(line[1])+" presenta un LineGeometry/LineCode no válido: " +str(line[2])+" \n"
-                aviso = True
-                
-        return aviso, error_log
 
     def ReaderDataLMT(self, layer, Grafo, datosLMT, toler, subterranea,
                       indexDSS):  # Lee los datos de capa de línea y las agrega al grafo
         try:
-            line_id = auxiliary_functions.getAttributeIndex(self, layer, "OBJECTID")
             idx_bus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             idx_bus2 = auxiliary_functions.getAttributeIndex(self, layer, "bus2")
             idx_length = auxiliary_functions.getAttributeIndex(self, layer, "length")
             
             lineasMT = layer.getFeatures() # Recibe las caracteristicas de la capa de lineas de media tension.
             layer.startEditing() # Activa modo edición
-
+            
             for lineaMT in lineasMT:
                 geom = lineaMT.geometry()
                 line = self.MultiStringToMatrix(geom)
@@ -495,15 +417,12 @@ class QGIS2OpenDSS(object):
                 faseOrig = lineaMT['PHASEDESIG']
                 cantFases = phaseOperations.renamePhase(lineaMT['PHASEDESIG']).get('phaseNumber')
                 nom_volt = lineaMT['NOMVOLT']
-                ICEobjID = lineaMT["ICEobjID"]   # New: list[str]
-                libName = lineaMT["LibName"]    # New: list[str]
                 datos_tension = lineOperations.renameVoltage(nom_volt)
                 opervoltLN = datos_tension['LVCode']['LN']
                 opervoltLL = datos_tension['LVCode']['LL']
                 nodo1, nodo2 = self.CoordLineProcess(lineaMT, toler)
                 LineLength = lineaMT.geometry().length()
                 id_ = lineaMT.id()
-                layer.changeAttributeValue(id_, line_id, id_)
                 layer.changeAttributeValue(id_, idx_length, LineLength)
                 layer.changeAttributeValue(id_, idx_bus1, NULL)
                 layer.changeAttributeValue(id_, idx_bus2, NULL)
@@ -522,8 +441,7 @@ class QGIS2OpenDSS(object):
                                   'NOMVOLT': lineaMT['INSULVOLT'], 'PHASE': fase, 'SHLEN': LineLength, 'AIR_UGND': air_ugnd,
                                   'INSUL': lineaMT['INSULMAT'], 'NPHAS': cantFases, 'VOLTOPRLL': opervoltLL,
                                   'VOLTOPRLN': opervoltLN, "SHIELD": lineaMT["SHIELDING"],
-                                  'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2,
-                                  "ICEobjID": ICEobjID, "LibName": libName}
+                                  'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2}
                 else:
                     air_ugnd = 'air'
                     datosLinea = {"PHASEDESIG": faseOrig, "INDEXDSS": indexDSS, 'ID': lineaMT.id(), "LAYER": layer,
@@ -532,9 +450,8 @@ class QGIS2OpenDSS(object):
                                   'PHAMAT': lineaMT['PHASEMAT'], 'PHASIZ': lineaMT['PHASESIZ'], 'CCONF': lineaMT['LINEGEO'],
                                   'PHASE': fase, 'SHLEN': LineLength, 'AIR_UGND': air_ugnd, 'NPHAS': cantFases,
                                   'VOLTOPRLL': opervoltLL, 'VOLTOPRLN': opervoltLN,
-                                  'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2,
-                                  "ICEobjID": ICEobjID, "LibName": libName}
-
+                                  'MV_GROUP': group, 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2}
+    
                 if Grafo.get_edge_data(nodo1, nodo2)== None:  # se asegura que la línea no existe
                     Grafo.add_edge(nodo1, nodo2)
                     Grafo[nodo1][nodo2].update(datosLinea) # Agrega la línea al grafo con todos los datos
@@ -580,15 +497,14 @@ class QGIS2OpenDSS(object):
             
             trafos1 = layer.getFeatures() # Recibe las caracteristicas de la capa de transformadores.
             layer.startEditing() # Activa modo edición
-            
-            ats = [field.name() for field in layer.fields()]
                 
             for trafo1 in trafos1:  # Separa los transformadores en tres listas: Monofasicos, Bifasicos y Trifasicos
                 
                 nodo = self.CoordPointProcees(trafo1, toler)
                 point = trafo1.geometry().asPoint() # Lee la geometria de la linea
                 fase = phaseOperations.renamePhase(trafo1['PHASEDESIG']).get('phaseCodeODSS') # define código de OpenDSS
-                numfase = phaseOperations.renamePhase(trafo1['PHASEDESIG']).get('phaseNumberTraf') # define código de OpenDSS
+                numfase = phaseOperations.renamePhase(trafo1['PHASEDESIG']).get(
+                    'phaseNumberTraf') # define código de OpenDSS
                 MVCode = trafo1['PRIMVOLT']
                 LVCode = trafo1['SECVOLT']
                 tap = str(format(float(trafo1['TAPSETTING']), '.4f'))
@@ -615,24 +531,6 @@ class QGIS2OpenDSS(object):
                     group_mv = trafo1['MV_GROUP']
                 except KeyError:
                     group_mv = 'N/A'
-                
-                try:
-                    sum_kva = float(trafo1['KVAPHASEA']) +  float(trafo1['KVAPHASEB']) + float(trafo1['KVAPHASEC'])
-                    assert ((sum_kva< 1.02*float(trafo1['RATEDKVA'])) and (sum_kva> 0.98*float(trafo1['RATEDKVA'])))
-                    
-                except AssertionError:
-                    if "OBJECTID" not in ats:
-                        aviso = "La suma de los kVAs por fase en el transformador con ID:"+str(trafo1.id())+" no coinciden con el total especificado en el atributo RATEDKVA "
-                        aviso += "\n Favor revisar. Para más detalles: \n"
-                        aviso += self.print_error()
-                        QMessageBox.critical(None, "QGIS2OpenDSS Error lectura transformadores", aviso)
-                    else:
-                        aviso = "La suma de los kVAs por fase en el transformador con ID:"+str(trafo1['OBJECTID'])+" no coinciden con el total especificado en el atributo RATEDKVA "
-                        aviso += "\n Favor revisar. Para más detalles: \n"
-                        aviso += self.print_error()
-                        QMessageBox.critical(None, "QGIS2OpenDSS Error lectura transformadores", aviso)
-                    
-                    return 0, 0, 0, 0, 0, 0, 0, 0, 0
                     
                 #Caso en que el trafo sea de media a media tensión
                 try:
@@ -647,7 +545,6 @@ class QGIS2OpenDSS(object):
                         mv_mv = False
                 except Exception:
                     mv_mv = False
-                
                 if fase == '.1.2.3':  # Divide los transformadores trifasicos en transformadores simples y de multiples unidades monofasicas
                     # Revisa si es un banco de tres transformadores con placa diferente o una sola unidad
                     if (trafo1['SECCONN'] == '4D'):
@@ -657,8 +554,8 @@ class QGIS2OpenDSS(object):
                                       'KVA_FB': trafo1['KVAPHASEB'], 'KVA_FC': trafo1['KVAPHASEC'],
                                       'KVM': trafo1['PRIMVOLT'], 'KVL': trafo1['SECVOLT'], 'CONME': trafo1['PRIMCONN'],
                                       'CONBA': trafo1['SECCONN'], 'LOADCONNS': '.1.2.3', 'LOADCONF': 'delta',
-                                      'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN, 'MV_GROUP': group_mv,
-                                      'LV_GROUP': group_lv, "VOLTMTLL": voltoprLL, "VOLTMTLN": voltoprLN,
+                                      'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN, 'GRUPO_MV': group_mv,
+                                      'GRUPO_LV': group_lv, "VOLTMTLL": voltoprLL, "VOLTMTLN": voltoprLN,
                                       'MV_MV': mv_mv, "INDEXBUS1": indexBus1,
                                       'INDEX_LV_GROUP': indexLvGroup}
                         datosTotalGraph = {"NPHAS": numfase, "type": "TRAF", 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN}
@@ -687,10 +584,7 @@ class QGIS2OpenDSS(object):
                             
                     if (trafo1['SECCONN'] == 'Y') and (trafo1['PRIMCONN'] == 'Y' or trafo1['PRIMCONN'] == 'D'):
     
-                        if ( ((float(trafo1['KVAPHASEA']) < 1.02 * float(trafo1['RATEDKVA'])) or (float(trafo1['KVAPHASEA']) > 0.98 * float(trafo1['RATEDKVA']))) and
-                            ((float(trafo1['KVAPHASEB']) < 1.02 * float(trafo1['RATEDKVA'])) or (float(trafo1['KVAPHASEB']) > 0.98 * float(trafo1['RATEDKVA']))) and
-                            ((float(trafo1['KVAPHASEC']) < 1.02 * float(trafo1['RATEDKVA'])) or (float(trafo1['KVAPHASEC']) > 0.98 * float(trafo1['RATEDKVA']))) ):
-                        
+                        if float(trafo1['KVAPHASEA'])== float(trafo1['KVAPHASEB'])== float(trafo1['KVAPHASEC']):
                             datosSingleY = {'KVA_FA': trafo1['KVAPHASEA'], 'KVA_FB': trafo1['KVAPHASEB'],
                                             'KVA_FC': trafo1['KVAPHASEC'], "NPHAS": numfase, "MVCODE": MVCode, "LVCODE": LVCode,
                                             "INDEXDSS": indexDSS, 'ID': trafo1.id(), "LAYER": layer, "nodo": nodo, "TAPS": tap,
@@ -698,7 +592,7 @@ class QGIS2OpenDSS(object):
                                             'KVA': int(float(trafo1['RATEDKVA'])), 'KVM': trafo1['PRIMVOLT'],
                                             'KVL': trafo1['SECVOLT'], 'CONME': trafo1['PRIMCONN'], 'CONBA': trafo1['SECCONN'],
                                             'LOADCONNS': '.1.2.3', 'LOADCONF': 'wye', 'LOADVOLT': loadvolt,
-                                            'LOADVOLTLN': loadvoltLN, 'MV_GROUP': group_mv, 'LV_GROUP': group_lv, "VOLTMTLL": voltoprLL,
+                                            'LOADVOLTLN': loadvoltLN, 'GRUPO_MV': group_mv, 'GRUPO_LV': group_lv, "VOLTMTLL": voltoprLL,
                                             "VOLTMTLN": voltoprLN, 'MV_MV': mv_mv, "INDEXBUS1": indexBus1,
                                             'INDEX_LV_GROUP': indexLvGroup}
                             datosTotalGraph = {"NPHAS": numfase, "type": "TRAF", 'LOADVOLT': loadvolt,
@@ -720,7 +614,7 @@ class QGIS2OpenDSS(object):
                                 
                                 grafoBTTotal.add_node(nodo)
                                 grafoBTTotal.nodes[nodo].update(datosTotalGraph)
-
+    
                         else:
                             datosMulti = {"NPHAS": numfase, "MVCODE": MVCode, "LVCODE": LVCode, "INDEXDSS": indexDSS,
                                       'ID': trafo1.id(), "TAPS": tap, "LAYER": layer, "nodo": nodo, 'X1': point[0],
@@ -728,15 +622,15 @@ class QGIS2OpenDSS(object):
                                       'KVA_FB': trafo1['KVAPHASEB'], 'KVA_FC': trafo1['KVAPHASEC'],
                                       'KVM': trafo1['PRIMVOLT'], 'KVL': trafo1['SECVOLT'], 'CONME': trafo1['PRIMCONN'],
                                       'CONBA': trafo1['SECCONN'], 'LOADCONNS': '.1.2.3', 'LOADCONF': 'wye',
-                                      'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN, 'MV_GROUP': group_mv,
-                                      'LV_GROUP': group_lv, "VOLTMTLL": voltoprLL, "VOLTMTLN": voltoprLN,
+                                      'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN, 'GRUPO_MV': group_mv,
+                                      'GRUPO_LV': group_lv, "VOLTMTLL": voltoprLL, "VOLTMTLN": voltoprLN,
                                       'MV_MV': mv_mv, "INDEXBUS1": indexBus1,
                                       'INDEX_LV_GROUP': indexLvGroup}
-
+    
                             datosTotalGraph = {"NPHAS": numfase, "type": "TRAF", 'LOADVOLT': loadvolt,
                                                'LOADVOLTLN': loadvoltLN}
                             datosT3F_Multi.append(datosMulti)
-
+    
                             if (nodo in Graph_T3F_multi.nodes()) and (
                                     Graph_T3F_multi.nodes[nodo]['PHASE'] == datosMulti['PHASE']):
                                 Graph_T3F_multi.nodes[nodo]['KVA_FA'] = float(datosMulti['KVA_FA'])+ float(
@@ -753,10 +647,10 @@ class QGIS2OpenDSS(object):
                             else:
                                 Graph_T3F_multi.add_node(nodo)
                                 Graph_T3F_multi.nodes[nodo].update(datosMulti) # Agrega el trafo al grafo con todos los datos
-
+                                
                                 grafoBTTotal.add_node(nodo)
                                 grafoBTTotal.nodes[nodo].update(datosTotalGraph)
-
+    
                     if (trafo1['SECCONN'] == 'D') and (trafo1['PRIMCONN'] == 'Y' or trafo1['PRIMCONN'] == 'D'):
                         datosSingleD = {'KVA_FA': int(float(trafo1['KVAPHASEA'])),
                                         'KVA_FB': int(float(trafo1['KVAPHASEB'])),
@@ -766,7 +660,7 @@ class QGIS2OpenDSS(object):
                                         'KVA': int(float(trafo1['RATEDKVA'])), 'KVM': trafo1['PRIMVOLT'],
                                         'KVL': trafo1['SECVOLT'], 'CONME': trafo1['PRIMCONN'], 'CONBA': trafo1['SECCONN'],
                                         'LOADCONNS': '.1.2.3', 'LOADCONF': 'delta', 'LOADVOLT': loadvolt,
-                                        'LOADVOLTLN': loadvoltLN, 'MV_GROUP': group_mv, 'LV_GROUP': group_lv, "VOLTMTLL": voltoprLL,
+                                        'LOADVOLTLN': loadvoltLN, 'GRUPO_MV': group_mv, 'GRUPO_LV': group_lv, "VOLTMTLL": voltoprLL,
                                         "VOLTMTLN": voltoprLN, 'MV_MV': mv_mv, "INDEXBUS1": indexBus1,
                                         'INDEX_LV_GROUP': indexLvGroup}
                         datosT3F_Single.append(datosSingleD)
@@ -783,81 +677,45 @@ class QGIS2OpenDSS(object):
                         else:
                             Graph_T3F_single.add_node(nodo)
                             Graph_T3F_single.nodes[nodo].update(datosSingleD) # Agrega el trafo al grafo con todos los datos
-
+                            
                             grafoBTTotal.add_node(nodo)
                             grafoBTTotal.nodes[nodo].update(datosTotalGraph)
-
                 elif fase == '.2.3' or fase == '.1.3' or fase == '.1.2':
-                    # Secondary connection: Four wires
-                    if (trafo1['SECCONN'] == '4D'):
-                        datos2F = {"NPHAS": numfase, "MVCODE": MVCode, "LVCODE": LVCode, "TAPS": tap, "INDEXDSS": indexDSS,
-                                'ID': trafo1.id(), "LAYER": layer, "nodo": nodo, 'X1': point[0], 'Y1': point[1],
-                                'PHASE': fase, 'KVA': int(float(trafo1['RATEDKVA'])), 'KVM': trafo1['PRIMVOLT'],
-                                'KVL': trafo1['SECVOLT'], 'CONME': trafo1['PRIMCONN'], 'CONBA': trafo1['SECCONN'],
-                                'KVA_FA': trafo1['KVAPHASEA'], 'KVA_FB': trafo1['KVAPHASEB'], 'KVA_FC': trafo1['KVAPHASEC'],
-                                'LOADCONNS': '.1.2.3', 'LOADCONF': 'delta', 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN,
-                                'MV_GROUP': group_mv, 'LV_GROUP': group_lv, "VOLTMTLL": voltoprLL, "VOLTMTLN": voltoprLN, 
-                                'MV_MV': mv_mv, "INDEXBUS1": indexBus1,
-                                'INDEX_LV_GROUP': indexLvGroup}
-                        datosTotalGraph = {"NPHAS": numfase, "type": "TRAF", 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN}
-                        datosT2F.append(datos2F)
-                        if (nodo in Graph_T2F.nodes()) and (Graph_T2F.nodes[nodo]['PHASE'] == datos2F['PHASE']):
-                            Graph_T2F.nodes[nodo]['KVA'] = float(datos2F['KVA'])+ float(Graph_T2F.nodes[nodo]['KVA'])
-                            aviso = 'Se aumentó la capacidad de un transformador bifásico debido '
-                            aviso += 'a su cercanía con otro transformador en: ('
-                            aviso += str(Graph_T2F.nodes[nodo]['X1']) + ', '
-                            aviso += str(Graph_T2F.nodes[nodo]['Y1'])+ ')\n'
-                            self.mensaje_log_gral += aviso
-                        else:
-                            Graph_T2F.add_node(nodo)
-                            Graph_T2F.nodes[nodo].update(datos2F) # Agrega el trafo al grafo con todos los datos
-
-                            grafoBTTotal.add_node(nodo)
-                            grafoBTTotal.nodes[nodo].update(datosTotalGraph)
-
-                    # Secondary connection: Open Delta lagging 30deg
-                    elif(trafo1['SECCONN'] == 'OD'):
-
-                        datos2F = {"NPHAS": numfase, "MVCODE": MVCode, "LVCODE": LVCode, "TAPS": tap, "INDEXDSS": indexDSS,
-                                'ID': trafo1.id(), "LAYER": layer, "nodo": nodo, 'X1': point[0], 'Y1': point[1],
-                                'PHASE': fase, 'KVA': int(float(trafo1['RATEDKVA'])), 'KVM': trafo1['PRIMVOLT'],
-                                'KVL': trafo1['SECVOLT'], 'CONME': trafo1['PRIMCONN'], 'CONBA': trafo1['SECCONN'],
-                                'KVA_FA': trafo1['KVAPHASEA'], 'KVA_FB': trafo1['KVAPHASEB'], 'KVA_FC': trafo1['KVAPHASEC'],
-                                'LOADCONNS': '.1.2.3', 'LOADCONF': 'delta', 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN,
-                                'MV_GROUP': group_mv, 'LV_GROUP': group_lv, "VOLTMTLL": voltoprLL, "VOLTMTLN": voltoprLN, 
-                                'MV_MV': mv_mv, "INDEXBUS1": indexBus1,
-                                'INDEX_LV_GROUP': indexLvGroup}
-                        datosTotalGraph = {"NPHAS": numfase, "type": "TRAF", 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN}
-                        datosT2F.append(datos2F)
-                        if (nodo in Graph_T2F.nodes()) and (Graph_T2F.nodes[nodo]['PHASE'] == datos2F['PHASE']):
-                            Graph_T2F.nodes[nodo]['KVA'] = float(datos2F['KVA'])+ float(Graph_T2F.nodes[nodo]['KVA'])
-                            aviso = 'Se aumentó la capacidad de un transformador bifásico debido '
-                            aviso += 'a su cercanía con otro transformador en: ('
-                            aviso += str(Graph_T2F.nodes[nodo]['X1']) + ', '
-                            aviso += str(Graph_T2F.nodes[nodo]['Y1'])+ ')\n'
-                            self.mensaje_log_gral += aviso
-                        else:
-                            Graph_T2F.add_node(nodo)
-                            Graph_T2F.nodes[nodo].update(datos2F) # Agrega el trafo al grafo con todos los datos
-
-                            grafoBTTotal.add_node(nodo)
-                            grafoBTTotal.nodes[nodo].update(datosTotalGraph)
-
-                    elif((trafo1['SECCONN'] == 'OY')):
-                        pass
-
+                    datos2F = {"NPHAS": numfase, "MVCODE": MVCode, "LVCODE": LVCode, "TAPS": tap, "INDEXDSS": indexDSS,
+                               'ID': trafo1.id(), "LAYER": layer, "nodo": nodo, 'X1': point[0], 'Y1': point[1],
+                               'PHASE': fase, 'KVA': int(float(trafo1['RATEDKVA'])), 'KVM': trafo1['PRIMVOLT'],
+                               'KVL': trafo1['SECVOLT'], 'CONME': trafo1['PRIMCONN'], 'CONBA': trafo1['SECCONN'],
+                               'KVA_FA': trafo1['KVAPHASEA'], 'KVA_FB': trafo1['KVAPHASEB'], 'KVA_FC': trafo1['KVAPHASEC'],
+                               'LOADCONNS': '.1.2.3', 'LOADCONF': 'delta', 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN,
+                               'GRUPO_MV': group_mv, 'GRUPO_LV': group_lv, "VOLTMTLL": voltoprLL, "VOLTMTLN": voltoprLN, 
+                               'MV_MV': mv_mv, "INDEXBUS1": indexBus1,
+                               'INDEX_LV_GROUP': indexLvGroup}
+                    datosTotalGraph = {"NPHAS": numfase, "type": "TRAF", 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN}
+                    datosT2F.append(datos2F)
+                    if (nodo in Graph_T2F.nodes()) and (Graph_T2F.nodes[nodo]['PHASE'] == datos2F['PHASE']):
+                        Graph_T2F.nodes[nodo]['KVA'] = float(datos2F['KVA'])+ float(Graph_T2F.nodes[nodo]['KVA'])
+                        aviso = 'Se aumentó la capacidad de un transformador bifásico debido '
+                        aviso += 'a su cercanía con otro transformador en: ('
+                        aviso += str(Graph_T2F.nodes[nodo]['X1']) + ', '
+                        aviso += str(Graph_T2F.nodes[nodo]['Y1'])+ ')\n'
+                        self.mensaje_log_gral += aviso
+                    else:
+                        Graph_T2F.add_node(nodo)
+                        Graph_T2F.nodes[nodo].update(datos2F) # Agrega el trafo al grafo con todos los datos
+                        
+                        grafoBTTotal.add_node(nodo)
+                        grafoBTTotal.nodes[nodo].update(datosTotalGraph)
                 elif fase == '.3' or fase == '.2' or fase == '.1':
                     datos1F = {'KVA_FA': trafo1['KVAPHASEA'], 'KVA_FB': trafo1['KVAPHASEB'], 'KVA_FC': trafo1['KVAPHASEC'],
                                "NPHAS": numfase, "MVCODE": MVCode, "LVCODE": LVCode, "TAPS": tap, "INDEXDSS": indexDSS,
                                'ID': trafo1.id(), "LAYER": layer, "nodo": nodo, 'X1': point[0], 'Y1': point[1],
                                'PHASE': fase, 'KVA': trafo1['RATEDKVA'], 'KVM': trafo1['PRIMVOLT'],
                                'KVL': trafo1['SECVOLT'], 'LOADCONF': 'delta', 'LOADCONNS': '.1.2', 'LOADVOLT': loadvolt,
-                               'LOADVOLTLN': loadvoltLN, 'MV_GROUP': group_mv, 'LV_GROUP': group_lv, "VOLTMTLL": voltoprLL,
+                               'LOADVOLTLN': loadvoltLN, 'GRUPO_MV': group_mv, 'GRUPO_LV': group_lv, "VOLTMTLL": voltoprLL,
                                "VOLTMTLN": voltoprLN, 'MV_MV': mv_mv, "INDEXBUS1": indexBus1,
                                'INDEX_LV_GROUP': indexLvGroup}
                     datosTotalGraph = {"NPHAS": numfase, "type": "TRAF", 'LOADVOLT': loadvolt, 'LOADVOLTLN': loadvoltLN}
                     datosT1F.append(datos1F)
-                    
                     if (nodo in Graph_T1F.nodes()) and (Graph_T1F.nodes[nodo]['PHASE'] == datos1F['PHASE']):
                         Graph_T1F.nodes[nodo]['KVA'] = float(datos1F['KVA'])+ float(Graph_T1F.nodes[nodo]['KVA'])
                         aviso = 'Se aumentó la capacidad de un transformador monofásico debido '
@@ -868,9 +726,9 @@ class QGIS2OpenDSS(object):
                     else:
                         Graph_T1F.add_node(nodo)
                         Graph_T1F.nodes[nodo].update(datos1F) # Agrega el trafo al grafo con todos los datos
+                        
                         grafoBTTotal.add_node(nodo)
                         grafoBTTotal.nodes[nodo].update(datosTotalGraph)
-                        
             if list_sec_ne:
                 msg = 'No se encontraron los siguientes códigos '
                 msg += 'de tensión en el secundario. Su modelo de '
@@ -887,9 +745,8 @@ class QGIS2OpenDSS(object):
                 self.mensaje_log_gral += msg
                 aviso = QCoreApplication.translate('dialog', msg) 
                 QMessageBox.warning(None, QCoreApplication.translate('dialog', 'Alerta Transformadores'), aviso)
-
+                
             return datosT3F_Multi, datosT3F_Single, datosT2F, datosT1F, Graph_T3F_multi, Graph_T3F_single, Graph_T2F, Graph_T1F, grafoBTTotal
-
         except KeyError as e:
             cause = e.args[0]
             self.print_error()
@@ -907,27 +764,24 @@ class QGIS2OpenDSS(object):
 
     def ReaderDataLBT(self, layer, datosLBT, grafoBT, grafoBTTotal, toler, subterranea, indexDSS):
         try:
-
-            line_id = auxiliary_functions.getAttributeIndex(self, layer, "OBJECTID")
+            
             idx_bus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             idx_bus2 = auxiliary_functions.getAttributeIndex(self, layer, "bus2")
             idx_length = auxiliary_functions.getAttributeIndex(self, layer, "length")
-
+            
             lineas = layer.getFeatures() # Caracteristicas de la capa
             layer.startEditing() # Activa modo edición
-
+            
             for linea in lineas:
                 geom = linea.geometry()
                 line = self.MultiStringToMatrix(geom)
-                ICEobjID = linea["ICEobjID"]   # New: list[str]
-                libName = linea["LibName"]    # New: list[str]
+                
                 if line == 0:
                     return 0, 0, 0
 
                 LineLength = linea.geometry().length()
                 id_ = linea.id()
                 layer.changeAttributeValue(id_, idx_length, LineLength)
-                layer.changeAttributeValue(id_, line_id, id_)
 
                 n = len(line) # Cantidad de vértices de la línea
                 LVCode = linea['NOMVOLT']
@@ -935,7 +789,7 @@ class QGIS2OpenDSS(object):
                 conns = lineOperations.renameVoltage(linea['NOMVOLT']).get('conns') # phaseCodeOpenDSS
                 cantFases = lineOperations.renameVoltage(linea['NOMVOLT']).get('cantFases') # 1 or 3 phases
                 config = lineOperations.renameVoltage(linea['NOMVOLT']).get('config') # wye or delta
-
+    
                 try:
                     group = linea['LV_GROUP']
                 except KeyError:
@@ -948,8 +802,7 @@ class QGIS2OpenDSS(object):
                                   'Y1': line[0][1], 'X2': line[n - 1][0], 'Y2': line[n - 1][1], 'SHLEN': LineLength,
                                   'AIR_UGND': air_ugnd, 'NPHAS': cantFases, 'CONNS': conns, 'CONF': config,
                                   'INSUL': linea['INSULMAT'], 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2,
-                                  'GRUPO': group,
-                                  "ICEobjID": ICEobjID, "LibName": libName}  # , 'VOLTOPRLL':opervoltLL,'VOLTOPRLN':opervoltLN}
+                                  'GRUPO': group}  # , 'VOLTOPRLL':opervoltLL,'VOLTOPRLN':opervoltLN}
                     datosTotalGraph = {"type": "LBT", 'X1': line[0][0], 'Y1': line[0][1], 'X2': line[n - 1][0],
                                        'Y2': line[n - 1][1]}  # ,'VOLTOPRLL':opervoltLL,'VOLTOPRLN':opervoltLN}
                 else:
@@ -959,18 +812,17 @@ class QGIS2OpenDSS(object):
                                   'PHAMAT': linea['PHASEMAT'], 'PHASIZ': linea['PHASESIZ'], 'X1': line[0][0],
                                   'Y1': line[0][1], 'X2': line[n - 1][0], 'Y2': line[n - 1][1], 'SHLEN': LineLength,
                                   'AIR_UGND': air_ugnd, 'NPHAS': cantFases, 'CONNS': conns, 'CONF': config, 'GRUPO': group,
-                                  'TIPO': linea['TYPE'], 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2,
-                                  "ICEobjID": ICEobjID, "LibName": libName}  # , 'VOLTOPRLL':opervoltLL,'VOLTOPRLN':opervoltLN}
+                                  'TIPO': linea['TYPE'], 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2}  # , 'VOLTOPRLL':opervoltLL,'VOLTOPRLN':opervoltLN}
                     datosTotalGraph = {"type": "LBT", 'X1': line[0][0], 'Y1': line[0][1], 'X2': line[n - 1][0],
                                        'Y2': line[n - 1][1]}  # , 'VOLTOPRLL':opervoltLL,'VOLTOPRLN':opervoltLN}
                 datosLBT.append(datosLinea) ### Código viejo
-
+    
                 if grafoBT.get_edge_data(nodo1, nodo2)== None:  # se asegura que la línea no existe
                     grafoBT.add_edge(nodo1, nodo2)
                     grafoBT[nodo1][nodo2].update(datosLinea) # Agrega la línea al grafo con todos los datos
                     grafoBTTotal.add_edge(nodo1, nodo2)
                     grafoBTTotal[nodo1][nodo2].update(datosTotalGraph) # Agrega la línea al grafo con todos los datos
-
+                    
                 else:  # Si la línea existe es porque están en paralelo
                     newLength = float(datosLinea["SHLEN"])/ 2
                     datosLinea["SHLEN"] = newLength
@@ -1008,12 +860,11 @@ class QGIS2OpenDSS(object):
             return 0, 0, 0
         finally:
             layer.commitChanges()
-
+            
 
     def ReaderDataAcom(self, layer, datosACO, grafoACO, grafoBTTotal, toler, indexDSS, grafoBT):
         try:
             
-            line_id = auxiliary_functions.getAttributeIndex(self, layer, "OBJECTID")
             idx_bus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             idx_bus2 = auxiliary_functions.getAttributeIndex(self, layer, "bus2")
             idx_length = auxiliary_functions.getAttributeIndex(self, layer, "length")
@@ -1023,8 +874,7 @@ class QGIS2OpenDSS(object):
             
             for lineaACO in lineasACO:
                 #line = lineaACO.geometry().asPolyline() # Lee la geometria de la linea
-                ICEobjID = lineaACO["ICEobjID"]   # New: list[str]
-                libName = lineaACO["LibName"]    # New: list[str]
+                
                 geom = lineaACO.geometry()
                 line = self.MultiStringToMatrix(geom)
                 
@@ -1037,7 +887,7 @@ class QGIS2OpenDSS(object):
                 
                 id_ = lineaACO.id()
                 layer.changeAttributeValue(id_, idx_length, LineLength)
-                layer.changeAttributeValue(id_, line_id, id_)
+                
                 
                 LVCode = lineaACO['NOMVOLT']
                 conns = lineOperations.renameVoltage(LVCode).get('conns') # phaseCodeOpenDSS
@@ -1051,12 +901,11 @@ class QGIS2OpenDSS(object):
                          "nodo2": nodo2, 'PHAMAT': lineaACO['PHASEMAT'], 'PHASIZ': lineaACO['PHASESIZ'], 'X1': line[0][0],
                          'Y1': line[0][1], 'X2': line[n - 1][0], 'Y2': line[n - 1][1], 'SHLEN': LineLength,
                          'NPHAS': cantFases, 'CONNS': conns, 'CONF': config, 'GRUPO': group, 
-                         'TIPO': lineaACO["TYPE"], 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2,
-                         "ICEobjID": ICEobjID, "LibName": libName}  # 'VOLTOPRLL':opervoltLL,'VOLTOPRLN':opervoltLN,
+                         'TIPO': lineaACO["TYPE"], 'idx_bus1': idx_bus1, 'idx_bus2': idx_bus2}  # 'VOLTOPRLL':opervoltLL,'VOLTOPRLN':opervoltLN,
                 datosTotalGraph = {"type": "ACO", 'X1': line[0][0], 'Y1': line[0][1], 'X2': line[n - 1][0],
                                    'Y2': line[n - 1][1]}  # 'VOLTOPRLL':opervoltLL,'VOLTOPRLN':opervoltLN,
                 datosACO.append(datos)
-
+    
                 if grafoBT.get_edge_data(nodo1,
                                          nodo2)!= None:  # Se asegura que la línea no se ha creado en el grafo de LBT
                     # print "Linea acometida ya existia en grafoTOTAL"
@@ -1081,16 +930,16 @@ class QGIS2OpenDSS(object):
                         
                         grafoBTTotal.add_edge(nodo1, paralelNode)
                         grafoBTTotal[nodo1][paralelNode].update(datosTotalGraph)
-
+    
                         datos["nodo2"] = nodo2
                         datos["nodo1"] = paralelNode
-
+                        
                         grafoACO.add_edge(paralelNode, nodo2)
                         grafoACO[paralelNode][nodo2].update(datos) # Agrega la línea al grafo con todos los datos
-
+                        
                         grafoBTTotal.add_edge(paralelNode, nodo2)
                         grafoBTTotal[paralelNode][nodo2].update(datosTotalGraph)
-
+                        
             return datosACO, grafoACO, grafoBTTotal
         except KeyError as e:
             cause = e.args[0]
@@ -1106,83 +955,18 @@ class QGIS2OpenDSS(object):
             return 0, 0, 0
         finally:
             layer.commitChanges()
-     
-
-    def GDcurves_dict(self, dir_name, type):
-        
-        if type == "ss":
-            curves_dir = dir_name+"\\DG"
-        elif type == "ls":
-            curves_dir = dir_name+"\\LSDG"
             
-        all_files = os.listdir(curves_dir)
         
-        csv_files = [f for f in all_files if f.endswith('.csv')]
-        dss_files = [f for f in all_files if f.endswith('.dss')]
-        txt_files = [f for f in all_files if f.endswith('.txt')]
-        
-        file_dict = {'CSV': csv_files, 'DSS': dss_files, 'TXT': txt_files}
-        
-        return file_dict
-
-    def ReaderDataGD(self, toler, layer, Graph_T3F_multi, Graph_T3F_single, Graph_T2F, Graph_T1F,
-                     grafoCAR, busBTid, busBT_List, busMT_List):
+    
+    def ReaderDataGD(self, toler, layer, grafoGD, indexDSS, Graph_T3F_multi, Graph_T3F_single, Graph_T2F, Graph_T1F,
+                     grafoCAR, circuitName, busBTid, busBT_List, busMT_List):
         try:
-        
-            # Primero verificar que exista la carpeta de curvas DG
-            
-            dir_name = self.dlg.lineEdit_AC.text()
-            # List all files and directories in the folder
-            all_files_and_dirs = os.listdir(dir_name)
-
-            # Directorios/carpetas existentes en la carpeta de curvas
-            only_dirs = [d for d in all_files_and_dirs if os.path.isdir(os.path.join(dir_name, d))]
-            
-            try:
-                assert "DG" in only_dirs
-                file_ext_dict = self.GDcurves_dict(dir_name, "ss") # diccionario que guarda el nombre de las curvas de acuerdo a la extensión
-            
-            except AssertionError:
-                msg = self.print_error()
-                aviso = "No existe la carpeta 'DG' en el directorio de curvas. El formato solicita esta carpeta para contener los archivos de curvas de los generadores distribuidos. \n "
-                aviso += "Favor corrija y vuelva a ejecutar."
-                self.mensaje_log_gral += aviso + " \n"
-                title = "QGIS2OpenDSS error lectura GD pequeña escala"
-                QMessageBox.critical(None, title, aviso)
-                return 0, 0, 0
-            
-            # Continúa con la asignación de variables 
-            
-            grafoGD = nx.Graph()
-            datosGD = []
-            
-            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSNAME")
-            indexBus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
-            indexGroup = auxiliary_functions.getAttributeIndex(self, layer, "LV_GROUP")
-            
-            xdp_ = auxiliary_functions.getAttributeIndex(self, layer, "XDP")
-            xdpp_ = auxiliary_functions.getAttributeIndex(self, layer, "XDPP")
-            
             GDs = layer.getFeatures() # Recibe las caracteristicas de la capa de cargas.
-            layer.startEditing() # Activa modo edición
-            
-            i = -1
-            linea_gd = ""
-            linea_lshp = ""
             mensaje_gd = ""
-            
             for GD in GDs:
-                i += 1
-                dss_name = 'DER_ss_' + self.circuitName + '_' + str(i)
-                nodo = self.CoordPointProcees(GD, toler)
-                id_ = GD.id()
-                nodoInTraf = False
-                
-                # Coordenadas
                 point = GD.geometry().asPoint() # Lee la geometria de la linea
-                x1 = point[0]
-                y1 = point[1]
-                
+                nodo = self.CoordPointProcees(GD, toler)
+                nodoInTraf = False
                 if (nodo in grafoCAR.nodes()):
                     bus = grafoCAR.nodes[nodo]["BUS"]
                     if grafoCAR.nodes[nodo]["TRAFNPHAS"] != "NULL":
@@ -1190,14 +974,11 @@ class QGIS2OpenDSS(object):
                         VOLTAGELN = grafoCAR.nodes[nodo]["TRAFVOLTLN"]
                         NPHAS = grafoCAR.nodes[nodo]["TRAFNPHAS"]
                         conf = grafoCAR.nodes[nodo]["CONF"]
-                        group = grafoCAR.nodes[nodo]["LV_GROUP"]
                     else:
                         VOLTAGELL = "0.24"
                         VOLTAGELN = "0.12"
                         NPHAS = "1"
                         conf = "wye"
-                        group = "N/A"
-                        
                 elif (nodo in Graph_T3F_multi.nodes()):
                     nodoInTraf is True
                     bus = Graph_T3F_multi.nodes[nodo]["BUSBT"]
@@ -1205,8 +986,7 @@ class QGIS2OpenDSS(object):
                     VOLTAGELN = Graph_T3F_multi.nodes[nodo]["LOADVOLTLN"]
                     NPHAS = Graph_T3F_multi.nodes[nodo]["NPHAS"]
                     conf = Graph_T3F_multi.nodes[nodo]["LOADCONF"]
-                    group = Graph_T3F_multi.nodes[nodo]["LV_GROUP"]
-                    
+    
                 elif (nodo in Graph_T3F_single.nodes()):
                     nodoInTraf is True
                     bus = Graph_T3F_single.nodes[nodo]["BUSBT"]
@@ -1214,7 +994,6 @@ class QGIS2OpenDSS(object):
                     VOLTAGELN = Graph_T3F_single.nodes[nodo]["LOADVOLTLN"]
                     NPHAS = Graph_T3F_single.nodes[nodo]["NPHAS"]
                     conf = Graph_T3F_single.nodes[nodo]["LOADCONF"]
-                    group = Graph_T3F_single.nodes[nodo]["LV_GROUP"]
     
                 elif (nodo in Graph_T2F.nodes()):
                     nodoInTraf is True
@@ -1223,8 +1002,7 @@ class QGIS2OpenDSS(object):
                     VOLTAGELN = Graph_T2F.nodes[nodo]["LOADVOLTLN"]
                     NPHAS = Graph_T2F.nodes[nodo]["NPHAS"]
                     conf = Graph_T2F.nodes[nodo]["LOADCONF"]
-                    group = Graph_T2F.nodes[nodo]["LV_GROUP"]
-                    
+    
                 elif (nodo in Graph_T1F.nodes()):
                     nodoInTraf is True
                     bus = Graph_T1F.nodes[nodo]["BUSBT"]
@@ -1232,188 +1010,34 @@ class QGIS2OpenDSS(object):
                     VOLTAGELN = Graph_T1F.nodes[nodo]["LOADVOLTLN"]
                     NPHAS = Graph_T1F.nodes[nodo]["NPHAS"]
                     conf = Graph_T1F.nodes[nodo]["LOADCONF"]
-                    group = Graph_T1F.nodes[nodo]["LV_GROUP"]
-                    
-                elif (not nodoInTraf) and (nodo in busMT_List):
+                elif (not nodoInTraf)and (nodo in busMT_List):
                     bus = busMT_List[nodo]["bus"]
                     VOLTAGELL = busMT_List[nodo]["VOLTAGELL"]
                     VOLTAGELN = busMT_List[nodo]["VOLTAGELN"]
                     NPHAS = busMT_List[nodo]["NPHAS"]
                     conf = "wye"
-                    group = "N/A"
                 else:
-                    bus = 'BUSLV' + self.circuitName + str(busBTid)
+                    bus = 'BUSLV' + circuitName + str(busBTid)
                     VOLTAGELL = "0.24"
                     VOLTAGELN = "0.12"
                     NPHAS = "1"
                     conf = "wye"
-                    group = "N/A"
                     busBT_List[nodo] = {'bus': bus, 'X': point[0], 'Y': point[1], "GRAFO": grafoGD, "VOLTAGELN": VOLTAGELN}
                     busBTid += 1
                     aviso = QCoreApplication.translate('dialog', 'Hay un generador desconectado en: (')+ str(
                         point[0])+ ',' + str(point[1])+ ')'
-                    mensaje_gd += aviso +" \n"
+                    mensaje_gd += aviso +"\n"
                     #QMessageBox.warning(None, QCoreApplication.translate('dialog', 'Alerta Generador'), aviso)
-                
-                # Verificación tecnología:
-                tech = str(GD['TECH']).upper()
-                try:
-                    assert tech in ["PV", "HYDRO", "HIDRO", "WIND", "GD"]
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "El valor " + str(tech) + " suministrado en el "
-                    aviso += " atributo 'TECH' no es un valor aceptado. \n"
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS error lectura GD pequeña escala"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
-                
-                if tech not in ["PV", "WIND"]:
-                    # xdp
-                    try: 
-                        assert (GD['XDP'] not in [None, "", " ", "NULL", 0, "0"])
-                        xdp = GD['XDP']
-                    except AssertionError:
-                        msg = self.print_error()
-                        aviso += "Favor suministrar un valor válido de 'Xdp' para máquinas "
-                        aviso += "cuya tecnología no es PV o WIND."
-                        aviso += "Corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error lectura GD gran escala"
-                        QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
-                    
-                    # xdp
-                    try: 
-                        assert (GD['XDP'] not in [None, "", " ", "NULL", 0, "0"])
-                        xdpp = GD['XDPP']
-                    except AssertionError:
-                        msg = self.print_error()
-                        aviso += "Favor suministrar un valor válido de 'Xdpp' para máquinas "
-                        aviso += "cuya tecnología no es PV o WIND."
-                        aviso += "Corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error lectura GD gran escala"
-                        QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
-                else:
-                    xdp = ""
-                    xdpp = ""
-                
-                # Verificación existencia de nombres de curvas
-                curve1 = GD["CURVE1"]
-                curve2 = GD["CURVE2"]
-                
-                try:
-                    assert ((curve1 not in [None, "NULL", "", " "]) and (curve2 not in [None,"NULL", "", " "]))
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "Existen generadores a los que no se les asignó una curva. \n"
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS error lectura GD pequeña escala"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
-                
-                # Verificación del formato de los archivos de curvas
-                try:
-                    file_format1 = curve1.split(".")[1].upper()
-                    file_format2 = curve2.split(".")[1].upper() 
-                    assert ((file_format1 in ["CSV", "TXT", "DSS"]) and (file_format2 in ["CSV", "TXT", "DSS"]))
-                
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "El formato de algunos de los archivos de curvas de los generadores no posee el formato aceptado (CSV, TXT o DSS). \n "
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS error lectura GD pequeña escala"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
-                
-                # Verificación de que el nombre de las curvas no sea el mismo, al menos que sea un csv
-                if not ((file_format1 == file_format2) and (file_format1=="CSV")):
-                    try:
-                        assert (curve1 !=  curve2)
-                    except AssertionError:
-                        msg = self.print_error()
-                        aviso = "El nombre del archivo de las dos curvas de un generador posee el mismo nombre y formato. Esto solo se permite"
-                        aviso += " para archivos con formato .csv. \n"
-                        aviso += "Favor corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error lectura GD pequeña escala"
-                        QMessageBox.critical(None, title, aviso)
-                        return 0, 0, 0
-                
-                # Verificación de la existencia de las curvas en el directorio establecido
-                
-                for c_name,c_format in zip([curve1, curve2], [file_format1, file_format2]):
-                    try:
-                        assert c_name in file_ext_dict[c_format]
-                    
-                    except AssertionError:
-                        msg = self.print_error()
-                        aviso = "El nombre de la curva "+c_name+" no existe dentro del directorio establecido. \n "
-                        aviso += "Favor corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error lectura GD pequeña escala"
-                        QMessageBox.critical(None, title, aviso)
-                        return 0, 0, 0
-                
-                # Verificación tamaño del generador
-                kva = GD['KVA']
-                
-                try:
-                    assert (kva < 100)
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "Existen generadores con capacidad correspondiente a uno de gran escala. \n"
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS error lectura GD pequeña escala"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
-                
-                    
+    
                 datos = {"CONF": conf, "NPHAS": NPHAS, "VOLTAGELN": VOLTAGELN, "VOLTAGELL": VOLTAGELL, "BUS": bus,
-                         "INDEXDSS": indexDSS, 'ID': GD.id(), "LAYER": layer, "nodo": nodo, 'X1': x1, 'Y1': y1, "LV_GROUP": group,
-                         'KVA': kva, "CURVE1": curve1, "CURVE2": curve2, "TECH": tech, "XDP": xdp, "XDPP": xdpp, "DSSNAME": dss_name}
-
-                datosGD.append(datos)
+                         "INDEXDSS": indexDSS, 'ID': GD.id(), "LAYER": layer, "nodo": nodo, 'X1': point[0], 'Y1': point[1],
+                         'KVA': GD['KVA'], "CURVE1": GD["CURVE1"], "CURVE2": GD["CURVE2"], "TECH": GD["TECH"]}
+                
                 grafoGD.add_node(nodo)
                 grafoGD.nodes[nodo].update(datos)
-
-                # Lineas DSS
-                temp = self.Write_GD_ss(datos)
-                linea_gd += temp[0]
-                linea_lshp += temp[1]
                 
-                # Cambios en capa
-                layer.changeAttributeValue(id_, indexDSS, dss_name)
-                layer.changeAttributeValue(id_, indexBus1, bus)
-            
-            # Escritura dss
-            # Loadshapes
-            filename_lshp = self.circuitName + '_LoadshapesDER_ss.dss'
-            name_lshp = self.foldername + '/' + filename_lshp
-            with open(name_lshp, 'w') as lshp_gd:
-                lshp_gd.write(linea_lshp)
-            
-            # Archivo gd
-            filename_gdss = self.circuitName + '_DERss.dss'
-            line_out = '\nredirect ' + filename_gdss
-            output_GDdss = self.foldername + '/' + filename_gdss
-            
-            linea_gd = "redirect " + filename_lshp + " \n" + linea_gd
-            with open(output_GDdss , 'w') as file_gd:
-                file_gd.write(linea_gd)
-            
-            
-            #Verificación de errores de conexión de generadores
-            
-            name_file_gd = "error_GD" + self.circuitName + ".log"
+            name_file_gd = "error_GD" + circuitName + ".log"
             dir_archivo_GD = self.dir_logs + "/" + name_file_gd
-            
             if mensaje_gd != "":
                 with open(dir_archivo_GD, 'w')as archivo_errgd:
                     archivo_errgd.write(mensaje_gd)
@@ -1426,25 +1050,20 @@ class QGIS2OpenDSS(object):
                 except Exception:
                     pass
                 
-            return datosGD, grafoGD, filename_gdss
-        
+            return grafoGD, busBTid, busBT_List
         except KeyError as e:
             cause = e.args[0]
             msg = self.print_error()
             aviso = "Favor verifique que su capa de GD tenga el atributo "
             aviso += cause + "."
             QMessageBox.critical(None, "QGIS2OpenDSS Error lectura GD", aviso)
-            return 0, 0, 0
-        
+            return 0, 0, 0, 0
         except Exception:
             msg = self.print_error()
             aviso = "Ocurrió un error en la lectura de las capas de generación distribuida."
             aviso += "Para más detalles:\n" + msg
             QMessageBox.critical(None, "QGIS2OpenDSS Error lectura GD", aviso)
             return 0, 0, 0
-        
-        finally:
-            layer.commitChanges()
     
     """
     **************************************************************************
@@ -1536,8 +1155,8 @@ class QGIS2OpenDSS(object):
                             subs = 'bus1=' + vector[i] + '_tx.'
                             if line.find(pattern) != -1:
                                 line = line.replace(pattern, subs)
-                                # del vector[i]
-                                # break
+                                del vector[i]
+                                break
                         new_file.write(line)
     
             # Copy the file permissions from old file to the new file
@@ -1565,12 +1184,12 @@ class QGIS2OpenDSS(object):
     """
     # ********************************************************
     # ********************************************************
-    def CableAnalysis(self, carga, point, grafoBT, grafoACO, conns, toler,
+    def CableAnalysis(self, carga, point, grafoBT, conns, toler,
                       tipo_analisis = "BT"):
         
         # Se determina a qué línea está conectada la carga para averi-
         # guar si el código de cable acepta el tipo de SERVICE indicado
-        index_carga = carga['DSSNAME']
+        index_carga = carga['DSSName']
         x1 = point[0]
         y1 = point[1]
         x1_ = int(x1/toler)
@@ -1590,47 +1209,30 @@ class QGIS2OpenDSS(object):
         # Analiza los nodos vecinos
         try:
             # por la topología de la red sólo tendrá un nodo vecino
-            
-            #Revisa primero en capa BT
             nodo2 = nx.neighbors(grafoBT, nodo1)
-        
-        except: #Si no funciona, hacer el intento con ACOMETIDA
-        
-            try:
-                nodo2 = nx.neighbors(grafoACO, nodo1)
-                
-            except Exception: #Ya si no funciona, entonces mandar al archivo de error
-                
-                if index_carga != None:
-                    aviso = message + str(index_carga)
-                    aviso += " no posee nodos vecinos. Verifique que "
-                    aviso += "se encuentre conectada."
-                else:
-                    aviso = message + ext + "en (" + str(x1)+ ","
-                    aviso += str(y1)+ ")no posee nodos vecinos. "
-                    aviso += "Verifique que se encuentre conectada."
-                aviso = str(aviso + " \n")
-                self.mensaje_log_gral += aviso
-                return 0
+        except Exception:
+            if index_carga != None:
+                aviso = message + str(index_carga)
+                aviso += " no posee nodos vecinos. Verifique que "
+                aviso += "se encuentre conectada."
+            else:
+                aviso = message + ext + "en (" + str(x1)+ ","
+                aviso += str(y1)+ ")no posee nodos vecinos. "
+                aviso += "Verifique que se encuentre conectada."
+            aviso = str(aviso + "\n")
+            self.mensaje_log_gral += aviso
+            return 0
             
         # Recupera datos del grafo de BT (línea asociada a la carga)
         # las cargas (nodos)sólo tendrán un arista (un vecino)
         for nodo_ in nodo2:
-            nodo2 = nodo_
-        
-        try:
-            line_type = grafoBT.get_edge_data(nodo1, nodo2)['AIR_UGND']
-        except:
-            line_type = "air" #Acometidas
+                nodo2 = nodo_
+        line_type = grafoBT.get_edge_data(nodo1, nodo2)['AIR_UGND']
         
         # Lìnea aérea
         if line_type.lower()!= "air":
             return 1
-        
-        try:
-            cable_type = grafoBT.get_edge_data(nodo1, nodo2)['TIPO']
-        except:
-            cable_type = grafoACO.get_edge_data(nodo1, nodo2)['TIPO']
+        cable_type = grafoBT.get_edge_data(nodo1, nodo2)['TIPO']
             
         #Verifica que el tipo de cable y la conexión tengan sentido
         error_carga = 0
@@ -1639,7 +1241,7 @@ class QGIS2OpenDSS(object):
             error_carga = 1
         elif cable_type == "TPX" and conns != ".1.2":
             error_carga = 1
-        elif cable_type == "QPX" and conns not in {".1.2.3", ".1.2", ".2.3", ".1.3"}:
+        elif cable_type == "QPX" and conns != ".1.2.3":
             error_carga = 1
         #"BARE" puede tener cualquier valor válido
         #RHH puede tener cualquier valor válido
@@ -1651,13 +1253,13 @@ class QGIS2OpenDSS(object):
                 aviso += " en (" + str(x1)+ "," + str(y1)
                 aviso += ") tenga el SERVICE correcto, ya que el "
                 aviso += "tipo de línea " + cable_type + " no acepta "
-                aviso += "estar conectada a la fase " + conns + " \n"
+                aviso += "estar conectada a la fase " + conns + "\n"
             else:
                 aviso = "Verifique que " + extra_message
                 aviso += str(index_carga) + " tenga el SERVICE "
                 aviso += "correcto, ya que el tipo de línea "
                 aviso += cable_type + " no acepta estar conectada "
-                aviso += "a la fase " + conns + " \n"                
+                aviso += "a la fase " + conns + "\n"                
             self.mensaje_log_gral += aviso
             return 0
         return 1
@@ -1726,29 +1328,31 @@ class QGIS2OpenDSS(object):
     # *****************************************************************
     # *****************************************************************
     def ReaderDataLoadBT(self, layer, datosCAR, grafoCAR, kWhLVload,
-                         toler, indexDSS, grafoBTTotal, grafoBT, grafoACO, folder_profile):
+                         toler, indexDSS, grafoBTTotal, grafoBT):
         try:
             # Recibe las caracteristicas de la capa de cargas.
             idx_bus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             idx_ami = auxiliary_functions.getAttributeIndex(self, layer, "AMI")
             idx_id = auxiliary_functions.getAttributeIndex(self, layer, "ID")
             
+            """
+            filename_ = self.folder_profile +  "/Datos.csv"
+            df_data = pd.read_csv(filename_, sep=";", header=0,
+                                  index_col=0, decimal=",")
+            self.df_data = df_data
+            cols_ = df_data.columns
+            
+            columns = list(cols_)
+            
+            cols_str = [str(i) for i in columns]
+            layer.startEditing() # Activa modo edición
+            """
             cargas = layer.getFeatures()
             error = 0
             
-            # Obtiene una lista de los loadshapes ami presentes en la carpeta amis
-            try:
-                all_ami_curves = [x.split(".")[0] for x in os.listdir(folder_profile+"\\amis")]
-            except:
-                all_ami_curves = []
             
             for carga in cargas:
-                # Lee la geometria de la linea <- How?
-                # Deal with overlap loads
-                ICEloadName = carga["ICEobjID"]
-                if not carga["DSSNAME"] and ICEloadName:   # <- New commands
-                    carga["DSSNAME"] = carga["ICEobjID"]
-
+                # Lee la geometria de la linea
                 point = carga.geometry().asPoint()
                 id_ = carga.id()
                 try:
@@ -1782,7 +1386,9 @@ class QGIS2OpenDSS(object):
                 
                 #Service
                 try:
-                    service = str(carga['SERVICE'])
+                    service = carga['SERVICE']
+                    service = int(service)
+                    service = str(service)
                     
                     if service == "1" or service =="A" or service=="R":
                         conns = ".1"
@@ -1796,7 +1402,7 @@ class QGIS2OpenDSS(object):
                         conns = ".2.3"
                     elif service == "13" or service=="31" or service =="AC" or service=="CA" or service=="RT" or service=="TR":
                         conns = ".1.3"
-                    elif service == "123" or service=="ABC" or service=="RST":
+                    elif service == "123":
                         conns = ".1.2.3"
                     else:
                         mensaje = "Favor introduzca un código válido "
@@ -1806,7 +1412,6 @@ class QGIS2OpenDSS(object):
                         QMessageBox.critical(None, title, mensaje)
                         return 0, 0, 0, 0
                 except Exception:
-                    print('No hay atributo SERVICE')
                     service = "12"
                     conns = ".1.2"
                     
@@ -1839,10 +1444,9 @@ class QGIS2OpenDSS(object):
                     
                 # Se llama a la función encargada de determinar si
                 # el SERVICE tiene un tipo de cable correcto
-             
                 sucessfull = self.CableAnalysis(carga, point,
-                                                grafoBT, grafoACO, conns, toler)
-                                                
+                                                grafoBT, conns, toler)
+                
                 # Para mostrar el mensaje de errores en
                 # CableAnalysis sólo una vez
                 if sucessfull == 0:
@@ -1850,9 +1454,9 @@ class QGIS2OpenDSS(object):
                 
                 try:
                 # Medición inteligente
-                    #ami, id_carga = self.assign_ids(id_, carga, layer,
-                                                #cols_str, idx_ami, idx_id,
-                                                #name_attribute='ID')
+                    ami, id_carga = self.assign_ids(id_, carga, layer,
+                                                cols_str, idx_ami, idx_id,
+                                                name_attribute='ID')
 
                     ami = carga['AMI']
                     ami = str(ami).lower()
@@ -1868,18 +1472,6 @@ class QGIS2OpenDSS(object):
                 
                 if ami is True:
                     id_carga = carga['ID']
-                    try:
-                        # Verifica que el ID exista dentro de la carpeta de amis
-                        assert id_carga in all_ami_curves
-                    except AssertionError:
-                        aviso = self.print_error()
-                        aviso = "Existen cargas AMI cuyo identificador no posee una curva asociada \n"
-                        aviso += "Favor corrija y vuelva a ejecutar. La carpeta de AMIs se debe de encontrar en "+ folder_profile +" \n"
-                        aviso += "Recuerde que la carpeta se debe de llamar amis. Cualquier otro nombre no es aceptado."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS Error lectura cargas baja tensión"
-                        QMessageBox.critical(None, title, aviso)
-                        return 0, 0, 0
                 else:
                     id_carga = None
                 
@@ -1890,14 +1482,14 @@ class QGIS2OpenDSS(object):
                 datos = {"INDEXDSS": indexDSS, 'ID': id_,
                          "LAYER": layer, "nodo": nodo, 'X1': x1,
                          'Y1': y1, 'kWh': carga['KWHMONTH'],
-                         'LV_GROUP': group, 'kW': 1.0, 'CONNS': conns,
+                         'GRUPO': group, 'kW': 1.0, 'CONNS': conns,
                          'CONF': conex, 'CURVASIG': '',
                          'class': carga['CLASS'],
                          'NOMVOLT': nom_volt, 'MODEL': model,
                          'CODE_NOMVOLT': code_nvolt,
                          'AMI': ami, 'ID_CARGA': id_carga,
-                         'idx_bus1': idx_bus1, "ICEobjID": ICEloadName}
-
+                         'idx_bus1': idx_bus1}
+                
                 datosTotal = {"type": "LOAD"}
                 kWhLVload.append(float(carga['KWHMONTH']))
                 datosCAR.append(datos)
@@ -2057,7 +1649,7 @@ class QGIS2OpenDSS(object):
                 datos = {"INDEXDSS": indexDSS, 'ID': id_,
                          "LAYER": layer, "nodo": nodo, 'X1': x1,
                          'Y1': y1, 'kW': carga['KW'],
-                         'LV_GROUP': group, 'CONNS': conns,
+                         'GRUPO': group, 'CONNS': conns,
                          'CONF': conex, 'CURVASIG': '',
                          'NOMVOLT': nom_volt, 'MODEL': model,
                          'CODE_NOMVOLT': code_nvolt,
@@ -2135,7 +1727,7 @@ class QGIS2OpenDSS(object):
         datosSE = []
         # Tipo de modelo de la subestación
         try:
-            indexDSS = auxiliary_functions.getAttributeIndex(self, layerSE, "DSSNAME")
+            indexDSS = auxiliary_functions.getAttributeIndex(self, layerSE, "DSSName")
             subests = layerSE.getFeatures()  # Recibe las caracteristicas de la capa de subestación.
             for subest in subests:
                 point = subest.geometry().asPoint()  # Lee la geometria de la linea
@@ -2150,11 +1742,11 @@ class QGIS2OpenDSS(object):
                 
                 # Corrientes de cortocircuito
                 try:
-                    isc_1p = str(subest['ISC_1P'])
+                    isc_1p = str(dataList['ISC_1P'])
                 except Exception:
                     isc_1p = '10.5'
                 try:
-                    isc_3p = str(subest['ISC_3P'])
+                    isc_3p = str(dataList['ISC_3P'])
                 except Exception:
                     isc_3p = '10'
                     
@@ -2231,12 +1823,13 @@ class QGIS2OpenDSS(object):
                         MINTAP = TAP_MAX_MIN[1]
                         MAXTAP = TAP_MAX_MIN[0]
                     setTap = str(subest['TAPSETTING'])
-                    
+                    med_volt_ln = float(subest['MEDVOLT']) / sqrt(3)
                     datos = {"INDEXDSS": indexDSS, "LAYER": layerSE,
                              "TAP": setTap, "ID": subest.id(),
                              'X1': point[0], 'Y1': point[1],
-                             'VOLTAJEPRIM': subest['PRIMVOLT'],
-                             'VOLTAJESEC': subest["SECVOLT"],
+                             'VOLTAJEALT': subest['HIGHVOLT'],
+                             "VOLTAJEMEDLN": med_volt_ln,
+                             'VOLTAJEMED': subest['MEDVOLT'],
                              'KVA_ALTA': subest['KVAHIGH'],
                              'KVA_MEDIA': subest['KVAMED'],
                              'TAPS': TAPS, 'MINTAP': MINTAP,
@@ -2367,7 +1960,7 @@ class QGIS2OpenDSS(object):
                     line += ' phases=' + fases + ' windings=' + dev + con
                     line += kV + kVA + react + ' %loadloss=0 %noloadloss=0 '
                     line += taps + normhkva + ' !isc1p='
-                    line += isc_1p + " isc3p=" + isc_3p + " \n"
+                    line += isc_1p + " isc3p=" + isc_3p + "\n"
                     output_sedss.write(line)
                     dataList["LAYER"].changeAttributeValue(id_, indexdss, "HVMV")
                 output_sedss.close()
@@ -2388,41 +1981,29 @@ class QGIS2OpenDSS(object):
                     dev = ' windings=2'
                     busHV = 'Sourcebus'
                     busMV = str(dataList['BUSMT'])
-                    Vautohigh = float(dataList['VOLTAJEPRIM'])/ sqrt(3)
-                    Vautolow = float(dataList['VOLTAJESEC'])/ sqrt(3)
+                    Vautohigh = float(dataList['VOLTAJEALT'])/ sqrt(3)
+                    Vautolow = float(dataList['VOLTAJEMED'])/ sqrt(3)
                     Zauto = float(dataList['XHL'])
                     kVAauto = float(dataList['KVA_ALTA'])/ 3
                     indexdss = dataList["INDEXDSS"]
                     id_ = dataList["ID"]
                     isc_1p = str(dataList['ISC_1P'])
                     isc_3p = str(dataList['ISC_3P'])
-                    
-                    if Vautohigh > Vautolow: # Reductor
-                        Vtraf1 = Vautohigh
-                        Vtraf2 = Vautohigh - Vautolow
-                        nt = Vtraf2 / Vtraf1
-                        Ztraf = (1 - nt)* Zauto / nt # Ecuación 7.55 Kersting 3rd edition
-                        kVAtraf = nt * kVAauto / (1 - nt) # Ecuación 7.48 Kersting 3rd edition
-                        
-                        busesTx1 = ' buses=[bridge.1.0 ' + 'bridge.1.4]'
-                        busesTx2 = ' buses=[bridge.2.0 ' + 'bridge.2.5]'
-                        busesTx3 = ' buses=[bridge.3.0 ' + 'bridge.3.6]'
-                    
-                    else: # Elevador
-                        Vtraf1 = Vautohigh
-                        Vtraf2 = Vautohigh - Vautolow
-                        nt = Vtraf2 / Vtraf1
-                        Ztraf = (1 + nt)* Zauto / nt # Ecuación 7.55 Kersting 3rd edition
-                        kVAtraf = nt * kVAauto / (1 + nt) # Ecuación 7.48 Kersting 3rd edition
-                        
-                        busesTx1 = ' buses=[bridge.1.0 ' + 'bridge.4.1]'
-                        busesTx2 = ' buses=[bridge.2.0 ' + 'bridge.5.2]'
-                        busesTx3 = ' buses=[bridge.3.0 ' + 'bridge.6.3]'
-        
+    
+                    Vtraf1 = Vautohigh
+                    Vtraf2 = Vautohigh - Vautolow
+                    nt = Vtraf2 / Vtraf1
+                    Ztraf = (1 - nt)* Zauto / nt
+                    kVAtraf = nt * kVAauto / (1 - nt)
+    
                     normhkva = " normhkva=" + str(kVAtraf)
                     kVA = ' kVAs=[' + str(kVAtraf)+ ' ' + str(kVAtraf)+ "]"
                     kV = ' kVs=[' + str(Vtraf1)+ ' ' + str(Vtraf2)+ "]"
                     react = ' xhl=' + str(Ztraf)
+    
+                    busesTx1 = ' buses=[bridge.1.0 ' + 'bridge.1.4]'
+                    busesTx2 = ' buses=[bridge.2.0 ' + 'bridge.2.5]'
+                    busesTx3 = ' buses=[bridge.3.0 ' + 'bridge.3.6]'
     
                     taps = ''
                     if dataList['TAPS'] != '':
@@ -2432,23 +2013,22 @@ class QGIS2OpenDSS(object):
                         taps += str(dataList['MAXTAP'])
                         taps += ' mintap=' 
                         taps += str(dataList['MINTAP'])
-                    
                     line1 = 'new transformer.HVMV_auto1' + busesTx1
                     line1 += fases + dev + kV + kVA
                     line1 += normhkva + react 
                     line1 += ' %loadloss=0 %noloadloss=0 '
                     line1 += taps + ' !isc1p=' + isc_1p
-                    line1 += " isc3p=" + isc_3p + " \n"
+                    line1 += " isc3p=" + isc_3p + "\n"
                     line2 = 'new transformer.HVMV_auto2'
                     line2 += busesTx2 + fases + dev
                     line2 += kV + kVA + normhkva + react
                     line2 += ' %loadloss=0 %noloadloss=0 '
-                    line2 += taps + " \n"
+                    line2 += taps + "\n"
                     line3 = 'new transformer.HVMV_auto3'
                     line3 += busesTx3 + fases + dev
                     line3 += kV + kVA + normhkva + react
                     line3 += ' %loadloss=0 %noloadloss=0 '
-                    line3 += taps + " \n"
+                    line3 += taps + "\n"
                     jumper1 = "new line.jumper1 bus1="
                     jumper1 += "SourceBus.1.2.3 bus2=bridge"
                     jumper1 += ".1.2.3 R=0 X=0.00001 "
@@ -2475,7 +2055,7 @@ class QGIS2OpenDSS(object):
                     bus = dataList['BUSMT']
                     isc_1p = str(dataList['ISC_1P'])
                     isc_3p = str(dataList['ISC_3P'])
-                    line = 'Sourcebus' + " , " + str(dataList["VOLTAJEMED"])
+                    line = bus + " , " + str(dataList["VOLTAJEMED"])
                     line += ' !isc1p=' + isc_1p
                     line += " isc3p=" + isc_3p + " \n"
                     line = "!NOMODEL\n" + line
@@ -2486,9 +2066,9 @@ class QGIS2OpenDSS(object):
         except Exception:
             self.print_error()
             return 0
-
-
-
+        
+    
+    
     # *****************************************************************
     # *****************************************************************
     # *****************************************************************
@@ -2500,7 +2080,7 @@ class QGIS2OpenDSS(object):
 
         # Se agrega el atributo DSSName si no existe en la capa
         layer_data = layer.dataProvider()
-        index_dss = auxiliary_functions.getAttributeIndex(self, layer, "DSSNAME")
+        index_dss = auxiliary_functions.getAttributeIndex(self, layer, "DSSName")
 
         #Lectura de csv's de cargadores y buses
         buses = layer.getFeatures()
@@ -2572,6 +2152,7 @@ class QGIS2OpenDSS(object):
                 voltoprLN = "UNKNOWN"
                 aviso = 'No se encuentra el código de tensión '
                 aviso +=  str(primvolt)
+
             else:
                 voltoprLL = str(voltages["MVCode"]["LL"])
                 voltoprLN = str(voltages["MVCode"]["LN"])
@@ -2627,7 +2208,7 @@ class QGIS2OpenDSS(object):
             #RATEDKVA
             try:
                 ratedkva = bus['RATEDKVA']
-
+                
             except KeyError:
                 self.print_error()
                 mensaje = "Favor introduzca el atributo 'RATEDKVA' "
@@ -2635,7 +2216,7 @@ class QGIS2OpenDSS(object):
                 title = "QGIS2OpenDSS error buses"
                 QMessageBox.critical(None, title, mensaje)
                 return 0, 0, 0
-
+            
             #TAPSETTING
             try:
                 tapsetting = bus['TAPSETTING']
@@ -2657,13 +2238,13 @@ class QGIS2OpenDSS(object):
                           'LOADCONNS': '.1.2.3', 'LOADCONF': 'wye',
                           'LOADVOLT': loadvolt,
                           'LOADVOLTLN': loadvoltLN,
-                          'MV_GROUP': group, "VOLTMTLL": voltoprLL,
+                          'GRUPO_MV': group, "VOLTMTLL": voltoprLL,
                           "VOLTMTLN": voltoprLN}
 
             #########################
             #Atributos para carga BT
             #########################
-
+            
             #Model: atributo opcional
             try:
                 model = int(bus['MODEL'])
@@ -2716,13 +2297,13 @@ class QGIS2OpenDSS(object):
             dssname = str("plant_" + nombre_plantel.lower())
 
             #Cambios en la capa
-            idx_dss = bus.fieldNameIndex("DSSNAME")
+            idx_dss = bus.fieldNameIndex("DSSName")
             layer.changeAttributeValue(bus.id(), idx_dss, dssname)
 
             datos = {"INDEXDSS": indexDSS, 'ID': bus.id(),
                      "LAYER": layer, "nodo": nodo, 'X1': x1, 'Y1': y1,
-                     'LV_GROUP': group, 'NOMBRE PLANTEL': nombre_plantel,
-                     'DSSNAME': dssname, 'DICT TRAFO': dict_trafo,
+                     'GRUPO': group, 'NOMBRE PLANTEL': nombre_plantel,
+                     'DSSName': dssname, 'DICT TRAFO': dict_trafo,
                      'DICT LOAD BT': dict_load_bt,
                      'DICT BUSES': dict_buses_plant}
 
@@ -2930,8 +2511,8 @@ class QGIS2OpenDSS(object):
         finally:
             pass
             # layer.commitChanges()
-
-
+    
+    
     """
     *******************************************************************
     *******************************************************************
@@ -2950,7 +2531,7 @@ class QGIS2OpenDSS(object):
     
     def Write_GD_ls(self, dataList):
         try:
-            dss_name = str(dataList['DSSNAME'])
+            dss_name = str(dataList['DSSName'])
             tech = str(dataList['TECH']).upper()
             daily = str(dataList['DAILY'])
             mva = str(dataList["MVA"])
@@ -2961,110 +2542,33 @@ class QGIS2OpenDSS(object):
     
             if tech == "PV" or tech == "WIND":
                 model = " model=7"
-                vmin_ = " Vminpu=0.833"
-                vmax_ = " Vmaxpu=1.5"
-            else:
+            elif tech == "HYDRO" or tech== "HIDRO":
                 model = " model=1"
                 xdp_ = " xdp=" + xdp
-                xdpp_ = " xdpp=" + xdpp
+            else:
+                model=""
+                xdp_ = ""
     
             # Sentencia del loadshape
             name_loadshape = "curve_" + dss_name
-            folder_profile = self.dlg.lineEdit_AC.text()
-            name_file = folder_profile.split("/")[-1]+"/LSDG/"+daily # Tiene que ser un csv
+            name_file = "DG/" + daily
             sent_p = "(file=" + name_file + ", col=1, header=no)"
             sent_q = "(file=" + name_file + ", col=2, header=no)"
             linea_lshp = "new Loadshape." + name_loadshape
             linea_lshp += ' npts=96 minterval=15 Pmult=' + sent_p
             linea_lshp +=  " Qmult=" + sent_q + " useactual=no\n"
-            
-            if (tech != "PV") or (tech != "WIND"):
-                linea_gd = "new generator." + dss_name
-                linea_gd += " bus1=" + bus + ".1.2.3"
-                linea_gd += " kV=" + kv + " phases=3 MVA=" + mva
-                linea_gd += " kw=1 kVAr=1 daily=" + name_loadshape
-                linea_gd += " conn=wye status=variable" + xdp_
-                linea_gd += xdpp_ + model + " \n"
-            else:
-                linea_gd = "new generator." + dss_name
-                linea_gd += " bus1=" + bus + ".1.2.3"
-                linea_gd += " kV=" + kv + " phases=3 MVA=" + mva
-                linea_gd += " kw=1 kVAr=1 daily=" + name_loadshape
-                linea_gd += " conn=wye status=variable" +vmin_+vmax_
-                linea_gd +=   model + " \n"
-            
-            return linea_gd, linea_lshp
-        except Exception:
-            self.print_error()
-            return "", ""
- 
- 
-    def Write_GD_ss(self, dataList):
-        try:
-            dss_name = str(dataList['DSSNAME'])
-            tech = str(dataList['TECH']).upper()
-            kva = str(dataList["KVA"])
-            kv = str(dataList["VOLTAGELL"])
-            xdpp = str(dataList["XDPP"])
-            xdp = str(dataList["XDP"])
-            bus = dataList["BUS"]
-            nphas = str(dataList["NPHAS"])
-            curve1 = str(dataList['CURVE1'])
-            curve2 = str(dataList['CURVE2'])
-            
-            if nphas == "1":
-                service = ".1.2"
-            else:
-                service=".1.2.3"
     
-            if tech == "PV" or tech == "WIND":
-                model = " model=7"
-                vmin_ = " Vminpu=0.833"
-                vmax_ = " Vmaxpu=1.5"
-                xdp_ = ""
-                xdpp = ""
-            else:
-                model = " model=1"
-                vmin_ = ""
-                vmax_ = ""
-                xdp_ = " xdp=" + xdp
-                xdpp_ = " xdpp=" + xdpp
-                
-            # Sentencia del loadshape
-            name_loadshape = "curve_" + dss_name
-            folder_profile = self.dlg.lineEdit_AC.text()
-            name_file_curve1 = folder_profile.split("/")[-1]+"/DG/" + curve1
-            name_file_curve2 = folder_profile.split("/")[-1]+"/DG/" + curve2
-            if (curve1 == curve2): # Es un csv
-                sent_p = "(file=" + name_file_curve1 + ", col=1, header=no)"
-                sent_q = "(file=" + name_file_curve2 + ", col=2, header=no)"
-            else: #Es un txt o dss
-                sent_p = "(file=" + name_file_curve1 + ", header=no)"
-                sent_q = "(file=" + name_file_curve2 + ", header=no)"
-            
-            linea_lshp = "new Loadshape." + name_loadshape
-            linea_lshp += ' npts=96 minterval=15 Pmult=' + sent_p
-            linea_lshp +=  " Qmult=" + sent_q + " useactual=no\n"
-            
-            if (tech != "PV") or (tech != "WIND"):
-                linea_gd = "new generator." + dss_name
-                linea_gd += " bus1=" + bus + service
-                linea_gd += " kV=" + kv + " phases="+ nphas + " kVA=" + kva
-                linea_gd += " kw=1 kVAr=1 daily=" + name_loadshape
-                linea_gd += " conn=wye status=variable" + xdp_
-                linea_gd +=  xdpp + model + " \n"
-            else:
-                linea_gd = "new generator." + dss_name
-                linea_gd += " bus1=" + bus + service
-                linea_gd += " kV=" + kv + " phases=" + nphas + " kVA=" + kva
-                linea_gd += " kw=1 kVAr=1 daily=" + name_loadshape
-                linea_gd += " conn=wye status=variable" +vmin_+vmax_
-                linea_gd +=   model + " \n"
-            
+            linea_gd = "new generator." + dss_name
+            linea_gd += " bus1=" + bus + ".1.2.3"
+            linea_gd += " kV=" + kv + " phases=3 MVA=" + mva
+            linea_gd += " kw=1 kVAr=1 daily=" + name_loadshape
+            linea_gd += " conn=wye status=variable" + xdp_
+            linea_gd +=  " xdpp=" + xdpp + model + "\n"
             return linea_gd, linea_lshp
         except Exception:
             self.print_error()
             return "", ""
+ 
     
     
     """
@@ -3086,7 +2590,6 @@ class QGIS2OpenDSS(object):
     """
     
     def Write_Reg(self, reg, layer):
-        # Modelo de regulador TIPO B
         try:
             indexBus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             indexBus2 = auxiliary_functions.getAttributeIndex(self, layer, "bus2")
@@ -3094,20 +2597,17 @@ class QGIS2OpenDSS(object):
                                                                   'BUSINST')
             layer.startEditing() # Activa modo edición
             i = -1
-            linea_tot = " \n"
-            linea_tot += "set maxcontroliter=30 \n"
-            
+            linea_tot = ""
             for reg_ in reg.nodes(data=True):
                 reg = reg_[1]
                 i += 1
-                dss_name = str(reg['DSSNAME'])
-                kv = str(reg['TENSION_LN'])
+                dss_name = str(reg['DSSName'])
+                kv = str(reg['TENSION'])
                 kva = str(reg["KVA"])
                 pt_ratio = str(reg['PT_RATIO'])
                 v_reg = str(reg["VREG"])
-                v_cap = str(np.round(reg["VCAP"],2)) # Nuevo
                 bwt = str(reg["BANDWIDTH"])
-                taps = str(int(reg["TAPS"]))
+                taps = str(reg["TAPS"])
                 bus1 = reg["BUSMT"]
                 bus2 = reg["BUSBT"]
                 numfases = str(reg['NUM_FASES'])
@@ -3119,69 +2619,26 @@ class QGIS2OpenDSS(object):
                 layer.changeAttributeValue(id_, indexBus1, bus1)
                 layer.changeAttributeValue(id_, indexBus2, bus2)
                 layer.changeAttributeValue(id_, index_businst, exp_businst)
-                
-                # Ajuste de la capacidad del transformador
-                
-                nt = float(v_cap)/100 # Transformador de relación 1:1
-                kVAtraf = str(np.round((nt * float(kva) / (1 + nt)),2)) # Ecuación 7.48 Kersting 3rd edition
-                
-                # Primero la sentencia del jumper entre los transformadores
-                
                 for j in range(int(numfases)):
                     if numfases == '1':
-                        node = fase # Fase determinada por el atributo PHASEDESIG (Al ser monofásico, sería .1, .2 o .4)
+                        node = numfases
                     else:
                         node = "." + str(j+1)
-                        
-                    # Nombre del autotrafo
                     traf_name = dss_name + "_" + str(j)
-                    
-                    # Nombre del reactor para hacer autotrafo
-                    reactor_name = "Jumper_"+traf_name
-                    
-                    # Sentencia para el reactor de entrada
-                    linea_reactor = "New Reactor."+reactor_name+"_E"
-                    linea_reactor += " phases=1"
-                    linea_reactor += " bus1="+bus1+node
-                    linea_reactor += " bus2="+bus2+str(j+1)+".2"
-                    linea_reactor += " X=0.0001"
-                    linea_reactor += " R=0.0001 \n"
-                    
-                    # Sentencia para el reactor de salida
-                    linea_reactor += "New Reactor."+reactor_name+"_S"
-                    linea_reactor += " phases=1"
-                    linea_reactor += " bus1="+bus2+str(j+1)+".1"
-                    linea_reactor += " bus2="+bus1+"_reg"+node
-                    linea_reactor += " X=0.0001"
-                    linea_reactor += " R=0.0001 \n"
-                    
-                    linea_tot += linea_reactor
-                                  
-                for j in range(int(numfases)):
-                    
-                    # Nombre del autotrafo
-                    traf_name = dss_name + "_" + str(j)
-                    #
-                    # Nombre del control
                     reg_name = dss_name.replace("Reg", "")
                     reg_name = "RegCont" + reg_name + "_" + str(j)
-                    
-                    kv2 = str(np.round((float(v_cap)/100)*float(kv),2))
-                    
                     linea_traf = "New Transformer." + traf_name
-                    linea_traf += " phases=1 windings=2 bank=reg" + str(i)
-                    linea_traf += " xhl=0.01 %loadloss=0.1 \n"
-                    linea_traf += " ~ wdg=1 Bus="+bus2+str(j+1)+".1.0"
-                    linea_traf += " kV="+kv+ " kVA="+kVAtraf +" \n"
-                    linea_traf += " ~ wdg=2 Bus="+bus2+str(j+1)+".1.2"
-                    linea_traf += " kV="+kv2+ " kVA="+kVAtraf
-                    linea_traf += " Maxtap=1.0 Mintap=-1.0 tap=0"
-                    linea_traf += " numtaps="+taps +" \n"
+                    linea_traf += " phases=1 bank=reg" + str(i)
+                    linea_traf += ' xhl=0.01 kVAs=[' + kva + ' '
+                    linea_traf += kva + "] Buses=[" + bus1 + node + " "
+                    linea_traf += bus2 + node + "] kVs=[" + tension_ln + " "
+                    linea_traf += tension_ln + "] %LoadLoss=0.01 numtaps="
+                    linea_traf += taps + " Maxtap=1.0 Mintap=-1.0\n" 
                     
                     linea_trafcont = "New regcontrol." + reg_name
                     linea_trafcont += " transformer=" + traf_name
-                    linea_trafcont += " winding=2 bus="+bus2+str(j+1)+".1"
-                    linea_trafcont += " vreg=" +v_reg+" band=" + bwt + " ptratio="
+                    linea_trafcont += " winding=2 vreg=" + v_reg
+                    linea_trafcont += " band=" + bwt + " ptratio="
                     linea_trafcont += pt_ratio + " maxtapchange=1\n"
                     
                     linea_mon = "New monitor.Mon" + traf_name 
@@ -3252,7 +2709,7 @@ class QGIS2OpenDSS(object):
                                     "VOLTAGELL": dataList["TENSION"],
                                     "VOLTAGELN": dataList["TENSION_LN"],
                                     "PHASES": ".1.2.3",
-                                    'MV_GROUP': dataList['GRUPO']}
+                                    'GRUPO_MV': dataList['GRUPO']}
                 BTbus = bus_mt + "_reg"
                 grafo.nodes[nodo]["BUSBT"] = BTbus
                 grafo.nodes[nodo]["BUSMT"] = bus_mt
@@ -3287,7 +2744,7 @@ class QGIS2OpenDSS(object):
         try:
             grafoReg= nx.Graph()
             datosReg = []
-            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSNAME")
+            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSName")
             indexGroup = auxiliary_functions.getAttributeIndex(self, layer, "MV_GROUP")
             indexBus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             indexBus2 = auxiliary_functions.getAttributeIndex(self, layer, "bus2")
@@ -3323,7 +2780,7 @@ class QGIS2OpenDSS(object):
                 # Fases
                 phasedesig = Reg['PHASEDESIG']
                 x = phaseOperations.renamePhase(phasedesig)
-                fase = x.get('phaseCodeODSS') # define código de OpenDSS (incluye punto)
+                fase = x.get('phaseCodeODSS') # define código de OpenDSS
                 numfase = x.get('phaseNumberTraf')
                 # Capacidad nominal
                 kva = Reg['KVA']
@@ -3333,66 +2790,23 @@ class QGIS2OpenDSS(object):
                 
                 # PT RATIO
                 pt_rt = Reg['PT_RATIO']
-                try:
-                    assert pt_rt not in [None, "NULL", "", " ", "0", 0]
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "Existen reguladores con un valor inválido en el atributo PT_RATIO. \n"
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS Error lectura reguladores de tensión"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0
                 
                 # VREG
                 v_reg = Reg['VREG']
-                try:
-                    assert v_reg not in [None, "NULL", "", " ", "0", 0]
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "Existen reguladores con un valor inválido en el atributo VREG. \n"
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS Error lectura reguladores de tensión"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0
                 
                 # Ancho de banda
                 bwt = Reg['BANDWIDTH']
-                try:
-                    assert bwt not in [None, "NULL", "", " ", "0", 0]
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "Existen reguladores con un valor inválido en el atributo BANDWIDTH. \n"
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS Error lectura reguladores de tensión"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0
                 
                 # TAPS
-                try:
-                    taps = Reg['TAPS']
-                    if taps == None or taps == "":
-                        taps = 32
-                except:
-                    taps = 32 # Valor por defecto
-                        
-                # Porcentaje de capacidad de regulacion
-                try:
-                    v_cap = Reg["VCAP"]
-                    if v_cap == None or v_cap == '':
-                        v_cap = 10 # Valor por defecto
-                except:
-                    v_cap = 10 # Valor por defecto
+                taps = Reg['TAPS']
                 
                 datos = {"INDEXDSS": indexDSS, 'ID': id_,
-                        "LAYER": layer, 'DSSNAME': dss_name,
+                        "LAYER": layer, 'DSSName': dss_name,
                         "INDEXBUS1": indexBus1, "INDEXBUS2": indexBus2, 
                         'X1': x1, 'Y1': y1, 'GRUPO': group,
                         'TENSION': tension_ll, 'KVA': kva,
                         'TENSION_LN': tension_ln,
-                        'PT_RATIO': pt_rt, 'VREG': v_reg, 'VCAP': v_cap,
+                        'PT_RATIO': pt_rt, 'VREG': v_reg,
                         'BANDWIDTH': bwt, 'TAPS': taps,
                         'NUM_FASES': numfase, 'PHASE': fase}
                 
@@ -3402,6 +2816,7 @@ class QGIS2OpenDSS(object):
                 
                 # Cambios en capa
                 layer.changeAttributeValue(id_, indexDSS, dss_name)
+                layer.changeAttributeValue(id_, indexGroup, group)
             
             return datosReg, grafoReg
         except KeyError as e:
@@ -3447,33 +2862,10 @@ class QGIS2OpenDSS(object):
  
     def ReaderDataGD_LargeScale(self, layer, toler, Graph_T3F_single):
         try:
-            
-            # Primero verificar que exista la carpeta de curvas LSDG
-            
-            dir_name = self.dlg.lineEdit_AC.text()
-            # List all files and directories in the folder
-            all_files_and_dirs = os.listdir(dir_name)
-
-            # Directorios/carpetas existentes en la carpeta de curvas
-            only_dirs = [d for d in all_files_and_dirs if os.path.isdir(os.path.join(dir_name, d))]
-            
-            try:
-                assert "LSDG" in only_dirs
-                file_ext_dict = self.GDcurves_dict(dir_name, "ls") # diccionario que guarda el nombre de las curvas de acuerdo a la extensión
-            
-            except AssertionError:
-                msg = self.print_error()
-                aviso = "No existe la carpeta 'LSDG' en el directorio de curvas. El formato solicita esta carpeta para contener los archivos de curvas de los generadores distribuidos. \n "
-                aviso += "Favor corrija y vuelva a ejecutar."
-                self.mensaje_log_gral += aviso + " \n"
-                title = "QGIS2OpenDSS error lectura GD gran escala"
-                QMessageBox.critical(None, title, aviso)
-                return 0, 0, 0
-                
             grafoGD = nx.Graph()
             datosGD = []
             
-            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSNAME")
+            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSName")
             indexGroup = auxiliary_functions.getAttributeIndex(self, layer, "MV_GROUP")
             indexBus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             
@@ -3485,7 +2877,7 @@ class QGIS2OpenDSS(object):
             linea_lshp = ""
             for gd in GDs:
                 i += 1
-                dss_name = 'DER_ls_' + self.circuitName + '_' + str(i)
+                dss_name = 'gd_ls_' + self.circuitName + '_' + str(i)
                 nodo = self.CoordPointProcees(gd, toler)
                 id_ = gd.id()
                 
@@ -3493,7 +2885,8 @@ class QGIS2OpenDSS(object):
                 point = gd.geometry().asPoint()
                 x1 = point[0]
                 y1 = point[1]
-
+                
+                
                 # Datos de lineas MT
                 nodo_trafo = ""
                 exists = Graph_T3F_single.has_node(nodo)
@@ -3507,12 +2900,12 @@ class QGIS2OpenDSS(object):
                         aviso = "El transformador asociado al generador"
                         aviso += " distribuido a gran escala "
                         aviso +=  dss_name + " no es mv_mv"
-                        self.mensaje_log_gral += aviso + " \n"
+                        self.mensaje_log_gral += aviso + "\n"
                 else:
                     inf_trafo = ''
                     aviso = "No se encontró trafo MT/MT para GD a gran "
                     aviso += "escala " + dss_name
-                    self.mensaje_log_gral += aviso + " \n"
+                    self.mensaje_log_gral += aviso + "\n"
                     #bus
                     bus = 'UNKNOWN'
                 
@@ -3527,109 +2920,31 @@ class QGIS2OpenDSS(object):
                 if group == None or group == '' or group == 'N/A':
                     # Caso en que haya alguna linea de MT
                     if inf_trafo:
-                        group = inf_trafo['MV_GROUP']
+                        group = inf_trafo['GRUPO_MV']
                     else:
                         group = 'N/A'
     
                 # Tecnología
-                tech = str(gd['TECH']).upper()
-                try:
-                    assert tech in ["PV", "HYDRO", "HIDRO", "WIND", "GD"]
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "El valor " + str(tech) + " suministrado en el "
-                    aviso += " atributo 'TECH' no es un valor aceptado. "
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS error lectura GD gran escala"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
+                tech = str(gd['TECH']).lower()
+                
+                #Loadshape
+                daily = gd['DAILY']
                 
                 # Tensión 
                 nomvolt = gd['NOMVOLT']
                 tension = lineOperations.renameVoltage(nomvolt)
                 tension_ll = tension['LVCode']['LL']
-
                 # Capacidad nominal
                 mva = gd['MVA']
                 
-                if tech not in ["PV", "WIND"]:
-                    # xdp
-                    try: 
-                        assert (gd['XDP'] not in [None, "", " ", "NULL", 0, "0"])
-                        xdp = gd['XDP']
-                    except AssertionError:
-                        msg = self.print_error()
-                        aviso += "Favor suministrar un valor válido de 'Xdp' para máquinas "
-                        aviso += "cuya tecnología no es PV o WIND."
-                        aviso += "Corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error lectura GD gran escala"
-                        QMessageBox.critical(None, title, aviso)
-                        return 0, 0, 0
-                    
-                    # xdp
-                    try: 
-                        assert (gd['XDPP'] not in [None, "", " ", "NULL", 0, "0"])
-                        xdpp = gd['XDPP']
-                    except AssertionError:
-                        msg = self.print_error()
-                        aviso += "Favor suministrar un valor válido de 'Xdpp' para máquinas "
-                        aviso += "cuya tecnología no es PV o WIND."
-                        aviso += "Corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error lectura GD gran escala"
-                        QMessageBox.critical(None, title, aviso)
-                        return 0, 0, 0
-                else:
-                    xdp = ""
-                    xdpp = ""
+                # xdp
+                xdp = gd['XDP']
                 
-                #Loadshape
-                # Verificación existencia de nombres de curvas
-                daily = gd['DAILY']
-                
-                try:
-                    assert (daily not in [None, "", " ", "0", 0, "NULL"])
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "Existen generadores a los que no se les asignó una curva"
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS error lectura GD gran escala"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
-                
-                # Verificación del formato de los archivos de curvas
-                try:
-                    file_format = daily.split(".")[1].upper() 
-                    assert (file_format == "CSV")
-                
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "El formato de algunos de los archivos de curvas de los generadores no posee el formato aceptado (CSV)"
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS error lectura GD gran escala"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
-                
-                # Verificación de la existencia de las curvas en el directorio establecido
-                
-                try:
-                    assert daily in file_ext_dict[file_format]
-                
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "El nombre de la curva "+daily+" no existe dentro del directorio establecido. \n "
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS error lectura GD pequeña escala"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0, 0, 0
+                # xdpp
+                xdpp = gd['XDPP']
                 
                 datos = {"INDEXDSS": indexDSS, 'ID': id_,
-                        "LAYER": layer, 'DSSNAME': dss_name,
+                        "LAYER": layer, 'DSSName': dss_name,
                         "INDEXBUS1": indexBus1, 
                         'X1': x1, 'Y1': y1, 'GRUPO': group,
                         'TECH': tech, 'MVA': mva,
@@ -3653,17 +2968,17 @@ class QGIS2OpenDSS(object):
             
             # Escritura dss
             # Loadshapes
-            filename_lshp = self.circuitName + '_LoadshapesDER_ls.dss'
+            filename_lshp = self.circuitName + '_LoadshapesGD_ls.dss'
             name_lshp = self.foldername + '/' + filename_lshp
             with open(name_lshp, 'w') as lshp_gd:
                 lshp_gd.write(linea_lshp)
 
             # Archivo gd
-            filename_gdls = self.circuitName + '_DERls.dss'
+            filename_gdls = self.circuitName + '_DGls.dss'
             line_out = '\nredirect ' + filename_gdls
             output_GDdss = self.foldername + '/' + filename_gdls
             
-            linea_gd = "redirect " + filename_lshp + " \n" + linea_gd
+            linea_gd = "redirect " + filename_lshp + "\n" + linea_gd
             with open(output_GDdss , 'w') as file_gd:
                 file_gd.write(linea_gd)
             return datosGD, grafoGD, filename_gdls
@@ -3716,7 +3031,7 @@ class QGIS2OpenDSS(object):
         try:
             grafoSwitch = nx.Graph()
             datosSwitch = []
-            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSNAME")
+            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSName")
             indexGroup = auxiliary_functions.getAttributeIndex(self, layer, "MV_GROUP")
             indexBus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             indexBus2 = auxiliary_functions.getAttributeIndex(self, layer, "bus2")
@@ -3747,7 +3062,7 @@ class QGIS2OpenDSS(object):
                     inf_line_MT = ''
                     aviso = "No se encontro linea MT para switch "
                     aviso += dss_name
-                    self.mensaje_log_gral += aviso + " \n"
+                    self.mensaje_log_gral += aviso + "\n"
                 
                 # Lectura de datos capa
                 # Se lee el grupo de la capa
@@ -3778,7 +3093,7 @@ class QGIS2OpenDSS(object):
                         grafoMT.remove_node(nodo)
 
                 datos = {"INDEXDSS": indexDSS, 'ID': id_,
-                         "LAYER": layer, 'DSSNAME': dss_name,
+                         "LAYER": layer, 'DSSName': dss_name,
                          "INDEXBUS1": indexBus1, "INDEXBUS2": indexBus2,
                          "INDEXBUS_INT": indexBusInt,
                          'X1': x1, 'Y1': y1, 'GRUPO': group, 'NC': NC}
@@ -3842,7 +3157,7 @@ class QGIS2OpenDSS(object):
         try:
             grafoReclosers = nx.Graph()
             datosreclosers = []
-            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSNAME")
+            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSName")
             indexGroup = auxiliary_functions.getAttributeIndex(self, layer, "MV_GROUP")
             indexBus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             indexBus2 = auxiliary_functions.getAttributeIndex(self, layer, "bus2")
@@ -3873,7 +3188,7 @@ class QGIS2OpenDSS(object):
                     inf_line_MT = ''
                     aviso = "No se encontro linea MT para recloser "
                     aviso += dss_name
-                    self.mensaje_log_gral += aviso + " \n"
+                    self.mensaje_log_gral += aviso + "\n"
                 
                 # Lectura de datos capa
                 # Se lee el grupo de la capa
@@ -3932,17 +3247,17 @@ class QGIS2OpenDSS(object):
                 try:
                     grd_i = recloser['GRD_I']
                     if grd_i == None or grd_i == '':
-                        grd_i = '100000'
+                        grd_i = '100'
                 except KeyError:
-                    grd_i = '100000'
+                    grd_i = '100'
                 
                 # Ground Trip
                 try:
                     grd_trip = recloser['GRD_TRIP']
                     if grd_trip == None or grd_trip == '':
-                        grd_trip = '100000'
+                        grd_trip = '100'
                 except KeyError:
-                    grd_trip = '100000'
+                    grd_trip = '100'
                 
                 # Phase Fast
                 try:
@@ -3956,20 +3271,20 @@ class QGIS2OpenDSS(object):
                 try:
                     ph_i = recloser['PH_I']
                     if ph_i == None or ph_i == '':
-                        ph_i = '100000'
+                        ph_i = '100'
                 except KeyError:
-                    ph_i = '100000'
+                    ph_i = '100'
                 
                 # Phase Trip
                 try:
                     ph_trip = recloser['PH_TRIP']
                     if ph_trip == None or ph_trip == '':
-                        ph_trip = '100000'
+                        ph_trip = '100'
                 except KeyError:
-                    ph_trip = '100000'
+                    ph_trip = '100'
 
                 datos = {"INDEXDSS": indexDSS, 'ID': id_,
-                         "LAYER": layer, 'DSSNAME': dss_name,
+                         "LAYER": layer, 'DSSName': dss_name,
                          "INDEXBUS1": indexBus1, "INDEXBUS2": indexBus2,
                          'X1': x1, 'Y1': y1, 'GRUPO': group, 'NC': NC,
                          'GRD_D': grd_d, 'GRD_F': grd_f,
@@ -3989,7 +3304,6 @@ class QGIS2OpenDSS(object):
                 layer.changeAttributeValue(id_, indexBus1, NULL)
                 layer.changeAttributeValue(id_, indexBus2, NULL)
             return datosreclosers, grafoReclosers
-            
         except KeyError as e:
             cause = e.args[0]
             msg = self.print_error()
@@ -4033,57 +3347,11 @@ class QGIS2OpenDSS(object):
     *******************************************************************
     """
     
-    def Fuses_Verification(self, fuse_output_name, warning_fuses):
-        bib_fuses = {}
-        flag_aviso = False
-        aviso = "Revisar las curvas o el multiplicador de los siguientes fusibles. Al correr un estudio de cortocircuito puede que no funcionen debidamente, ya que existe un valor menor a 1 A en el producto de la curva con el multiplicador establecido \n"
-        
-        # Parte 1: Creación del diccionario con la información 
-        with open(fuse_output_name, 'r', encoding='utf-8', errors='ignore') as file:
-            lines_e = file.readlines()
-            for line in lines_e:
-                
-                if "C_array" in line:
-                    curve_name = line.split(" ")[1].split(".")[1]
-                    c_array_str = re.search(r'C_array=\((.*?)\)', line).group(1)
-                    c_array = [float(num) for num in c_array_str.split(",")]
-                    
-                    bib_fuses[curve_name.upper()] = c_array
-                
-                elif "c_array" in line:
-                    curve_name = line.split(" ")[1].split(".")[1]
-                    c_array_str = re.search(r'c_array=\((.*?)\)', line).group(1)
-                    c_array = [float(num) for num in c_array_str.split(",")]
-                    
-                    bib_fuses[curve_name.upper()] = c_array
-        
-        # Parte 2: Verificación del multiplicador en la capa:
-        for elem in warning_fuses:
-            dss_name = elem[0]
-            curve = elem[1].upper()
-            mult = float(elem[2])
-            temp_curve = []
-            
-            temp_curve = [mult*x for x in bib_fuses[curve]]
-            
-            warning_flag = len([num for num in temp_curve if num < 1])
-            
-            if warning_flag != 0:
-                aviso += "Fusible "+dss_name + " \n"
-                flag_aviso = True
-        
-        # Si no existe algún error, limpia el aviso
-        if flag_aviso is False:
-            aviso = ""
-                
-        return aviso
-        
-    
     def ReaderDataFuses(self, layer, toler, grafoMT):
         try:
             grafoFuses = nx.Graph()
             datosFuses = []
-            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSNAME")
+            indexDSS = auxiliary_functions.getAttributeIndex(self, layer, "DSSName")
             indexGroup = auxiliary_functions.getAttributeIndex(self, layer, "MV_GROUP")
             indexBus1 = auxiliary_functions.getAttributeIndex(self, layer, "bus1")
             indexBus2 = auxiliary_functions.getAttributeIndex(self, layer, "bus2")
@@ -4114,7 +3382,7 @@ class QGIS2OpenDSS(object):
                     inf_line_MT = ''
                     aviso = "No se encontro linea MT para fusible "
                     aviso += dss_name
-                    self.mensaje_log_gral += aviso + " \n"
+                    self.mensaje_log_gral += aviso + "\n"
                 
                 # Lectura de datos capa
                 # Se lee el grupo de la capa
@@ -4155,15 +3423,15 @@ class QGIS2OpenDSS(object):
                 try:
                     ic_current = fuse['RATED_C']
                     if ic_current == None or ic_current == '':
-                        ic_current = '10000'
+                        ic_current = '30'
                     else:
                         ic_current = str(ic_current)
                 except Exception:
-                    ic_current = '10000'
+                    ic_current = '30'
                 
                 
                 datos = {"INDEXDSS": indexDSS, 'ID': id_,
-                        "LAYER": layer, 'DSSNAME': dss_name,
+                        "LAYER": layer, 'DSSName': dss_name,
                         "INDEXBUS1": indexBus1, "INDEXBUS2": indexBus2,
                         'X1': x1, 'Y1': y1, 'GRUPO': group, 'NC': NC,
                         'RATED_CURRENT': ic_current,
@@ -4214,25 +3482,21 @@ class QGIS2OpenDSS(object):
     *******************************************************************
     *******************************************************************
     """
-        
-        
+    
     def ReaderDataCapacitors(self, layer, toler):
         try:
             grafoCap = nx.Graph()
             indexDSS = auxiliary_functions.getAttributeIndex(self, layer,
-                                                             "DSSNAME")
+                                                             "DSSName")
             indexGroup = layer.dataProvider().fieldNameIndex("MV_GROUP")
             indexBus1 = auxiliary_functions.getAttributeIndex(self, layer,
-                                                           "bus1")
-            indexBusInst = auxiliary_functions.getAttributeIndex(self, layer,
-                                                           "BUSINST")
-            
+                                                              "bus1")
+    
             capacitors = layer.getFeatures()
             i = -1
             for capi in capacitors:
-                
+                point = capi.geometry().asPoint()
                 i += 1
-                
                 # MV_GROUP
                 if indexGroup == -1:
                     group = 'N/A'
@@ -4240,14 +3504,8 @@ class QGIS2OpenDSS(object):
                     group = str(capi['MV_GROUP'])
 
                 nodo = self.CoordPointProcees(capi, toler)
-                
-                # Coordenadas
-                point = capi.geometry().asPoint()
-                x1 = point[0]
-                y1 = point[1]
 
                 dss_name = "cap" + str(i)
-                
                 # NOMVOLT
                 nomvolt = capi['NOMVOLT']
                 tension = lineOperations.renameVoltage(nomvolt)
@@ -4265,7 +3523,7 @@ class QGIS2OpenDSS(object):
                     aviso = "El valor " + str(kvar) + " suministrado en el "
                     aviso += " atributo 'KVAR' no es un valor numérico. "
                     aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
+                    self.mensaje_log_gral += aviso + "\n"
                     title = "QGIS2OpenDSS error lectura capacitores"
                     QMessageBox.critical(None, title, aviso)
                     return 0
@@ -4276,131 +3534,24 @@ class QGIS2OpenDSS(object):
                 service = x.get('phaseCodeODSS') # define código de OpenDSS
                 phases = x.get('phaseNumberTraf')
                 
-                # CONN
-                if str(phases) == '1':
-                    conn = "wye"
-                else:
-                    conn_list = ["Y", "D"]
-                    conn = capi['CONN'].upper()
-                    try:
-                        assert conn in conn_list
-                    except AssertionError:
-                        msg = self.print_error()
-                        aviso = "El valor " + str(conn) + " suministrado en el "
-                        aviso += " atributo 'CONN' no es un valor aceptado. "
-                        aviso += "Favor corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error lectura capacitores"
-                        QMessageBox.critical(None, title, aviso)
-                        return 0
-                    
-                    if conn == "Y":
-                        conn = "wye"
-                    else:
-                        conn = "delta"
+                if str(phases) == '3':
+                        kvar = str(float(kvar)/3)
                 
-                # STEPS
-                try: # Si el dato existe
-                    steps = capi["STEPS"]
-                    if ((steps == None) or (steps == "") or (steps=="0") or (steps==0)):
-                        steps = "1"
-                    else:
-                        try:
-                            steps = str(int(steps))
-                        except ValueError:
-                            msg = self.print_error()
-                            aviso = "El valor " + str(steps) + " suministrado en el "
-                            aviso += " atributo 'STEPS' no es un valor numérico. "
-                            aviso += "Favor corrija y vuelva a ejecutar."
-                            self.mensaje_log_gral += aviso + " \n"
-                            title = "QGIS2OpenDSS error lectura capacitores"
-                            QMessageBox.critical(None, title, aviso)
-                            return 0
-                    
-                except Exception:
-                    steps = '1'
-                
-                # CONTROL
-                control_list = ["NO", "V", "FP", "Q"]
-                control_cap = capi["CONTROL"].upper()
-                
-                try:
-                    assert control_cap in control_list
-                
-                except AssertionError:
-                    msg = self.print_error()
-                    aviso = "El valor " + str(control_cap) + " suministrado en el "
-                    aviso += " atributo 'CONTROL' no es un valor aceptado. "
-                    aviso += "Favor corrija y vuelva a ejecutar."
-                    self.mensaje_log_gral += aviso + " \n"
-                    title = "QGIS2OpenDSS error lectura capacitores"
-                    QMessageBox.critical(None, title, aviso)
-                    return 0
-
-                # Aspectos relacionados con el control
-                if (control_cap != "NO"):
-
-                    # Línea DSS
-                    linea_DSS = capi["DSS_LINE"]
-
-                    # Objetivo máximo
-                    obj_control_max = capi["OBJ_MAX"]
-                    try:
-                        obj_control_max = str(float(obj_control_max))
-                    except ValueError:
-                        msg = self.print_error()
-                        aviso = "El valor " + str(obj_control_max) + " suministrado en el "
-                        aviso += " atributo 'OBJ_MAX' no es un valor numérico. "
-                        aviso += "Favor corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error lectura capacitores"
-                        QMessageBox.critical(None, title, aviso)
-                        return 0
-
-                    # Objetivo mínimo
-                    obj_control_min = capi["OBJ_MIN"]
-                    try:
-                        obj_control_min = str(float(obj_control_min))
-                    except ValueError:
-                        msg = self.print_error()
-                        aviso = "El valor " + str(obj_control_min) + " suministrado en el "
-                        aviso += " atributo 'OBJ_MIN' no es un valor numérico. "
-                        aviso += "Favor corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error lectura capacitores"
-                        QMessageBox.critical(None, title, aviso)
-                        return 0
-                else:
-                    pass
-
-                if control_cap == "NO" or control_cap == "N":
-                    datos = {"INDEXDSS": indexDSS, 'idx_bus1': indexBus1, 
-                             "idx_businst": indexBusInst, 
-                             'idx_group': indexGroup, 'ID': capi.id(),
-                             "LAYER": layer, "nodo": nodo, 'X1': x1,
-                             'Y1': y1, 'GRUPO': group, 'KVAR': kvar,
-                             'SERVICE': service, "STEPS": steps,
-                             'PHASES': phases, 
-                             'VOLT_LL': tension_ll, 'VOLT_LN': tension_ln,
-                             "CONN": conn, "CONTROL":control_cap, 
-                             'DSS_NAME': dss_name}
-                else:
-                    datos = {"INDEXDSS": indexDSS, 'idx_bus1': indexBus1,
-                             "idx_businst": indexBusInst,
-                             'idx_group': indexGroup, 'ID': capi.id(),
-                             "LAYER": layer, "nodo": nodo, 'X1': x1,
-                             'Y1': y1, 'GRUPO': group, 'KVAR': kvar,
-                             'SERVICE': service, "STEPS": steps,
-                             'PHASES': phases,
-                             'VOLT_LL': tension_ll, 'VOLT_LN': tension_ln,
-                             "CONN": conn, "CONTROL":control_cap,
-                             "OBJ_MAX": obj_control_max, "OBJ_MIN": obj_control_min,
-                             "DSS_LINE": linea_DSS, 'DSS_NAME': dss_name}
-                
+                # Coordenadas
+                x1 = point[0]
+                y1 = point[1]
+    
+                datos = {"INDEXDSS": indexDSS, 'idx_bus1': indexBus1,
+                         'idx_group': indexGroup, 'ID': capi.id(),
+                         "LAYER": layer, "nodo": nodo, 'X1': x1,
+                         'Y1': y1, 'GRUPO': group, 'KVAR': kvar,
+                         'CONF': config, 'SERVICE': service,
+                         'PHASES': phases,
+                         'VOLT_LL': tension_ll, 'VOLT_LN': tension_ln,
+                         'DSS_NAME': dss_name}
                 grafoCap.add_node(nodo)
                 grafoCap.nodes[nodo].update(datos)
             return grafoCap
-
         except KeyError as e:
             cause = e.args[0]
             msg = self.print_error()
@@ -4417,8 +3568,6 @@ class QGIS2OpenDSS(object):
             title = "QGIS2OpenDSS error lectura capacitores"
             QMessageBox.critical(None, title, aviso)
             return 0
-        finally:
-            layer.commitChanges()
 
     """
     *******************************************************************
@@ -4426,166 +3575,58 @@ class QGIS2OpenDSS(object):
     Función WriteCapacitors
     Se encapi de la lectura de la capa de GDs de gran escala. Además
     escribe el dss correspondiente a este tipo de datos
-
-
+    
+    
     -Parámetros de entrada:
     *graph_cap (nx.Graph): grafo de capacitores
     *self.circuitName (str): nombre del circuito
     *layer (QgsVectorLayer): capa en GIS de los capacitores
-
+    
     -Valores retornados
     1 si finaliza exitosamente. 0 si hay errores
     *******************************************************************
     *******************************************************************
     """
-
-
-    # Función para evitar typos en la selección de la línea al controlar el capacitor
-
-    def MVLines_list(self, selectedLayerMT1, selectedLayerMT2, selectedLayerMT3):
-        lineas_list = []
-
-        if len(selectedLayerMT1) != 0:
-            try:
-                layerMT1 = QgsProject.instance().mapLayersByName(selectedLayerMT1)[0]
-                lineas_MT1 = layerMT1.getFeatures()
-
-                for linea in lineas_MT1:
-                    lineas_list.append(linea["DSSNAME"].upper())
-            except:
-                pass
-
-        if len(selectedLayerMT2) != 0:
-            try:
-                layerMT2 = QgsProject.instance().mapLayersByName(selectedLayerMT2)[0]
-                lineas_MT2 = layerMT2.getFeatures()
-
-                for linea in lineas_MT2:
-                    lineas_list.append(linea["DSSNAME"].upper())
-            except:
-                pass
-
-        if len(selectedLayerMT3) != 0:
-            try:
-                layerMT3 = QgsProject.instance().mapLayersByName(selectedLayerMT3)[0]
-                lineas_MT3 = layerMT3.getFeatures()
-
-                for linea in lineas_MT3:
-                    lineas_list.append(linea["DSSNAME"].upper())
-            except:
-                pass
-
-        return lineas_list
-
+    
     def WriteCapacitors(self, layer, graph_cap):
         try:
             indexBus1 = layer.dataProvider().fieldNameIndex("bus1")
-            indexDSS = layer.dataProvider().fieldNameIndex("DSSNAME")
-            indexbusinst = layer.dataProvider().fieldNameIndex("BUSINST")
+            indexDSS = layer.dataProvider().fieldNameIndex("DSSName")
             layer.startEditing()  # Activa modo edición
             linea_cap = ""
-            linea_control = 'set maxcontroliter=30 \n'
             for cap_ in graph_cap.nodes(data=True):
                 cap = cap_[1]
-
+                
                 id_ = cap['ID']
                 group = str(cap['GRUPO'])
                 kvar = str(cap['KVAR'])
-                conex = str(cap['CONN'])
+                conex = str(cap['CONF'])
                 service = str(cap['SERVICE'])
                 phases = str(cap['PHASES'])
                 tens_ll = str(cap['VOLT_LL'])
                 tens_ln = str(cap['VOLT_LN'])
-                steps = str(cap["STEPS"])
-                control = cap["CONTROL"]
                 bus1 = str(cap["BUS"])
                 dss_name = cap["DSS_NAME"]
-                bus_inst = bus1+service
-
                 layer.changeAttributeValue(id_, indexBus1, bus1)
                 layer.changeAttributeValue(id_, indexDSS, dss_name)
-                layer.changeAttributeValue(id_, indexbusinst, bus_inst)
-
-                if phases == 1:
-                    kv = str(float(tens_ln)*1000)
-                else:
-                    kv = str(float(tens_ll)*1000)
-
+                
                 linea_cap += "New Capacitor." + dss_name + " bus1="
                 linea_cap += bus1 + service + " phases=" + phases
-                linea_cap += ' kVAr=' + kvar + " Numsteps=" + steps
-                linea_cap += ' kV=' + kv + ' conn=' + conex
-                linea_cap += " !group=" + group + " \n"
-
-                if control != "NO":
-
-                    ctrl_line = cap["DSS_LINE"].upper()
-
-                    # Aquí se podría pensar en una función que verifique si la línea existe
-
-                    # Lectura capas de líneas MT
-                    selectedLayerMT1 = self.dlg.comboBox_LMT1.currentText()
-                    selectedLayerMT2 = self.dlg.comboBox_LMT2.currentText()
-                    selectedLayerMT3 = self.dlg.comboBox_LMT3.currentText()
-
-                    lineas_list = self.MVLines_list(selectedLayerMT1, selectedLayerMT2, selectedLayerMT3)
-
-                    try:
-                        assert ctrl_line in lineas_list
-
-                    except AssertionError as msg:
-                        msg = self.print_error()
-                        aviso = "El nombre " + str(ctrl_line) + " suministrado en el "
-                        aviso += " atributo 'DSS_LINE' no es una línea existente en el modelo. "
-                        aviso += "Favor corrija y vuelva a ejecutar."
-                        self.mensaje_log_gral += aviso + " \n"
-                        title = "QGIS2OpenDSS error escritura capacitores"
-                        QMessageBox.critical(None, title, aviso)
-                        return 0
-
-                    obj_max = cap["OBJ_MAX"]
-                    obj_min = cap["OBJ_MIN"]
-                    extra_cond = ""
-                    
-                    if control == "V":
-                        control_type = "voltage"
-                        extra_cond = " PTRatio="+tens_ln+" PTPhase=AVG"
-                    elif control == "FP":
-                        control_type = "PF"
-                    elif control == "Q":
-                        control_type = "kVAr"
-                    
-                    linea_control += "New CapControl."+dss_name+"_"+control
-                    linea_control += " Capacitor=" + dss_name+" element=line."+ctrl_line
-                    linea_control += " Terminal=1 Type="+control_type+extra_cond
-                    linea_control += " ONsetting="+obj_min+" OFFsetting="+obj_max + " \n"
+                linea_cap += ' kVAr=' + kvar + ' kV=' + tens_ln 
+                linea_cap += ' conn=' + conex + " !group=" + group + "\n"
     
-            # Archivo capacitores
+            # Archivo capuladores
             filename = self.circuitName + '_Capacitors.dss'
             line_out = '\nredirect ' + filename
             output_Regdss = self.foldername + '/' + filename
     
             with open(output_Regdss, 'w') as file_cap:
                 file_cap.write(linea_cap)
-            
-            # Escritura master
-            line_out = '\nredirect ' + filename
-            self.output_filesQGIS2DSS.write(line_out)
-            
-            # Archivo control capacitores
-            filename = self.circuitName + '_CapControl.dss'
-            line_out = '\nredirect ' + filename
-            output_Regdss = self.foldername + '/' + filename
     
-            with open(output_Regdss, 'w') as file_cap:
-                file_cap.write(linea_control)
-            
             # Escritura master
             line_out = '\nredirect ' + filename
             self.output_filesQGIS2DSS.write(line_out)
-            
             return 1
-        
         except Exception:
             msg = self.print_error()
             aviso = "Ocurrió un error en la escritura de los archivos "
@@ -4594,11 +3635,10 @@ class QGIS2OpenDSS(object):
             title = "QGIS2OpenDSS escritura capacitores"
             QMessageBox.critical(None, title, aviso)
             return 0
-        
         finally:
             layer.commitChanges()
 
-
+    
 
     """
     Esta función encuentra el primer último 0 en determinada columna
@@ -4620,10 +3660,10 @@ class QGIS2OpenDSS(object):
             if dato == 0 and j == n_columnas - 1:
                 return -1 
             elif dato == 0:
-                return j + 1
+                return j + 1 
 
-
-
+   
+   
     """
     # ********************************************************
     # ********************************************************
@@ -4632,19 +3672,19 @@ class QGIS2OpenDSS(object):
     # ********************************************************    
     Función encargada de crear el archivo dss que corresponde a los VEs. 
     También crea el archivo con los perfiles de carga.
-
+    
     Parámetros de entrada:
     *toler (int): valor utilizado para ver si las coordenadas de ciertos datos coinciden
     *grafoCAR (networkx graph): grafo de cargas de BT
     *grafoEV (networkx undirected graph): grafo de vehículos eléctricos    
-
+    
     Otros parámetros utilizados:
     *self.foldername (str): carpeta donde se guardan los archivos dss
     *self.circuitName (str): nombre del circuito, determinado por el usuario
     *self.output_filesQGIS2DSS (file): archivo de salida de QGIS2OpenDSS
     *self.name_loadshapes (str): path relativa del archivo donde se encuentran los perfiles de carga de VEs
     *self.evs_loadshapes (dataframe): dataframe donde se encuentran los perfiles de carga de los EV
-
+    
     Valores retornados:
     0: si hubo errores
     1: si la escritura finalizó exitosamente
@@ -4668,10 +3708,10 @@ class QGIS2OpenDSS(object):
             columns_evs_loadshapes = self.evs_loadshapes.columns            
             contador = -1 #Ya que se aumenta al principio, no al final
             
-            linea = "redirect " +  name_loadshapes + " \n"
+            linea = "redirect " +  name_loadshapes + "\n"
             linea_ev += linea
             #file_ev.write(linea)
-
+            
             for ve in grafoEV.nodes(data=True):
                 contador += 1
                 ve_ = ve[1]
@@ -4683,9 +3723,9 @@ class QGIS2OpenDSS(object):
                 nodo1 = (x1_, y1_)
                 inf_load_BT = grafoCAR.nodes[nodo1]            
                 bus = inf_load_BT['BUS']
-
+                
                 #Datos de VEs
-                name_ev_dss = ve_['DSSNAME']
+                name_ev_dss = ve_['DSSName']
                 kW = ve_['kW']
                 kWh = ve_['kWh']
                 kV = ve_['NOMVOLT'] 
@@ -4706,7 +3746,7 @@ class QGIS2OpenDSS(object):
                     extra_sentence += "!t=" + str(t)+ ' '
                 else:
                     extra_sentence += " !t=-1"
-
+                
                 sentence = str("new storage." + name_ev_dss)
                 sentence += " bus1=" + bus + conns
                 sentence += " phases=1 model=1"
@@ -4718,17 +3758,17 @@ class QGIS2OpenDSS(object):
                 sentence += " %reserve=0"
                 sentence += " %stored=" + str(soc[0])
                 sentence += " %EffCharge=100 %IdlingkW=0 enabled=y dispmode=FOLLOW daily=" + daily_curve
-                sentence += ' ' + extra_sentence + " \n"
+                sentence += ' ' + extra_sentence + "\n"
                 #file_ev.write(sentence)
                 linea_ev += sentence
-
+                
                 sentence_loadshape = "New Loadshape." + daily_curve  + " npts=96 mInterval=15 mult=(file="
                 sentence_loadshape += name_csv + ", col=" + str(contador + 1)+ ", header=no)useactual=no\n"
                 linea_loadshape += sentence_loadshape
                 #file_loadshape.write(sentence_loadshape)
-
+            
             #se escriben y cierran los archivos
-
+            
             with open(filename_ev_dss, 'w')as file_ev:
                 file_ev.write(linea_ev)            
             with open(filename_loadshapes, 'w')as file_loadshape:
@@ -4802,7 +3842,7 @@ class QGIS2OpenDSS(object):
                 datos_buses = bus_['DICT BUSES']
                 nombre_plantel = bus_['NOMBRE PLANTEL']
                 group = str(bus_['GRUPO'])
-                dssname = str(bus_['DSSNAME'])
+                dssname = str(bus_['DSSName'])
                 plantel = bus_['NOMBRE PLANTEL']
                 
                 #Trafo
@@ -4843,7 +3883,7 @@ class QGIS2OpenDSS(object):
                 trafo_line += busLV + '.1.2.3]' + ' conns=[' + confMV + ' ' + confLV + ']'
                 trafo_line += ' kvs=[' + kV_MedLL + ' ' +  kV_LowLL + ']'
                 trafo_line += ' kvas=[' + kVA + ' ' + kVA + '] ' + impedance + ' Taps=[' + tap + ', 1]'
-                trafo_line += normhkva + ' !GroupMV=' + group + " \n"
+                trafo_line += normhkva + ' !GroupMV=' + group + "\n"
                 line_monitor = "new monitor.Mon" + trafName + " Element=transformer."
                 line_monitor += trafName + " Terminal=1 Mode=1\n"
                 trafo_line += line_monitor
@@ -4890,7 +3930,7 @@ class QGIS2OpenDSS(object):
                     bus_line += " %reserve=0"
                     bus_line += " %stored=" + str(soc)
                     bus_line += " %EffCharge=0.9 %IdlingkW=0 enabled=y dispmode=FOLLOW"
-                    bus_line += ' ' + extra_sentence + " \n"
+                    bus_line += ' ' + extra_sentence + "\n"
                     monitor_line += "new monitor.mon_" + name_bus_dss + " element=storage."
                     monitor_line += name_bus_dss + " mode=1\n"
                     
@@ -4911,7 +3951,7 @@ class QGIS2OpenDSS(object):
                 btload_line = "new load." + loadName + " bus1=" + busLV + conns + " kV=" 
                 btload_line += str(kV_LowLL) + " model=" + model + " conn=" + conf
                 btload_line += " kW=" + kW + " pf=" + pf + " status=variable phases=" +  cantFases + ' ' + daily
-                btload_line += " !kWh="  + kWhmonth + " class=" + loadclass + " !GroupMV=" + group + " \n"
+                btload_line += " !kWh="  + kWhmonth + " class=" + loadclass + " !GroupMV=" + group + "\n"
                 
                 sentence = trafo_line + btload_line
                 file_bus_real.write(bus_line + monitor_line)
@@ -4926,7 +3966,7 @@ class QGIS2OpenDSS(object):
                 
                 
             #Temporal
-            file_bus.write('redirect ' + name_loadshape_dss + " \n")
+            file_bus.write('redirect ' + name_loadshape_dss + "\n")
                 
             file_bus_real.close()
             file_bus.close()
@@ -4944,8 +3984,9 @@ class QGIS2OpenDSS(object):
             title = "QGIS2OpenDSS escritura buses"
             QMessageBox.critical(None, title, msg)
             return 0
-
-
+       
+    
+    
     # ********************************************************
     # ********************************************************
     # ********************************************************
@@ -5029,7 +4070,7 @@ class QGIS2OpenDSS(object):
     # ********************************************************
     # ********************************************************
     # ********************************************************
-    #************ LECTURA DE CAPA DE CARROS ELÉCTRICOS *******
+    #************ LECTURA DE CAPA DE CARROS ELÉCTRUCOS *******
     # ********************************************************
     # ********************************************************
     # ********************************************************
@@ -5048,8 +4089,8 @@ class QGIS2OpenDSS(object):
         
         #Se agrega el atributo DSSName si no existe en la capa respectiva
         names = layer.dataProvider().fields().names()
-        if "DSSNAME" not in names:
-            index_dss = layer.dataProvider().addAttributes([QgsField("DSSNAME", QVariant.String)])
+        if "DSSName" not in names:
+            index_dss = layer.dataProvider().addAttributes([QgsField("DSSName", QVariant.String)])
             layer.updateFields()
         if "LV_GROUP" not in names:
             index_dss = layer.dataProvider().addAttributes([QgsField("LV_GROUP", QVariant.String)])
@@ -5070,16 +4111,16 @@ class QGIS2OpenDSS(object):
         evs_loadshapes.to_csv(name_loadshapes, header=False, index=False)
         kw_random = list(evs_power.iloc[0].values)
         kwH_random = list(evs_kwh.iloc[0].values)
-
+        
         contador = -1 #Porque se aumenta al inicio del for, no al final
         layer.startEditing()
         evs = layer.getFeatures()
         for ev in evs:
             contador = contador + 1            
             DSSName = "EV_" + self.circuitName + "_" + str(contador)
-
+            
             nodo = self.CoordPointProcees(ev, toler)
-
+            
             #Model: atributo opcional
             try:
                 model = int(ev['MODEL'])
@@ -5088,30 +4129,30 @@ class QGIS2OpenDSS(object):
                 model = str(model)
             except Exception:
                 model = "1"
-
+                
             point = ev.geometry().asPoint() # Lee la geometria de la linea
             x1 = point[0]
             y1 = point[1]
             x1_ = int(x1/toler)
             y1_ = int(y1/toler)
             nodo1 = (x1_, y1_)
-
+            
             try:
                 inf_load_BT = grafoCAR.nodes[nodo1]
                 kWh = inf_load_BT['kWh']
-
+                
             except Exception:
                 aviso = "El EV " + DSSName + " no se encuentra en el grafo de baja tensión. Verifique que se encuentre conectado\n"
                 self.mensaje_log_gral += aviso
-
+                
             try:
                 group = inf_load_BT['LV_GROUP']
             except KeyError:
                 group = 'N/A'
-
+            
             #Lectura de datos de capa
             try:
-
+                
                 #CONNECTION
                 connection = ev['SERVICE']
                 connection = int(connection)
@@ -5154,7 +4195,7 @@ class QGIS2OpenDSS(object):
             
             
             #Se llama a la función encargada de determinar si SERVICE tiene un tipo de cable correcto asociado
-            self.CableAnalysis(ev, point, grafoBT, grafoACO, conns, toler)
+            self.CableAnalysis(ev, point, grafoBT, conns, toler)
             
             #Lectura de datos de capa
             
@@ -5191,7 +4232,7 @@ class QGIS2OpenDSS(object):
             vect_soc.sort(reverse = True)#Se ordena el vector descendentemente
                         
             #Cambios en la capa
-            idx_dss = ev.fieldNameIndex("DSSNAME")
+            idx_dss = ev.fieldNameIndex("DSSName")
             layer.changeAttributeValue(ev.id(), idx_dss, DSSName)
             idx_grup = ev.fieldNameIndex("LV_GROUP")
             layer.changeAttributeValue(ev.id(), idx_grup, group)
@@ -5204,7 +4245,7 @@ class QGIS2OpenDSS(object):
             
             datos = {"INDEXDSS": indexDSS, 'ID': ev.id(), "LAYER": layer, "nodo": nodo, 'X1': x1,
                      'Y1': y1, 'kWh': kwHrated, 'GRUPO': group, 'kW': kw, 'CONNS': conns,
-                     'CONF': conf, 'CURVASIG': '', 'class': class_, 'NOMVOLT': nom_volt, 'MODEL': model, 'SOC_INIC': vect_soc, 'DSSNAME': DSSName}
+                     'CONF': conf, 'CURVASIG': '', 'class': class_, 'NOMVOLT': nom_volt, 'MODEL': model, 'SOC_INIC': vect_soc, 'DSSName': DSSName}
             datosTotal = {"type": "EV"}
             datosEV.append(datos)
             grafoEV.add_node(nodo)
@@ -5228,7 +4269,7 @@ class QGIS2OpenDSS(object):
                 grafo.nodes[nodo]["BUSBT"] = BTbus
                 
                 busBT_List[nodo] = {'bus': BTbus, 'X': dataList["X1"], 'Y': dataList["Y1"], "GRAFO": grafo, "VOLTAGELN": dataList["LOADVOLTLN"],
-                                    'LOADCONNS': dataList['LOADCONNS'], 'GRUPO': dataList['LV_GROUP']}
+                                    'LOADCONNS': dataList['LOADCONNS'], 'GRUPO': dataList['GRUPO_LV']}
                 busBTid += 1
             if nodo in busMT_List:  # Verifica si el nodo del transformador ya está en los nodos creados en MT
                 bus_mt = busMT_List[nodo]["bus"]
@@ -5279,7 +4320,7 @@ class QGIS2OpenDSS(object):
                             aviso += str(dataList["X1"])+ ',' + str(dataList["Y1"])
                             aviso += '). Línea MT con fase '
                             aviso += str(dataLine['PHASE']) + ' y transformador con fase '
-                            aviso += str(dataList['PHASE']) + " \n"
+                            aviso += str(dataList['PHASE']) + "\n"
                             self.mensaje_log_gral += aviso
                             grafo.nodes[nodo]["LAYER"].changeAttributeValue(grafo.nodes[nodo]["ID"], indexPhase,
                                                                            dataLine['PHASEDESIG'])
@@ -5295,7 +4336,7 @@ class QGIS2OpenDSS(object):
                             aviso = 'Conexión entre fases distintas corregida en ('
                             aviso += str(dataList["X1"]) + ',' + str(dataList["Y1"])
                             aviso += '). Línea MT con fase ' + str(dataLine['PHASE'])
-                            aviso += ' y transformador con fase ' + str(dataList['PHASE']) + " \n"
+                            aviso += ' y transformador con fase ' + str(dataList['PHASE']) + "\n"
                             self.mensaje_log_gral += aviso
                             grafo.nodes[nodo]["LAYER"].changeAttributeValue(grafo.nodes[nodo]["ID"], indexPhase,
                                                                            dataLine['PHASEDESIG'])
@@ -5304,7 +4345,7 @@ class QGIS2OpenDSS(object):
                             aviso = 'Conexión entre fases distintas en ('
                             aviso += str(dataList["X1"])+ ',' + str(dataList["Y1"])
                             aviso += '). Línea MT con fase ' + str(dataLine['PHASE'])
-                            aviso += ' y transformador con fase ' + str(dataList['PHASE']) + " \n"
+                            aviso += ' y transformador con fase ' + str(dataList['PHASE']) + "\n"
                             self.mensaje_log_gral += aviso
 
 
@@ -5313,7 +4354,7 @@ class QGIS2OpenDSS(object):
                 bus = 'BUSMV' + circuitName + str(busMTid)
                 busMT_List[nodo] = {"NPHAS": dataList["NPHAS"], 'bus': bus, 'X': dataList["X1"], 'Y': dataList["Y1"],
                                     "GRAFO": grafo, "VOLTAGELL": dataList["VOLTMTLL"],
-                                    "VOLTAGELN": dataList["VOLTMTLN"], "PHASES": dataList["PHASE"], 'MV_GROUP': dataList['MV_GROUP']}
+                                    "VOLTAGELN": dataList["VOLTMTLN"], "PHASES": dataList["PHASE"], 'GRUPO_MV': dataList['GRUPO_MV']}
                 grafo.nodes[nodo]["BUSMT"] = bus
                 
                 if mv_mv is True:
@@ -5556,7 +4597,7 @@ class QGIS2OpenDSS(object):
                 ruta_mas_larga = []
             else:
                 msg = "La ruta más larga desde el nodo origen "
-                msg += str(nodo_origen)+ " es: \n" + str(ruta_mas_larga) + " \n"
+                msg += str(nodo_origen)+ " es: \n" + str(ruta_mas_larga) + "\n"
                 archivo.write(msg)
             archivo.close()
             return ruta_mas_larga, peso_ruta_mas_larga
@@ -5604,7 +4645,7 @@ class QGIS2OpenDSS(object):
     def SubEst(self, layerSE_, grafoTotal, grafo_Subest,
                grafoDistancias, tolerancia, dir_archivo):
         subests_ = layerSE_.getFeatures()
-        indexDSS = auxiliary_functions.getAttributeIndex(self, layerSE_, "DSSNAME")
+        indexDSS = auxiliary_functions.getAttributeIndex(self, layerSE_, "DSSName")
         
         for subest in subests_:
             point = subest.geometry().asPoint()  # Lee la geometria de la linea
@@ -5612,7 +4653,7 @@ class QGIS2OpenDSS(object):
             
             archivo = open(dir_archivo, 'w')
             msg = "La ubicación del nodo de la subestación, es: "
-            msg += str(node)+ " \n"
+            msg += str(node)+ "\n"
             archivo.write(msg)
             archivo.close()
             grafo_Subest.add_node(node, pos=node)
@@ -5634,7 +4675,7 @@ class QGIS2OpenDSS(object):
            tolerancia, subterranea):
         
         indexDSS = auxiliary_functions.getAttributeIndex(self, layerMT,
-                                                         "DSSNAME")
+                                                         "DSSName")
         lineasMT_ = layerMT.getFeatures()
 
         for lineaMT in lineasMT_:
@@ -5709,7 +4750,7 @@ class QGIS2OpenDSS(object):
             GrafoMT_.add_edge(nodo1, nodo2, weight=datosLinea)
             GrafoDistancias.add_edge(nodo1, nodo2, weight=LineLength)
             GrafoTotal.add_edge(nodo1, nodo2, weight=datosLinea)
-        
+            
         return GrafoTotal, GrafoMT_, GrafoDistancias
 
     # #####################################################
@@ -5725,7 +4766,7 @@ class QGIS2OpenDSS(object):
     def BT(self, layer_BT, grafoTotal, grafoBT, grafoDistancias, tolerancia, subterranea):
         
         indexDSS = auxiliary_functions.getAttributeIndex(self, layer_BT,
-                                                         "DSSNAME")
+                                                         "DSSName")
         lineas = layer_BT.getFeatures()
         
         for linea in lineas:
@@ -5881,7 +4922,7 @@ class QGIS2OpenDSS(object):
     """
 
     def DeterminarImpedancia(self, Codigo_buscado, dir_archivo = ""):
-        palabra = "Geometry Code = " + Codigo_buscado + " \n"
+        palabra = "Geometry Code = " + Codigo_buscado + "\n"
         
         if dir_archivo == "":
             dir_scripts = os.path.dirname(os.path.abspath(__file__))
@@ -5891,8 +4932,8 @@ class QGIS2OpenDSS(object):
         
         #dir_archivo = dir_scripts + "\Resultados.txt"
         #archivoDepuracion = open(dir_archivo, 'w')
-        #archivoDepuracion.write(str(Codigo_buscado + " \n"))
-        #archivoDepuracion.write(str(palabra + " \n"))
+        #archivoDepuracion.write(str(Codigo_buscado + "\n"))
+        #archivoDepuracion.write(str(palabra + "\n"))
         
         palabra = palabra.lower()
         contador = 0
@@ -5912,7 +4953,7 @@ class QGIS2OpenDSS(object):
             #archivoDepuracion.write("*********************************************\n")
             return complex(0, 0)
             
-        #archivoDepuracion.write(str("El geometry code está en la línea " + str(resultado + 1)+ " \n"))
+        #archivoDepuracion.write(str("El geometry code está en la línea " + str(resultado + 1)+ "\n"))
                 
         geometry_code = lines[resultado]
         contador = geometry_code.find("=")
@@ -5967,7 +5008,7 @@ class QGIS2OpenDSS(object):
             X = Decimal(X[: contador - 1])
             impedancia = complex(R, X)
         
-        #archivoDepuracion.write(str("Impedancia (Ohm/km)= " + str(impedancia)+ " \n"))
+        #archivoDepuracion.write(str("Impedancia (Ohm/km)= " + str(impedancia)+ "\n"))
         #archivoDepuracion.write("*********************************************\n")
         return impedancia
 
@@ -6098,7 +5139,7 @@ class QGIS2OpenDSS(object):
             # Almacena el nombre de la carpeta de destino seleccionada en la ventana de diálogo.
             foldername = self.dlg.lineEdit_dirOutput.text()
             archivo = open(dir_archivo, 'a')
-            msg = "La cantidad de nodos en la ruta es de " + str(cantidad) + " \n"
+            msg = "La cantidad de nodos en la ruta es de " + str(cantidad) + "\n"
             archivo.write(msg)
 
             valor_m = 0
@@ -6135,8 +5176,8 @@ class QGIS2OpenDSS(object):
                         turno = 1
                         contador = 0
                         #archivo.write("Media tensión \n")
-                        #archivo.write(str("Nodo origen = " + str(nodo_i)+ " \n"))
-                        #archivo.write(str("Nodo destino = " + str(nodo_d)+ " \n"))
+                        #archivo.write(str("Nodo origen = " + str(nodo_i)+ "\n"))
+                        #archivo.write(str("Nodo destino = " + str(nodo_d)+ "\n"))
                         
                         if valor_m != 0:
                             contador_dist_ma += 1
@@ -6160,8 +5201,8 @@ class QGIS2OpenDSS(object):
                         contador = 0
                         
                         #archivo.write("Media tensión \n")
-                        #archivo.write(str("Nodo origen = " + str(nodo_i)+ " \n"))
-                        #archivo.write(str("Nodo destino = " + str(nodo_d)+ " \n"))
+                        #archivo.write(str("Nodo origen = " + str(nodo_i)+ "\n"))
+                        #archivo.write(str("Nodo destino = " + str(nodo_d)+ "\n"))
                                             
                         if valor_m != 0:
                             contador_dist_ms += 1
@@ -6183,8 +5224,8 @@ class QGIS2OpenDSS(object):
                         turno = 3
                         contador = 0
                         #archivo.write("Baja tensión \n")
-                        #archivo.write(str("Nodo origen = " + str(nodo_i)+ " \n"))
-                        #archivo.write(str("Nodo destino = " + str(nodo_d)+ " \n"))
+                        #archivo.write(str("Nodo origen = " + str(nodo_i)+ "\n"))
+                        #archivo.write(str("Nodo destino = " + str(nodo_d)+ "\n"))
                         if valor_b != 0:
                             contador_dist_la += 1
                         if imp_la != 0:
@@ -6202,8 +5243,8 @@ class QGIS2OpenDSS(object):
                         turno = 4
                         contador = 0
                         #archivo.write("Baja tensión \n")
-                        #archivo.write(str("Nodo origen = " + str(nodo_i)+ " \n"))
-                        #archivo.write(str("Nodo destino = " + str(nodo_d)+ " \n"))
+                        #archivo.write(str("Nodo origen = " + str(nodo_i)+ "\n"))
+                        #archivo.write(str("Nodo destino = " + str(nodo_d)+ "\n"))
                         if valor_b != 0:
                             contador_dist_ls += 1
                         if imp_la != 0:
@@ -6282,7 +5323,7 @@ class QGIS2OpenDSS(object):
             msg += str(self.RedondearComplejo(impedancia_ls, 4))+ " Ohms\n"
                   
               
-            #archivo.write(str("La ruta más larga es:\n" + str(ruta)+ " \n"))
+            #archivo.write(str("La ruta más larga es:\n" + str(ruta)+ "\n"))
                            
             tiempo_f = time.time()
             tiempo_total = (tiempo_f - self.time)/60
@@ -6294,8 +5335,8 @@ class QGIS2OpenDSS(object):
             nodos_MT= list(GrafoMT_.nodes()
             nodos_BT= list(GrafoBT.nodes())
             
-            archivo.write(str("Nodos media tensión: \n" + str(nodos_MT)+ " \n"))
-            archivo.write(str("Nodos baja tensión: \n" + str(nodos_BT)+ " \n"))
+            archivo.write(str("Nodos media tensión: \n" + str(nodos_MT)+ "\n"))
+            archivo.write(str("Nodos baja tensión: \n" + str(nodos_BT)+ "\n"))
             
             """
             
@@ -6328,7 +5369,7 @@ class QGIS2OpenDSS(object):
         msg = "\nError: " + str(exc_info)
         msg += "\n********  Información detallada del error **********"  
         for tb in traceback.format_tb(sys.exc_info()[2]):
-            msg += " \n" + tb
+            msg += "\n" + tb
 
         print(msg)
         return msg
@@ -6344,71 +5385,64 @@ class QGIS2OpenDSS(object):
     """
     
     def install_libraries(self, library_name):
-
-        """
-        Función que se encarga de instalar una librería en
-        la versión de python de QGIS
-        -Parámetros de entrada:
-        *library_name (string): nombre de la librería a instalar
-        (tal como se le debe pasar a pip)
-
-        -Valores retornados:
-        *1 en caso de finalizar exitosamente
-        *0 en caso de ocurrir algún error
-        """
-
         try:
-            # Se obtiene el path de QGIS
+            import subprocess
+            import sys
+            #Se obtiene el path de QGIS
             directorio = str(os.path)
             fin_dir = directorio.find("\\apps")
             first_letter_in = directorio.find(":\\") - 1
             first_letter = directorio[first_letter_in:first_letter_in+1]
             first_letter += ":\\"
             inic_dir = directorio.find(first_letter)
-            path = directorio[inic_dir:fin_dir]
-            # Se obtiene version de Python en QGIS
+            path = directorio[inic_dir : fin_dir]
+            #Se obtiene version de Python en QGIS
             info = sys.version_info
             verspy1 = str(info[0])
             verspy2 = str(info[1])
             carp_python = verspy1 + verspy2
             carp_python = "Python" + carp_python
-
-            # Se copia los archivos
+            
+            #Se copia los archivos
             dir_origen = path + "/bin/"
             name_file_or = "python" + verspy1 + ".dll"
             archivo_origen = str(dir_origen + name_file_or)
             dir_destino = path + "/apps/" + carp_python
-            name_dest = dir_destino + "/" + name_file_or
-
-            if os.path.exists(name_dest) is False:
-                # Copia python3.dll
-                self.copy(archivo_origen, dir_destino)
-
-            # Copia python37.dll
+            name_dest = dir_destino + "/" +  name_file_or
+            
+            if os.path.exists(name_dest) is False:            
+                #Copia python3.dll
+                self.copy(archivo_origen, dir_destino)       
+            
+            #Copia python37.dll
             name_file_or = "python" + verspy1 + verspy2 + ".dll"
             archivo_origen = dir_origen + name_file_or
-            name_dest = dir_destino + "/" + name_file_or
-
+            name_dest = dir_destino + "/" +  name_file_or
+            
             if os.path.exists(name_dest) is False:
-                # Copia python37.dll
+                #Copia python37.dll
                 self.copy(archivo_origen, dir_destino)
-
-            # Instalación de librerías
-            # Actualización de pip
-            sentencia = dir_origen + 'python.exe -m pip install –upgrade pip'
+            
+            #Instalación de librerías
+            
+            #Actualización de pip
+            
+            subprocess.call('python.exe -m pip install –upgrade pip',
+                             cwd=dir_destino, shell=True)
+            
+            #Instalación libreria
+            sentencia = "python.exe -m pip install " + library_name
             subprocess.call(sentencia, cwd=dir_destino, shell=True)
-
-            # Instalación libreria
-            sentencia = dir_origen + "python.exe -m pip install " + library_name
-            x = subprocess.call(sentencia, cwd=dir_destino, shell=True)
-
+        
+            
             print("Instalación de librería ", library_name, " finalizada.")
             return 1
-
-        except Exception:
+        
+        except:
             self.print_error()
             return 0
-
+            
+            
     """
     Función que se encarga de crear y asignar los loadshapes
     
@@ -6546,8 +5580,7 @@ class QGIS2OpenDSS(object):
                         file_.write(str(format(k * file_data_parse[j], '.2f'))+ ' \n')
                     file_.close()
                     curv_disp[sector].append(float(energLoad))
-                    
-            # LOADSHAPE CREATION
+
             # Create a file with all the loadshapes
             output_shpdss.write('!' + folder_profile + '\n')
             for sector in ["residential", "commercial", "industrial", 'amis']:
@@ -6710,35 +5743,35 @@ class QGIS2OpenDSS(object):
         
         # Verifica que se haya indicado el nombre del circuito, la carpeta de destino y se ejecuta al presionar OK.
         if result and (not projPath):
-            QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', u"La operación no se pudo completar")+ " \n" + QCoreApplication.translate('dialog', "Debe crear un proyecto de QGIS"))
+            QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', u"La operación no se pudo completar")+ "\n" + QCoreApplication.translate('dialog', "Debe crear un proyecto de QGIS"))
             return 0
         elif result and (
                 not circuitName or not foldername):  # Se asegura de que el complemento se ejecute solo si se tiene completa la informacin necesaria
             QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog',
-                                                                                        u"La operación no se pudo completar")+ " \n" + QCoreApplication.translate(
+                                                                                        u"La operación no se pudo completar")+ "\n" + QCoreApplication.translate(
                 'dialog', "Debe indicar el nombre del circuito y la carpeta de destino"))
             return 0
         elif result and (self.dlg.comboBox_SE.currentIndex()== 0)and (MTL != 0):
             QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog',
-                                                                                        u"La operación no se pudo completar")+ " \n" + QCoreApplication.translate(
+                                                                                        u"La operación no se pudo completar")+ "\n" + QCoreApplication.translate(
                 'dialog', u"Debe seleccionar la capa de la subestación"))
             return 0
 
         elif result and (self.dlg.comboBox_SE.currentIndex()== 0)and TX == 0:
             QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog',
-                                                                                        u"La operación no se pudo completar")+ " \n" + QCoreApplication.translate(
+                                                                                        u"La operación no se pudo completar")+ "\n" + QCoreApplication.translate(
                 'dialog', u"Al menos debe seleccionar la capa de la subestación o transformadores"))
             return 0
             
         
         elif result and (BTL != 0)and TX == 0:
             QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog',
-                                                                                        u"La operación no se pudo completar")+ " \n" + QCoreApplication.translate(
+                                                                                        u"La operación no se pudo completar")+ "\n" + QCoreApplication.translate(
                 'dialog', "Debe seleccionar la capa de la transformadores"))
             return 0
         elif result and not folder_profile and cargas > 0:
             QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog',
-                                                                                        u"La operación no se pudo completar")+ " \n" + QCoreApplication.translate(
+                                                                                        u"La operación no se pudo completar")+ "\n" + QCoreApplication.translate(
                 'dialog', "Para modelar la carga debe ingresar la carpeta de perfiles"))
             return 0
             
@@ -6902,7 +5935,6 @@ class QGIS2OpenDSS(object):
                 try:
                     if len(NombreBT1)!=0:
                         layerBT1 = QgsProject.instance().mapLayersByName(NombreBT1)[0]
-                        indexDSS=auxiliary_functions.getAttributeIndex(self, layerBT2, "DSSNAME")
                         
                         if self.dlg.checkBox_LBT1.isChecked(): #Determina si la línea es aérea o subterránea
                             subterraneaBT1 = True
@@ -6934,7 +5966,7 @@ class QGIS2OpenDSS(object):
                 try:
                     if len(NombreBT2)!=0:
                         layerBT2 = QgsProject.instance().mapLayersByName(NombreBT2)[0]
-                        indexDSS=auxiliary_functions.getAttributeIndex(self, layerBT2, "DSSNAME")
+                        indexDSS=auxiliary_functions.getAttributeIndex(self, layerBT2, "DSSName")
                         
                         if self.dlg.checkBox_LBT2.isChecked(): #Determina si la línea es aérea o subterránea
                             subterraneaBT2 = True
@@ -6959,7 +5991,7 @@ class QGIS2OpenDSS(object):
                 try:
                     if len(NombreBT3)!=0:
                         layerBT3 = QgsProject.instance().mapLayersByName(NombreBT3)[0]
-                        indexDSS=auxiliary_functions.getAttributeIndex(self, layerBT3, "DSSNAME")
+                        indexDSS=auxiliary_functions.getAttributeIndex(self, layerBT3, "DSSName")
                         
                         if self.dlg.checkBox_LBT3.isChecked(): #Determina si la línea es aérea o subterránea
                             subterraneaBT3 = True
@@ -7001,7 +6033,7 @@ class QGIS2OpenDSS(object):
             Error = False  # Se inicializa esta variable. Cambia a True si ocurre un error crítico.
             # Time meters init
             startTime = time.time()
-            toler = 0.02  # tolerancia para los grafos en metros
+            toler = 0.1  # tolerancia para los grafos en metros
             grafoBTTotal = nx.Graph()
             """1-Se inicia contador de barras MT y BT"""
             busnumMT = 1  # inicializa contador de barras de MT
@@ -7086,7 +6118,7 @@ class QGIS2OpenDSS(object):
                         line_mt_aer += "\n!Layers LinesMV_aer: "
                         line_mt_aer += str(selectedLayerMT1) + ","
                         first_line_mt_aer = False
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerMT1, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerMT1, "DSSName")
                     grafoMT, datosLMT = self.ReaderDataLMT(layerMT1, grafoMT, datosLMT, toler, subterranea, indexDSS)
                     LMTactive = True
                     if grafoMT == 0:
@@ -7114,7 +6146,7 @@ class QGIS2OpenDSS(object):
                             first_line_mt_aer = False
                         else:
                             line_mt_aer += str(selectedLayerMT2) + ","
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerMT2, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerMT2, "DSSName")
                     grafoMT, datosLMT = self.ReaderDataLMT(layerMT2, grafoMT, datosLMT, toler, subterranea, indexDSS)
                     if grafoMT == 0:
                         self.progress.close()
@@ -7141,7 +6173,7 @@ class QGIS2OpenDSS(object):
                             first_line_mt_aer = False
                         else:
                             line_mt_aer += str(selectedLayerMT3) + ","
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerMT3, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerMT3, "DSSName")
                     grafoMT, datosLMT = self.ReaderDataLMT(layerMT3, grafoMT, datosLMT, toler, subterranea, indexDSS)
                     if grafoMT == 0:
                         self.progress.close()
@@ -7193,7 +6225,8 @@ class QGIS2OpenDSS(object):
                 if datosFuses == 0:
                     self.progress.close()
                     return 0
-
+                    
+                    
             # ##########################################################
             # ################## Lectura capacitores ###################
             # ##########################################################
@@ -7210,7 +6243,7 @@ class QGIS2OpenDSS(object):
                 if grafoCap == 0:
                     self.progress.close()
                     return 0
-
+            
             # ##########################################################
             # ################## Lectura reclosers #####################
             # ##########################################################
@@ -7227,7 +6260,7 @@ class QGIS2OpenDSS(object):
                 if datosReclosers == 0:
                     self.progress.close()
                     return 0
-
+                    
             # ##########################################################
             # ################## Conectividad LMT  #####################
             # ##########################################################    
@@ -7261,10 +6294,6 @@ class QGIS2OpenDSS(object):
                             dataLine['Y2'] = X2Y2[1]
                             dataLine['nodo1'] = nodeFrom
                             dataLine['nodo2'] = nodeTo
-                            nameIDobj = ""
-                            if "ICEobjID" in dataLine:
-                                nameIDobj = dataLine["ICEobjID"]
-
                             if dataLine['nodo1'] == dataLine['nodo2']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoMT
@@ -7274,21 +6303,10 @@ class QGIS2OpenDSS(object):
                                                         "VOLTAGELL": dataLine["VOLTOPRLL"],
                                                         "VOLTAGELN": dataLine["VOLTOPRLN"],
                                                         "PHASES": dataLine["PHASE"]}  #
-                                    if "ICEobjID" in dataLine:
-                                        nameIDobj = dataLine["ICEobjID"]
-                                        busMT_List[node]["ICEobjID"] = nameIDobj
-
-                                if nameIDobj:
-                                    aviso = "Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (" 
-                                    aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y'])+ ")"
-                                    aviso += " ICEobjID=" + nameIDobj
-                                    aviso_bus = True
-                                    mensaje_mt += aviso + " \n"
-                                else:
-                                    aviso = "Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (" 
-                                    aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y'])+ ")"
-                                    aviso_bus = True
-                                    mensaje_mt += aviso + " \n"
+                                aviso = "Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (" 
+                                aviso += str(busMT_List[node]['X'])+ ", " + str(busMT_List[node]['Y'])+ ")"
+                                aviso_bus = True
+                                mensaje_mt += aviso + "\n"
                                 
                             elif node == dataLine['nodo1']:  #############CONDICION DE MAS CERCANO
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
@@ -7333,9 +6351,6 @@ class QGIS2OpenDSS(object):
                             dataLine['Y2'] = X2Y2[1]
                             dataLine['nodo1'] = nodeFrom
                             dataLine['nodo2'] = nodeTo
-                            nameIDobj = ""
-                            if "ICEobjID" in dataLine:
-                                nameIDobj = dataLine["ICEobjID"]
                             if dataLine['nodo1'] == dataLine['nodo2']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoMT
@@ -7345,21 +6360,12 @@ class QGIS2OpenDSS(object):
                                                         "VOLTAGELL": dataLine["VOLTOPRLL"],
                                                         "VOLTAGELN": dataLine["VOLTOPRLN"],
                                                         "PHASES": dataLine["PHASE"]}  #
-                                if nameIDobj:
-                                    aviso = QCoreApplication.translate('dialog',
-                                                                    u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
-                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')' + " ICEobjID=" + nameIDobj
-
-                                    aviso_bus = True
-                                    mensaje_mt += aviso + " \n"
-
-                                else:
-                                    aviso = QCoreApplication.translate('dialog',
-                                                                    u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
-                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')'
+                                aviso = QCoreApplication.translate('dialog',
+                                                                   u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
+                                    busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')'
                                     
-                                    aviso_bus = True
-                                    mensaje_mt += aviso + " \n"
+                                aviso_bus = True
+                                mensaje_mt += aviso + "\n"
                                 
                             elif node == dataLine['nodo1']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
@@ -7400,9 +6406,6 @@ class QGIS2OpenDSS(object):
                             dataLine['Y2'] = X2Y2[1]
                             dataLine['nodo1'] = nodeFrom
                             dataLine['nodo2'] = nodeTo
-                            nameIDobj = ""
-                            if "ICEobjID" in dataLine:
-                                nameIDobj = dataLine["ICEobjID"]
                             if dataLine['nodo1'] == dataLine['nodo2']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoMT
@@ -7412,19 +6415,12 @@ class QGIS2OpenDSS(object):
                                                         "VOLTAGELL": dataLine["VOLTOPRLL"],
                                                         "VOLTAGELN": dataLine["VOLTOPRLN"],
                                                         "PHASES": dataLine["PHASE"]}  #
-                                if nameIDobj:
-                                    aviso = QCoreApplication.translate('dialog',
-                                                                    u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
-                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')' + " ICEobjID=" + nameIDobj
-                                    aviso_bus = True
-                                    mensaje_mt += aviso + " \n"
-                                else:
-                                    aviso = QCoreApplication.translate('dialog',
-                                                                    u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
-                                        busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')'
-                                    aviso_bus = True
-                                    mensaje_mt += aviso + " \n"
-
+                                aviso = QCoreApplication.translate('dialog',
+                                                                   u'Existe una línea de MT con bus1 igual a bus2 dada su cercanía en (')+ str(
+                                    busMT_List[node]['X'])+ ', ' + str(busMT_List[node]['Y'])+ ')'
+                                aviso_bus = True
+                                mensaje_mt += aviso + "\n"
+                                
                             elif node == dataLine['nodo1']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoMT
                                 if node not in busMT_List:
@@ -7520,7 +6516,7 @@ class QGIS2OpenDSS(object):
                 if len(selectedLayerTR1)!= 0:
                     layerT1 = QgsProject.instance().mapLayersByName(selectedLayerTR1)[0]
                     layerT1.startEditing()
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerT1, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerT1, "DSSName")
                     datosT3F_Multi, datosT3F_Single, datosT2F, datosT1F, Graph_T3F_multi, Graph_T3F_single, Graph_T2F, Graph_T1F, grafoBTTotal = self.ReaderDataTrafos(
                                    layerT1, toler, datosT3F_Multi,
                                    datosT3F_Single, datosT2F, datosT1F, Graph_T3F_multi,
@@ -7531,7 +6527,7 @@ class QGIS2OpenDSS(object):
 
                 if len(selectedLayerTR2)!= 0:
                     layerT2 = QgsProject.instance().mapLayersByName(selectedLayerTR2)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerT2, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerT2, "DSSName")
                     datosT3F_Multi, datosT3F_Single, datosT2F, datosT1F, Graph_T3F_multi, Graph_T3F_single, Graph_T2F, Graph_T1F, grafoBTTotal = self.ReaderDataTrafos(
                                    layerT2, toler, datosT3F_Multi, datosT3F_Single,
                                    datosT2F, datosT1F, Graph_T3F_multi,
@@ -7540,10 +6536,9 @@ class QGIS2OpenDSS(object):
                         self.progress.close()
                         return 0
                     layerT2.startEditing()
-                
                 if len(selectedLayerTR3)!= 0:
                     layerT3 = QgsProject.instance().mapLayersByName(selectedLayerTR3)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerT3, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerT3, "DSSName")
                     datosT3F_Multi, datosT3F_Single, datosT2F, datosT1F, Graph_T3F_multi, Graph_T3F_single, Graph_T2F, Graph_T1F, grafoBTTotal = self.ReaderDataTrafos(
                                    layerT3, toler, datosT3F_Multi, datosT3F_Single,
                                    datosT2F, datosT1F, Graph_T3F_multi,
@@ -7553,8 +6548,8 @@ class QGIS2OpenDSS(object):
                         self.progress.close()
                         return 0
                     layerT3.startEditing()
-                
-                if (len(datosT1F)== 0 and len(datosT2F)== 0 and len(datosT3F_Multi)== 0 and len(datosT3F_Single)== 0):
+                if (len(datosT1F)== 0 and len(datosT2F)== 0 and len(datosT3F_Multi)== 0 and len(
+                        datosT3F_Single)== 0):
                     LTRactive = False
                 else:  ##### Asignación de bus a transformadores
                     LTRactive = True
@@ -7570,17 +6565,19 @@ class QGIS2OpenDSS(object):
                     if Graph_T2F.number_of_nodes()> 0:  # Verifica que existen transformadores bifásicos
                         Graph_T2F, busMT_List, busMTid, busBT_List, busBTid = self.BusAsignationTraf(circuitName, Graph_T2F, busMT_List, busMTid,
                                                                                                      busBT_List, busBTid, u"bifásico", grafoMT)
-
+                        
 
             except KeyError:
                 self.print_error()
-                QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', "Verifique los nombres de las columnas")+ " \n" + QCoreApplication.translate('dialog', "de las tablas de atributos de transformadores"))
+                QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', "Verifique los nombres de las columnas")+ "\n" + QCoreApplication.translate('dialog', "de las tablas de atributos de transformadores"))
                     
                 LTRactive = False
                 Error = True
             endTimeTraf = time.time()
             self.progress.progressBar.setValue(10)
-
+            
+            
+            
             # ##########################################################
             # ############### Lectura Reguladores ###################
             # ##########################################################
@@ -7600,7 +6597,7 @@ class QGIS2OpenDSS(object):
                 Bus_reg = self.BusAsignationReg(grafo_reg, busMT_List,
                                                 busMTid)
                 grafo_reg, busMT_List, busMTid, buslist_reg = Bus_reg
-
+                    
             ############################################## Baja tensión
             
             selectedLayerBT1 = self.dlg.comboBox_LBT1.currentText() # Índice de layer_list con lineas BT seleccionada en la lista desplegable
@@ -7635,7 +6632,7 @@ class QGIS2OpenDSS(object):
                         line_bt_aer += "\n!Layers LinesLV_aer: "
                         line_bt_aer += str(selectedLayerBT1) + ","
                         first_line_bt_aer = False
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerBT1, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerBT1, "DSSName")
                     datosLBT, grafoBT, grafoBTTotal = self.ReaderDataLBT(layerBT1, datosLBT, grafoBT, grafoBTTotal, toler, subterranea, indexDSS)
                     
                     if datosLBT == 0:
@@ -7645,7 +6642,7 @@ class QGIS2OpenDSS(object):
                 except Exception:
                     self.print_error()       
                     QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog',
-                                                                                        "Verifique los nombres de las columnas")+ " \n" + QCoreApplication.translate(
+                                                                                        "Verifique los nombres de las columnas")+ "\n" + QCoreApplication.translate(
                 'dialog', "de las tablas de atributos 1 de líneas de baja tensión"))
                     
                     LBTactive = False
@@ -7674,7 +6671,7 @@ class QGIS2OpenDSS(object):
                             first_line_bt_aer = False
                         else:
                             line_bt_aer += str(selectedLayerBT2) + ","
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerBT2, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerBT2, "DSSName")
                     datosLBT, grafoBT, grafoBTTotal = self.ReaderDataLBT(layerBT2, datosLBT, grafoBT, grafoBTTotal, toler, subterranea, indexDSS)
                     if datosLBT == 0:
                         self.progress.close()
@@ -7683,7 +6680,7 @@ class QGIS2OpenDSS(object):
                 except Exception:
                     self.print_error()   
                     QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog',
-                                                                                        "Verifique los nombres de las columnas")+ " \n" + QCoreApplication.translate(
+                                                                                        "Verifique los nombres de las columnas")+ "\n" + QCoreApplication.translate(
                 'dialog', "de las tablas de atributos 2 de líneas de baja tensión"))
                     
                     LBTactive = False
@@ -7713,7 +6710,7 @@ class QGIS2OpenDSS(object):
                             first_line_bt_aer = False
                         else:
                             line_bt_aer += str(selectedLayerBT3) + ","
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerBT3, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerBT3, "DSSName")
                     datosLBT, grafoBT, grafoBTTotal = self.ReaderDataLBT(layerBT3, datosLBT, grafoBT, grafoBTTotal, toler, subterranea, indexDSS)
                     if datosLBT == 0:
                         self.progress.close()
@@ -7722,7 +6719,7 @@ class QGIS2OpenDSS(object):
                 except Exception:
                     self.print_error()
                     QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog',
-                                                                                        "Verifique los nombres de las columnas")+ " \n" + QCoreApplication.translate(
+                                                                                        "Verifique los nombres de las columnas")+ "\n" + QCoreApplication.translate(
                 'dialog', "de las tablas de atributos 3 de líneas de baja tensión"))
                     LBTactive = False
                     Error = True
@@ -7748,7 +6745,7 @@ class QGIS2OpenDSS(object):
                     self.nombres_capas += "\n!Layers Acometidas: "
                     self.nombres_capas += str(selectedLayerACO1) + ","
                     layerACO1 = QgsProject.instance().mapLayersByName(selectedLayerACO1)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerACO1, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerACO1, "DSSName")
                     datosACO, grafoACO, grafoBTTotal = self.ReaderDataAcom(layerACO1, datosACO, grafoACO, grafoBTTotal, toler, indexDSS, grafoBT)
                     if datosACO == 0:
                         self.progress.close()
@@ -7756,7 +6753,7 @@ class QGIS2OpenDSS(object):
                     ACOactive = True
                 except Exception:
                     self.print_error()
-                    QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', "Verifique los nombres de las columnas")+ " \n" + QCoreApplication.translate('dialog', "de la tabla 1 de atributos de acometidas"))
+                    QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', "Verifique los nombres de las columnas")+ "\n" + QCoreApplication.translate('dialog', "de la tabla 1 de atributos de acometidas"))
                     ACOactive = False
                     Error = True
             if len(selectedLayerACO2)!= 0:
@@ -7765,7 +6762,7 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers Acometidas: "
                     self.nombres_capas += str(selectedLayerACO2) + ","
                     layerACO2 = QgsProject.instance().mapLayersByName(selectedLayerACO2)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerACO2, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerACO2, "DSSName")
                     datosACO, grafoACO, grafoBTTotal = self.ReaderDataAcom(layerACO2, datosACO, grafoACO, grafoBTTotal, toler, indexDSS, grafoBT)
                     if datosACO == 0:
                         self.progress.close()
@@ -7773,7 +6770,7 @@ class QGIS2OpenDSS(object):
                     ACOactive = True
                 except Exception:
                     self.print_error()
-                    QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', "Verifique los nombres de las columnas")+ " \n" + QCoreApplication.translate('dialog', "de la tabla 2 de atributos de acometidas"))
+                    QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', "Verifique los nombres de las columnas")+ "\n" + QCoreApplication.translate('dialog', "de la tabla 2 de atributos de acometidas"))
                     ACOactive = False
                     Error = True
             if len(selectedLayerACO3)!= 0:
@@ -7782,7 +6779,7 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers Acometidas: "
                     self.nombres_capas += str(selectedLayerACO3)
                     layerACO3 = QgsProject.instance().mapLayersByName(selectedLayerACO3)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerACO3, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerACO3, "DSSName")
                     datosACO, grafoACO, grafoBTTotal = self.ReaderDataAcom(layerACO3, datosACO, grafoACO, grafoBTTotal, toler, indexDSS, grafoBT)
                     if datosACO == 0:
                         self.progress.close()
@@ -7790,10 +6787,10 @@ class QGIS2OpenDSS(object):
                     ACOactive = True
                 except Exception:
                     self.print_error()
-                    QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', "Verifique los nombres de las columnas")+ " \n" + QCoreApplication.translate('dialog', "de la tabla 3 de atributos de acometidas"))
+                    QMessageBox.critical(None, "QGIS2OpenDSS Error", QCoreApplication.translate('dialog', "Verifique los nombres de las columnas")+ "\n" + QCoreApplication.translate('dialog', "de la tabla 3 de atributos de acometidas"))
                     ACOactive = False
                     Error = True
-            
+                    
             ### Lectura de datos y construcción de grafo de CARGAS MT
             selectedLayerCA_MT1 = self.dlg.comboBox_CAMT1.currentText()
             selectedLayerCA_MT2 = self.dlg.comboBox_CAMT2.currentText()
@@ -7810,7 +6807,7 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers LoadsMV: "
                     self.nombres_capas += str(selectedLayerCA_MT1) + ","
                     layerCAMV1 = QgsProject.instance().mapLayersByName(selectedLayerCA_MT1)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCAMV1, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCAMV1, "DSSName")
                     datosMVCAR, grafoCAR_mv, kWhMVload = self.ReaderDataLoadMT(layerCAMV1, datosMVCAR, grafoCAR_mv, kWhMVload, toler, indexDSS, grafoMT)
                     if datosMVCAR == 0:
                         self.progress.close()
@@ -7828,7 +6825,7 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers LoadsMV: "
                     self.nombres_capas += str(selectedLayerCA_MT2) + ","
                     layerCAMV2 = QgsProject.instance().mapLayersByName(selectedLayerCA_MT2)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCAMV2, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCAMV2, "DSSName")
                     datosMVCAR, grafoCAR_mv, kWhMVload = self.ReaderDataLoadMT(layerCAMV2, datosMVCAR, grafoCAR_mv, kWhMVload, toler, indexDSS, grafoMT)
                     if datosMVCAR == 0:
                         self.progress.close()
@@ -7847,7 +6844,7 @@ class QGIS2OpenDSS(object):
                     self.nombres_capas += str(selectedLayerCA_MT3)
                     layerCAMV3 = QgsProject.instance().mapLayersByName(selectedLayerCA_MT3)[0]
                     
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCAMV3, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCAMV3, "DSSName")
                     datosMVCAR, grafoCAR_mv, kWhMVload = self.ReaderDataLoadMT(layerCAMV3, datosMVCAR, grafoCAR_mv, kWhMVload, toler, indexDSS, grafoMT)
                     if datosMVCAR == 0:
                         self.progress.close()
@@ -7858,7 +6855,7 @@ class QGIS2OpenDSS(object):
                     self.print_error()   
                     QMessageBox.critical(None, "QGIS2OpenDSS Error", "Verifique que todos los atributos requeridos se encuentren\n en la tabla de atributos de cargas de media tensión")
                     Error = True
-            
+    
             # 2.4-Crea listas con coordenadas y Fase de las cargas
             ### Lectura de datos y construcción de grafo de CARGAS BT
             selectedLayerCA1 = self.dlg.comboBox_CA1.currentText()
@@ -7876,8 +6873,8 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers LoadsLV: "
                     self.nombres_capas += str(selectedLayerCA1) + ","
                     layerCA1 = QgsProject.instance().mapLayersByName(selectedLayerCA1)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCA1, "DSSNAME")
-                    datosCAR, grafoCAR, kWhLVload, grafoBTTotal = self.ReaderDataLoadBT(layerCA1, datosCAR, grafoCAR, kWhLVload, toler, indexDSS, grafoBTTotal, grafoBT, grafoACO, folder_profile)
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCA1, "DSSName")
+                    datosCAR, grafoCAR, kWhLVload, grafoBTTotal = self.ReaderDataLoadBT(layerCA1, datosCAR, grafoCAR, kWhLVload, toler, indexDSS, grafoBTTotal, grafoBT)
                     if datosCAR == 0:
                         self.progress.close()
                         return 0
@@ -7894,8 +6891,8 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers LoadsLV: "
                     self.nombres_capas += str(selectedLayerCA2) + ","
                     layerCA2 = QgsProject.instance().mapLayersByName(selectedLayerCA2)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCA2, "DSSNAME")
-                    datosCAR, grafoCAR, kWhLVload, grafoBTTotal = self.ReaderDataLoadBT(layerCA2, datosCAR, grafoCAR, kWhLVload, toler, indexDSS, grafoBTTotal, grafoBT, grafoACO, folder_profile)
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCA2, "DSSName")
+                    datosCAR, grafoCAR, kWhLVload, grafoBTTotal = self.ReaderDataLoadBT(layerCA2, datosCAR, grafoCAR, kWhLVload, toler, indexDSS, grafoBTTotal, grafoBT)
                     if datosCAR == 0:
                         self.progress.close()
                         return 0
@@ -7912,8 +6909,8 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers LoadsLV: "
                     self.nombres_capas += str(selectedLayerCA3)
                     layerCA3 = QgsProject.instance().mapLayersByName(selectedLayerCA3)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCA3, "DSSNAME")
-                    datosCAR, grafoCAR, kWhLVload, grafoBTTotal = self.ReaderDataLoadBT(layerCA3, datosCAR, grafoCAR,  kWhLVload, toler, indexDSS, grafoBTTotal, grafoBT, grafoACO, folder_profile)
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCA3, "DSSName")
+                    datosCAR, grafoCAR, kWhLVload, grafoBTTotal = self.ReaderDataLoadBT(layerCA3, datosCAR, grafoCAR,  kWhLVload, toler, indexDSS, grafoBTTotal, grafoBT)
                     if datosCAR == 0:
                         self.progress.close()
                         return 0
@@ -7923,7 +6920,7 @@ class QGIS2OpenDSS(object):
                     self.print_error()   
                     QMessageBox.critical(None, "QGIS2OpenDSS Error", "Verifique los nombres de las columnas\nde la tabla de atributos de cargas de baja tensión")
                     Error = True
-            
+                    
             # 2.5-Crea listas con coordenadas y Fase de las cargas iluminación
             ### Lectura de datos y construcción de grafo de CARGAS BT_iluminación
             selectedLayerCI1 = self.dlg.comboBox_CI1.currentText()
@@ -7940,7 +6937,7 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers StreetLightning: "
                     self.nombres_capas += str(selectedLayerCI1) + ","
                     layerCI1 = QgsProject.instance().mapLayersByName(selectedLayerCI1)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCI1, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCI1, "DSSName")
                     datosCAR_i, grafoCAR_i, grafoBTTotal = self.ReaderDataLoadLights(layerCI1, datosCAR_i, grafoCAR_i, toler, indexDSS, grafoBTTotal)#######
                     if datosCAR_i == 0:
                         self.progress.close()
@@ -7958,7 +6955,7 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers StreetLightning: "
                     self.nombres_capas += str(selectedLayerCI1) + ","
                     layerCI2 = QgsProject.instance().mapLayersByName(selectedLayerCI2)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCI2, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCI2, "DSSName")
                     datosCAR_i, grafoCAR_i, grafoBTTotal = self.ReaderDataLoadBT(layerCI2, datosCAR_i, grafoCAR_i, toler, indexDSS, grafoBTTotal)#######
                     if datosCAR_i == 0:
                         self.progress.close()
@@ -7976,7 +6973,7 @@ class QGIS2OpenDSS(object):
                         self.nombres_capas += "\n!Layers StreetLightning: "
                     self.nombres_capas += str(selectedLayerCI3) + ","
                     layerCI1 = QgsProject.instance().mapLayersByName(selectedLayerCI3)[0]
-                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCI3, "DSSNAME")
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerCI3, "DSSName")
                     datosCAR_i, grafoCAR_i, grafoBTTotal = self.ReaderDataLoadBT(layerCI3, datosCAR_i, grafoCAR_i, toler, indexDSS, grafoBTTotal)#######
                     if datosCAR_i == 0:
                         self.progress.close()
@@ -8022,7 +7019,9 @@ class QGIS2OpenDSS(object):
                     self.print_error()   
                     QMessageBox.critical(None, "QGIS2OpenDSS Error", "Verifique que todos los atributos requeridos se encuentren\n en la tabla de atributos de buses")
                     Error_Buses = True
-
+                    
+            
+            
             self.progress.progressBar.setValue(20)
             grafoBT, grafoACO, grafoCAR = self.IslandIdentification(grafoBTTotal, grafoBT, grafoACO, grafoCAR)
             self.progress.progressBar.setValue(25)
@@ -8093,12 +7092,8 @@ class QGIS2OpenDSS(object):
                             busBTid += 1
                         for secondNode in grafoBT[node]:  # itera sobre las lineas que contienen el nodo. Data es el otro nodo de la linea
                             dataLine = grafoBT[node][secondNode]  # info de la linea
-                            #archivo.write(str(str(dataLine)+ " \n"))
+                            #archivo.write(str(str(dataLine)+ "\n"))
                             #print("Data Line error final", dataLine)
-                            nameIDobj = ""
-                            if "ICEobjID" in dataLine:
-                                nameIDobj = dataLine["ICEobjID"]
-
                             if dataLine['nodo1'] == dataLine['nodo2']:  # Verifica si la línea empieza y termina en el mismo punto
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoBT
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoBT
@@ -8106,17 +7101,10 @@ class QGIS2OpenDSS(object):
                                                     "GRAFO": grafoBT, "VOLTAGELL": dataLine["TRAFVOLTLL"],
                                                     "VOLTAGELN": dataLine['TRAFVOLTLN'],
                                                     "GRUPO": dataLine["GRUPO"]}  #
-                                if nameIDobj:
-                                    msg = u'Existe una línea de BT con bus1 igual a bus2 dada su cercanía en ('
-                                    aviso = QCoreApplication.translate('dialog', msg) + str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')' + " ICEobjID=" + nameIDobj
-                                    mensaje_bt += aviso + " \n"
-                                    aviso_busBT = True
-                                else:
-                                    msg = u'Existe una línea de BT con bus1 igual a bus2 dada su cercanía en ('
-                                    aviso = QCoreApplication.translate('dialog', msg) + str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')'
-                                    mensaje_bt += aviso + " \n"
-                                    aviso_busBT = True
-
+                                msg = u'Existe una línea de BT con bus1 igual a bus2 dada su cercanía en ('
+                                aviso = QCoreApplication.translate('dialog', msg) + str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')'
+                                mensaje_bt += aviso + "\n"
+                                aviso_busBT = True
                             elif node == dataLine['nodo1']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoBT
                                 busBT_List[node] = {'bus': bus, 'X': dataLine['X1'], 'Y': dataLine['Y1'], "GRAFO": grafoBT,
@@ -8129,7 +7117,8 @@ class QGIS2OpenDSS(object):
                                                     "GRUPO": dataLine["GRUPO"]}
 
                     except Exception:
-                        self.print_error()       
+                        self.print_error()
+                
             
             ## CONECTIVIDAD DE ACOMETIDAS
             mensaje_aco = ""
@@ -8153,25 +7142,16 @@ class QGIS2OpenDSS(object):
                             busBTid += 1
                         for secondNode in grafoACO[node]:  # itera sobre las lineas que contienen el nodo. Data es el otro nodo de la linea
                             dataLine = grafoACO[node][secondNode]  # info de la linea
-                            nameIDobj = ""
-                            if "ICEobjID" in dataLine:
-                                nameIDobj = dataLine["ICEobjID"]
                             if dataLine['nodo1'] == dataLine['nodo2']:  # Verifica si la línea empieza y termina en el mismo punto
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoACO
                                 dataLine['bus2'] = bus  # Agrega el bus1 al grafoACO
                                 busBT_List[node] = {'bus': bus, 'X': dataLine['X1'], 'Y': dataLine['Y1'], "GRAFO": grafoACO,
                                                     "VOLTAGELL": dataLine["TRAFVOLTLL"], "VOLTAGELN": dataLine["TRAFVOLTLN"],
                                                      "GRUPO": dataLine['GRUPO']}
-                                if nameIDobj:
-                                    msg = u'Existe una línea de acometidas con bus1 igual a bus2 dada su cercanía en ('
-                                    aviso = QCoreApplication.translate('dialog', msg)+ str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')' + " ICEobjID="+ nameIDobj
-                                    mensaje_aco += aviso + " \n"
-                                    aviso_busAco = True
-                                else:
-                                    msg = u'Existe una línea de acometidas con bus1 igual a bus2 dada su cercanía en ('
-                                    aviso = QCoreApplication.translate('dialog', msg)+ str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')'
-                                    mensaje_aco += aviso + " \n"
-                                    aviso_busAco = True
+                                msg = u'Existe una línea de acometidas con bus1 igual a bus2 dada su cercanía en ('
+                                aviso = QCoreApplication.translate('dialog', msg)+ str(busBT_List[node]['X'])+ ', ' + str(busBT_List[node]['Y'])+ ')'
+                                mensaje_aco += aviso + "\n"
+                                aviso_busAco = True
                             elif node == dataLine['nodo1']:
                                 dataLine['bus1'] = bus  # Agrega el bus1 al grafoACO
                                 busBT_List[node] = {'bus': bus, 'X': dataLine['X1'], 'Y': dataLine['Y1'],
@@ -8186,7 +7166,8 @@ class QGIS2OpenDSS(object):
                     except Exception:
                         self.print_error()
                         if contador_err == 0:
-                            contador_err = 1     
+                            contador_err = 1
+                
             
             ### CONECTIVIDAD DE PLANTELES DE BUSES
             #nuevo
@@ -8252,7 +7233,7 @@ class QGIS2OpenDSS(object):
                             grafoCAR_mv.nodes[nodo]["VOLTAGELN"] = str(tension_ln)#revisar con Tavo
                             aviso = 'Hay 1 carga MT desconectada: (' + str(dataList["X1"])
                             aviso += ',' + str(dataList["Y1"]) + ')'
-                            self.mensaje_log_gral += aviso + " \n"
+                            self.mensaje_log_gral += aviso + "\n"
                             #QMessageBox.warning(None, QCoreApplication.translate('dialog', 'Alerta Cargas'), aviso)
                             busMTid += 1
                         endTimeLoad = time.time()
@@ -8284,18 +7265,19 @@ class QGIS2OpenDSS(object):
                             fases = dataList['SERVICE']
                             dss_name = dataList["DSS_NAME"]
                             busMT_List[nodo] = {'bus': bus, 'X': dataList["X1"], 'Y': dataList["Y1"], "GRAFO": grafoCap,
-                                                "VOLTAGELN": volt_ln, 'NPHAS': n_phases, 'PHASES': fases}
+                                                "VOLTAGELN": "0.12", 'NPHAS': n_phases, 'PHASES': fases}
                             grafoCap.nodes[nodo]["BUS"] = bus
                             #Asigna los datos de la subestacion si no existe ub bus asociado
-                            grafoCap.nodes[nodo]["VOLTAGELL"] = str(tension_ll)
-                            grafoCap.nodes[nodo]["VOLTAGELN"] = str(tension_ln)
+                            grafoCap.nodes[nodo]["VOLTAGELL"] = str(tension_ll)#revisar con Tavo
+                            grafoCap.nodes[nodo]["VOLTAGELN"] = str(tension_ln)#revisar con Tavo
                             aviso = "Hay 1 capacitor desconectado: " + dss_name
-                            self.mensaje_log_gral += aviso + " \n"
+                            self.mensaje_log_gral += aviso + "\n"
                             #QMessageBox.warning(None, QCoreApplication.translate('dialog', 'Alerta Cargas'), aviso)
                             busMTid += 1
                         endTimeLoad = time.time()
                     except Exception:
                         self.print_error()
+
 
             # CONECTIVIDAD DE CARGAS BT
             if len(datosCAR)== 0:
@@ -8365,9 +7347,11 @@ class QGIS2OpenDSS(object):
                             busBTid += 1
                         endTimeLoad = time.time()
                     except Exception:
-                        self.print_error() 
+                        self.print_error()
+                        
     
             self.progress.progressBar.setValue(35)
+
             
             #######################################################  LOADSHAPE BUSES
             startTimeLoadShape = time.time()
@@ -8428,55 +7412,38 @@ class QGIS2OpenDSS(object):
             # ##########################################################
             # ############### Lectura GD gran escala ###################
             # ##########################################################
-
+            
             capa_gd_ls = False
+            # Recibe la capa de reclosers
             selectedLayerGD_ls = self.dlg.comboBox_GD_ls.currentText()
             if len(selectedLayerGD_ls)!= 0:
-                try:
-                    layerGD_ls = QgsProject.instance().mapLayersByName(selectedLayerGD_ls)[0]
-                    datosGD_ls, grafoGD_ls, filename_gdls = self.ReaderDataGD_LargeScale(layerGD_ls, toler, Graph_T3F_single)
-                    capa_gd_ls = True
-                    self.nombres_capas += "\n!Layers DERls: "
-                    self.nombres_capas += str(selectedLayerGD_ls) + ","
-
-                    if datosGD_ls == 0:
-                        self.print_error()
-                        self.progress.close()
-                        return 0
-
-                except Exception:
-                    self.print_error()
-
-            # ##########################################################
-            # ############### Lectura GD pequeña escala ################
-            # ##########################################################
-
-            capa_gd_ss = False
+                layerGD_ls = QgsProject.instance().mapLayersByName(selectedLayerGD_ls)[0]
+                datosGD_ls, grafoGD_ls, filename_gdls = self.ReaderDataGD_LargeScale(layerGD_ls, toler, Graph_T3F_single)
+                capa_gd_ls = True
+                if datosGD_ls == 0:
+                    self.progress.close()
+                    return 0
+            
+            ###LECTURA Y CONECTIVIDAD DE GD LV
             selectedLayerGD = self.dlg.comboBox_GD_lv.currentText()
+
             if len(selectedLayerGD)!= 0:
                 try:
                     layerGD = QgsProject.instance().mapLayersByName(selectedLayerGD)[0]  # Se selecciona la capa de la base de datos "layers" según el índice de layer_list
-                    # indexDSS = auxiliary_functions.getAttributeIndex(self, layerGD, "DSSNAME")
-
-                    datosGD, grafoGD, filename_gdss = self.ReaderDataGD(toler, layerGD, Graph_T3F_multi,
+                    indexDSS = auxiliary_functions.getAttributeIndex(self, layerGD, "DSSName")
+                    grafoGD = nx.Graph()
+                    grafoGD, busBTid, busBT_List = self.ReaderDataGD(toler, layerGD, grafoGD, indexDSS, Graph_T3F_multi,
                                                                      Graph_T3F_single, Graph_T2F, Graph_T1F, grafoCAR,
-                                                                     busBTid, busBT_List, busMT_List)
-                    capa_gd_ss = True
-                    self.nombres_capas += "\n!Layers DERss: "
-                    self.nombres_capas += str(selectedLayerGD) + ","
-
+                                                                     circuitName, busBTid, busBT_List, busMT_List)
                     if grafoGD == 0:
                         self.progress.close()
                         return 0
                 except Exception:
                     self.print_error()   
-
+            
             ###################################  Escritura LMT
-            lista_geo_MT_aer = []
-            lista_geo_MT_sub = []
 
             if LMTactive is True:
-
                 try:
                     filename = circuitName + '_LinesMV.dss'
                     output_filesQGIS2DSS.write('\nredirect ' + filename)
@@ -8484,42 +7451,41 @@ class QGIS2OpenDSS(object):
                     filenameMon = circuitName + '_Monitors.dss'
                     # output_filesQGIS2DSS.write('\nredirect '+filenameMon)
                     output_monitorsdss = open(foldername + '/' + filenameMon, 'w')
-
-                    # First line definition
+                    
+                    #First line definition
                     lineName = 'MV3P'+circuitName+'00'
-
+                    
                     if mode != 'NOMODEL':
                         busfrom = 'BUSMV'+circuitName+'1'
                     else:
                         busfrom = 'Sourcebus'
-
+                    
                     configFase = '.1.2.3'
                     busto = 'AFTERMETER'
                     value='0.00001'
-
+             
                     line = 'new line.' + lineName + ' bus1=' + busfrom + configFase
                     line += ' bus2=' +  busto + configFase + ' r1=' + value + ' x1=' + value
                     line += ' length=' + value + ' units=m \n' # Se usan las variables anteriores en formar el string de salida
                     output_lmtdss.write(line)
-
-
+                    
+                    
                     # Switches
                     if capa_switches is True:
                         filename_switch = circuitName + '_Switches.dss'
                         output_filesQGIS2DSS.write('\nredirect ' + filename_switch)
                         output_switches = open(foldername + '/' + filename_switch, 'w')
                         layerSwitches.startEditing()
-
+                    
                     # Fusibles
                     if capa_fuses is True:
                         filename_fuses = circuitName + '_Fuses.dss'
                         line_output = '\nredirect Bibliotecas/Fuse_Curves.dss'
                         line_output += '\nredirect ' + filename_fuses
                         output_filesQGIS2DSS.write(line_output)
-                        fuse_output_name = foldername + '/' + filename_fuses
-                        output_fuses = open(fuse_output_name, 'w')
+                        output_fuses = open(foldername + '/' + filename_fuses, 'w')
                         layerFuses.startEditing()
-
+                    
                     # Reclosers
                     if capa_reclosers is True:
                         filename_reclosers = circuitName + '_Reclosers.dss'
@@ -8527,65 +7493,46 @@ class QGIS2OpenDSS(object):
                         output_filesQGIS2DSS.write(line_output)
                         output_reclosers = open(foldername + '/' + filename_reclosers, 'w')
                         layerReclosers.startEditing()
-
+    
                     if len(selectedLayerMT1)!= 0:
                         layerMT1.startEditing() # Activa modo edición
                     if len(selectedLayerMT2)!= 0:
                         layerMT2.startEditing() # Activa modo edición
                     if len(selectedLayerMT3)!= 0:
                         layerMT3.startEditing() # Activa modo edición
-
+                    
                     n = 0
                     lista_switches = []
                     lista_fuses = []
-                    warning_fuses = []
                     lista_reclosers = []
-
                     for linea in grafoMT.edges(data=True):
                         DATOS = linea[2]
                         air_or_ugnd = DATOS['AIR_UGND']
                         configFase = DATOS['PHASE']  # Recibe la fase del bus en formato ODSS
                         cantFases = DATOS['NPHAS']  # Recibe la cantidad de fases de la linea
                         opervoltLN = DATOS['VOLTOPRLN']  # ,' !1ph_basekV=',opervolt
-                        libcode = DATOS["LibName"]
                         nodo1 = linea[0]
                         nodo2 = linea[1]
-
-                        if (libcode) and "::" in libcode:
-                            equipment =  libcode.split("::")[1]
+                        
+                        # Recibe la informacion del tipo de conductor, cantidad y aislamiento
+                        if air_or_ugnd == 'air':
+                            equipment = str(cantFases)+ 'FMV' + str(DATOS['PHASIZ'])+ str(DATOS['PHAMAT'])
+                            equipment += str(DATOS['NEUSIZ'])+ str(DATOS['NEUMAT'])+ '_' + str(DATOS['CCONF']) 
                         else:
-                            # Recibe la informacion del tipo de conductor, cantidad y aislamiento
-                            if air_or_ugnd == 'air':
-                                equipment = str(cantFases)+ 'FMV' + str(DATOS['PHASIZ'])+ str(DATOS['PHAMAT'])
-                                equipment += str(DATOS['NEUSIZ'])+ str(DATOS['NEUMAT'])+ '_' + str(DATOS['CCONF']) 
-                            else:
-                                equipment = str(cantFases)+ 'FMV' + str(DATOS['PHASIZ'])
-                                equipment += str(DATOS['PHAMAT'])+ '_' + str(DATOS['NOMVOLT'])+ str(DATOS['INSUL'])
-
+                            equipment = str(cantFases)+ 'FMV' + str(DATOS['PHASIZ'])
+                            equipment += str(DATOS['PHAMAT'])+ '_' + str(DATOS['NOMVOLT'])+ str(DATOS['INSUL'])
                         busfrom = DATOS['bus1']
                         busto = DATOS['bus2']
-                        if float(DATOS['SHLEN']) == 0:
+                        if float(DATOS['SHLEN'])== 0:
                             DATOS['SHLEN'] = 0.0001
                         sh_len = "{0:.4f}".format(DATOS['SHLEN']) # Recibe la longitud de la linea
-
-                        if (libcode) and "::" in libcode:
-                            lineName = DATOS["ICEobjID"]
-                            dssLineObjName = ""
-                            if n == 0:
-                                dssLineObjName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
+                        if (busfrom == 'BUSMV' + circuitName + str(1))or (busto == 'BUSMV' + circuitName + str(1)):
+                            lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
                         else:
-                            if (busfrom == 'BUSMV' + circuitName + str(1))or (busto == 'BUSMV' + circuitName + str(1)):
-                                lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
-                            else:
-                                lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
-
-                        if air_or_ugnd == "air":
-                            lista_geo_MT_aer.append((DATOS["ID"]-1, lineName, equipment))
-                        else:
-                            lista_geo_MT_sub.append((DATOS["ID"]-1, lineName, equipment))
-
+                            lineName = "MV" + str(cantFases)+ 'P' + circuitName + str(n)
                         n += 1
-
+                        
+                        
                         # Switch
                         if capa_switches is True:
                             exists = grafoSwitch.has_node(nodo2) or grafoSwitch.has_node(nodo1)
@@ -8594,7 +7541,7 @@ class QGIS2OpenDSS(object):
                                     info_switch = grafoSwitch.nodes[nodo2]
                                 else:
                                     info_switch = grafoSwitch.nodes[nodo1]
-                                dss_name = info_switch['DSSNAME']
+                                dss_name = info_switch['DSSName']
                                 # Verifica que no se haya escrito la línea anteriormente
                                 if dss_name not in lista_switches:
                                     nc = info_switch['NC'] # normalmente cerrado
@@ -8606,25 +7553,25 @@ class QGIS2OpenDSS(object):
                                     line_switch += " phases=" + cantFases + " r1=1e-3 r0=1e-3 "
                                     line_switch += "x1=0.000 x0=0.000 c1=0.000 c0=0.000"
                                     line_switch += " Length=0.001 switch=yes"
-                                    line_switch += " !Grupo=" + str(grupo) + " \n"
-
+                                    line_switch += " !Grupo=" + str(grupo) + "\n"
+                                    
                                     if nc is False: # si es normalmente abierto
                                         line_switch += "open line." + dss_name + " term=1\n"
                                     output_switches.write(line_switch)
                                     lista_switches.append(dss_name)
-
+                                    
                                     # Se escriben datos en la capa de switches
                                     id_swt = info_switch["ID"]
                                     idxbus1_swt = info_switch["INDEXBUS1"]
                                     idxbus2_swt = info_switch["INDEXBUS2"]
                                     layerSwitches.changeAttributeValue(id_swt, idxbus1_swt, busfrom)
                                     layerSwitches.changeAttributeValue(id_swt, idxbus2_swt, busto)
-
+                                    
                                     # Se ajusta el busto para la línea
                                     busto = busto + "_swt"
                                     idxbus_int = info_switch["INDEXBUS_INT"]
                                     layerSwitches.changeAttributeValue(id_swt, idxbus_int, busto)
-
+                        
                         # Fusibles
                         if capa_fuses is True:
                             exists = grafoFuses.has_node(nodo2) or grafoFuses.has_node(nodo1)
@@ -8633,7 +7580,7 @@ class QGIS2OpenDSS(object):
                                     info_fuses = grafoFuses.nodes[nodo2]
                                 else:
                                     info_fuses = grafoFuses.nodes[nodo1]
-                                dss_name = info_fuses['DSSNAME']
+                                dss_name = info_fuses['DSSName']
                                 # Verifica que no se haya escrito la línea anteriormente
                                 if dss_name not in lista_fuses:
                                     nc = str(info_fuses['NC']) # normalmente cerrado
@@ -8647,13 +7594,10 @@ class QGIS2OpenDSS(object):
                                     if nc is True:
                                         line_fuse += rated_i + '\n'
                                     else:
-                                        line_fuse += '10000\n'
+                                        line_fuse += '0\n'
                                     
                                     output_fuses.write(line_fuse)
                                     lista_fuses.append(dss_name)
-                                    
-                                    # Datos para el warning de fusibles
-                                    warning_fuses.append((dss_name, curve, rated_i))
                                     
                                     # Se escriben datos en la capa de switches
                                     id_swt = info_fuses["ID"]
@@ -8670,7 +7614,7 @@ class QGIS2OpenDSS(object):
                                     info_reclosers = grafoReclosers.nodes[nodo2]
                                 else:
                                     info_reclosers = grafoReclosers.nodes[nodo1]
-                                dss_name = info_reclosers['DSSNAME']
+                                dss_name = info_reclosers['DSSName']
                                 # Verifica que no se haya escrito la línea anteriormente
                                 if dss_name not in lista_reclosers:
                                     nc = info_reclosers['NC'] # normalmente cerrado
@@ -8703,7 +7647,7 @@ class QGIS2OpenDSS(object):
                                             line_recloser += " PhaseFast=" + str(ph_f)
                                         
                                         line_recloser += ' groundInst=' + str(grd_i)
-                                        line_recloser += ' phaseInst=' + str(ph_i) + " \n"
+                                        line_recloser += ' phaseInst=' + str(ph_i) + "\n"
                                     else:
                                         line_recloser += 'groundTrip=0 phaseTrip=0 '
                                         line_recloser += 'groundInst=0 phaseInst=0\n'
@@ -8718,37 +7662,24 @@ class QGIS2OpenDSS(object):
                                     idxbus2_rec = info_reclosers["INDEXBUS2"]
                                     layerReclosers.changeAttributeValue(id_rec, idxbus1_rec, busfrom)
                                     layerReclosers.changeAttributeValue(id_rec, idxbus2_rec, busto)
-
+                                    
                         # Reguladores
                         if capa_reg is True:
                             if busfrom in buslist_reg:
                                 busfrom = busfrom + "_reg"                    
-
-                        # Escritura Líneas Media Tensión
+                        
                         if lineName == "MV" + str(cantFases)+ 'P' + circuitName + '0':
                             busfrom = 'AFTERMETER' #Para coincidir con la línea 00
-                        if dssLineObjName:
-                            busfrom = 'AFTERMETER' #Para coincidir con la línea 00
+                        
                         line = 'new line.' + lineName + ' bus1=' + busfrom + configFase
-                        line += ' bus2=' +  busto + configFase  # + ' geometry=' + equipment
-                        # New: LineGeometry or LineCode
-                        if (libcode) and "LC::" in libcode:
-                            line += ' linecode=' + equipment
-                        elif (libcode) and "LG::" in libcode:
-                            line += ' geometry=' + equipment
-                        elif not libcode:
-                            line += ' geometry=' + equipment
-                        else:
-                            raise Exception(("LibraryName can only be LC:: or LG:: "),
-                                            ("see documentation of Line object of shape.py module."))
-
+                        line += ' bus2=' +  busto + configFase + ' geometry=' + equipment
                         line += ' length=' + sh_len + ' units=m' + ' !1ph_basekV='
-                        line += str(opervoltLN) + " \n" # Se usan las variables anteriores en formar el string de salida
+                        line += str(opervoltLN) + "\n" # Se usan las variables anteriores en formar el string de salida
                         output_lmtdss.write(line)
-
+                        
                         element = 'line.' + lineName
                         line = 'new monitor.Mon' + lineName + ' Element=' + element
-                        line += ' Terminal=1 Mode=0 !1ph_basekV=' + str(opervoltLN) + " \n"
+                        line += ' Terminal=1 Mode=0 !1ph_basekV=' + str(opervoltLN) + "\n"
                         output_monitorsdss.write(line) # Escribe el string de salida en el archivo
                         #Cambios en capa
                         layer_ = DATOS["LAYER"]
@@ -8758,7 +7689,7 @@ class QGIS2OpenDSS(object):
                         layer_.changeAttributeValue(id_, DATOS["idx_bus2"], busto)
                     output_lmtdss.close() # Cierra el archivo de salida
                     output_monitorsdss.close() # Cierra el archivo de salida
-
+                        
                 except Exception:
                     self.print_error()
                 finally:
@@ -8779,8 +7710,8 @@ class QGIS2OpenDSS(object):
                         layerMT2.commitChanges() # Guarda
                     if len(selectedLayerMT3)!= 0:
                         layerMT3.commitChanges() # Guarda
-
-
+                        
+                        
                 #######################################
 
             ##Buses de media tensión con coordenadas
@@ -8823,26 +7754,26 @@ class QGIS2OpenDSS(object):
                 
                 except Exception:
                     self.print_error()
-
+    
             self.progress.progressBar.setValue(55)
             ############################################################
             ################# Escritura subestacion ####################
             ############################################################
             if SEactive is True:
                 self.WriteSub(mode, layerSE, grafoSubt)
-
+            
             filenameEM = circuitName + '_EnergyMeters.dss'
             output_energymdss = open(foldername + '/' + filenameEM, 'w')
             line_em = 'new Energymeter.Met_Sub' + ' Element=line.MV3P'+circuitName+'00'
             line_em += ' Terminal=1 \n'
             output_energymdss.write(line_em) # Escribe el string de salida en el archivo
-
+                
             ##################################################
             ##   ESCRITURA DE TRANSFORMADORES
             ##################################################
             column_names_trafo = ['DSS_NAME', 'KVA', 'X', 'Y', 'GROUP_LV', 'BUS_MT']
             df_trafo = pd.DataFrame(columns = column_names_trafo)
-
+            
             # Se genera la salida de transformadores y monitores de transformadores para OpenDSS
             #Lista de buses mt_mt 
             list_tx_buses_mv_mv = []
@@ -8856,9 +7787,9 @@ class QGIS2OpenDSS(object):
                     #output_filesQGIS2DSS.write('\nredirect ' + filenameMon)
                     output_monitorsdss = open(foldername + '/' + filenameMon, 'a')
                     output_energymdss = open(foldername + '/' + filenameEM, 'a')
-
+                    
                     self.nombres_capas += "\n!Layers Transformers: "
-
+    
                     if len(selectedLayerTR1)!= 0:
                         self.nombres_capas += str(selectedLayerTR1) + ","
                         layerT1.startEditing() # Activa modo edición
@@ -8868,7 +7799,7 @@ class QGIS2OpenDSS(object):
                     if len(selectedLayerTR3)!= 0:
                         self.nombres_capas += str(selectedLayerTR3)
                         layerT3.startEditing() # Activa modo edición
-
+    
                     if (Graph_T1F.number_of_nodes()!= 0):  # revisa si hay trafos monofásicos
                         output_trdss.write('//Transformadores Monofasicos\n') # Escribe el string de salida en el archivo
                         # for n in range(ndatosT1F):
@@ -8894,26 +7825,26 @@ class QGIS2OpenDSS(object):
                             tap = "{:.2f}".format(tap)
                             mv_mv = dataList['MV_MV']
                             idx_lv_group = dataList['INDEX_LV_GROUP']
-
-                            grupo_trafo_lv = str(dataList['LV_GROUP'])
-                            grupo_trafo_mv = str(dataList['MV_GROUP'])
-
+    
+                            grupo_trafo_lv = str(dataList['GRUPO_LV'])
+                            grupo_trafo_mv = str(dataList['GRUPO_MV'])
+                            
                             datos_tafo = trafoOperations.impedanceSingleUnit(cantFases, kV_MedLL, kV_LowLN, kVA, mv_mv)
                             reactance = datos_tafo.get('X')
                             resistance = datos_tafo.get('R')
                             noloadloss = datos_tafo.get('Pnoload')
                             imag = datos_tafo.get('Im')
                             trafName = circuitName + cantFases + 'P_' + str(n + 1)
-
+                            
                             # Solucion cargas pegadas a trafo
                             exists = False
                             if CARactive is True:
                                 exists = grafoCAR.has_node(nodo)
                             if exists is True:
                                 inf_car = grafoCAR.nodes[nodo]
-                                group_car = inf_car['GROUP_LV']
+                                group_car = inf_car['GRUPO']
                                 grupo_trafo_lv  = str(group_car)
-
+                            
                             if mv_mv is True:
                                 busLV = busMV + "_tx"
                                 list_tx_buses_mv_mv.append(busMV)
@@ -8922,7 +7853,7 @@ class QGIS2OpenDSS(object):
                                 line += ' ' + busLV + phaseMV + '] kvs=[' + kV_MedLN + ' '
                                 line += kV_LowLN + '] kVAs=[' + kVA + ' ' + kVA + '] conns=[wye wye] '
                                 line += 'Taps=[' + tap + ', 1]' + normhkva +  " !GroupMV=" + grupo_trafo_mv
-
+                            
                             else:
                                 line = 'new transformer.' + trafName + ' phases=1 windings=3 ' + reactance + ' '
                                 line += resistance + ' ' + noloadloss + ' ' + imag + ' Buses=[' + busMV + phaseMV
@@ -8930,14 +7861,14 @@ class QGIS2OpenDSS(object):
                                 line += kV_LowLN + ' ' + kV_LowLN + '] kVAs=[' + kVA + ' ' + kVA + ' ' + kVA
                                 line += '] conns=[wye wye wye] Taps=[' + tap + ', 1, 1]'
                                 line += normhkva +  " !GroupMV=" + grupo_trafo_mv + ' !GroupLV=' + grupo_trafo_lv
-
-                            output_trdss.write(line + " \n")
-
+                                
+                            output_trdss.write(line + "\n")
+                            
                             element = 'transformer.' + trafName
                             line = 'new monitor.Mon' + trafName + ' Element=' + element
                             line += ' Terminal=1 Mode=1\n'
                             output_monitorsdss.write(line) # Escribe el string de salida en el archivo
-
+                            
                             if mv_mv is False: #Solo si es un transformador mv/lv tiene un energymeter
                                 line_em = 'new Energymeter.Met_' + trafName + ' Element=' + element
                                 line_em += ' Terminal=1 \n'
@@ -8946,15 +7877,14 @@ class QGIS2OpenDSS(object):
                             dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], trafName)
                             dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXBUS1"], busMV)
                             dataList["LAYER"].changeAttributeValue(dataList["ID"], idx_lv_group, grupo_trafo_lv)
-
+                            
+                            
                             #Dataframe de trafos
                             datos = [[trafName, kVA, X_, Y_, grupo_trafo_lv, busMV]]
                             df_temp = pd.DataFrame(data=datos, columns = column_names_trafo)
-                            #df_trafo = df_trafo.append(df_temp, ignore_index=True)
-                            df_trafo = pd.concat([df_trafo, df_temp], ignore_index=True)
+                            df_trafo = df_trafo.append(df_temp, ignore_index=True)
     
                             n += 1
-
                     if (Graph_T3F_single.number_of_nodes()!= 0):  # revisa si hay trafos trifásicos Single
                         output_trdss.write(
                             '\n//Transformadores Trifasicos Simples\n') # Escribe el string de salida en el archivo
@@ -8983,15 +7913,13 @@ class QGIS2OpenDSS(object):
                                 confMV = 'wye'
                             else:
                                 confMV = 'delta'
-                            
                             if (dataList['CONBA'] == 'Y'):
                                 confLV = 'wye'
                             else:
                                 confLV = 'delta'
-                            
                             phaseMV = dataList['PHASE']
-                            grupo_trafo_lv = str(dataList['LV_GROUP'])
-                            grupo_trafo_mv = str(dataList['MV_GROUP'])
+                            grupo_trafo_lv = str(dataList['GRUPO_LV'])
+                            grupo_trafo_mv = str(dataList['GRUPO_MV'])
                             datos_tafo = trafoOperations.impedanceSingleUnit(cantFases, kV_MedLL, kV_LowLN, kVA, mv_mv)
                             impedance = datos_tafo.get('Z')
                             noloadloss = datos_tafo.get('Pnoload')
@@ -9004,21 +7932,14 @@ class QGIS2OpenDSS(object):
                                 group_lv = ""
                             else:
                                 group_lv = ' !GroupLV=' + grupo_trafo_lv
+                                
+                            line = 'new transformer.' + trafName + ' phases=3 windings=2 ' + noloadloss + ' '
+                            line += imag + ' buses=[' + busMV + '.1.2.3 ' + busLV + '.1.2.3] '
+                            line += 'conns=[' + confMV + ' ' + confLV + '] kvs=[' + kV_MedLL + ' ' +  kV_LowLL + ']'
+                            line += ' kvas=[' + kVA + ' ' + kVA + '] ' + impedance + ' Taps=[' + tap + ', 1]' + normhkva
+                            line += ' !GroupMV=' + grupo_trafo_mv + group_lv
                             
-                            if ((confMV == 'wye') and (confLV == 'delta')):
-                                line = 'new transformer.' + trafName + ' phases=3 windings=2 ' + noloadloss + ' '
-                                line += imag + ' buses=[' + busMV + '.1.2.3.4 ' + busLV + '.1.2.3] '
-                                line += 'conns=[' + confMV + ' ' + confLV + '] kvs=[' + kV_MedLL + ' ' +  kV_LowLL + ']'
-                                line += ' kvas=[' + kVA + ' ' + kVA + '] ' + impedance + ' Taps=[' + tap + ', 1]' + normhkva
-                                line += ' !GroupMV=' + grupo_trafo_mv + group_lv
-                            else:
-                                line = 'new transformer.' + trafName + ' phases=3 windings=2 ' + noloadloss + ' '
-                                line += imag + ' buses=[' + busMV + '.1.2.3 ' + busLV + '.1.2.3] '
-                                line += 'conns=[' + confMV + ' ' + confLV + '] kvs=[' + kV_MedLL + ' ' +  kV_LowLL + ']'
-                                line += ' kvas=[' + kVA + ' ' + kVA + '] ' + impedance + ' Taps=[' + tap + ', 1]' + normhkva
-                                line += ' !GroupMV=' + grupo_trafo_mv + group_lv
-                            
-                            output_trdss.write(line + " \n")
+                            output_trdss.write(line + "\n")
                             
                             element = 'transformer.' + trafName
                             line = 'new monitor.Mon' + trafName + ' Element=' + element + ' Terminal=1 Mode=1\n'
@@ -9034,15 +7955,11 @@ class QGIS2OpenDSS(object):
                             
                             datos = [[trafName, kVA, X_, Y_, grupo_trafo_lv, busMV]]
                             df_temp = pd.DataFrame(data=datos, columns = column_names_trafo)
-                            # df_trafo = df_trafo.append(df_temp, ignore_index=True)
-                            df_trafo = pd.concat([df_trafo, df_temp], ignore_index=True)
-                            
+                            df_trafo = df_trafo.append(df_temp, ignore_index=True)
                             n += 1
-
                     if (Graph_T3F_multi.number_of_nodes()!= 0):  # revisa si hay trafos trifásicos Multi
                         output_trdss.write(
                             '\n//Transformadores Trifasicos de tres unidades Monofasicas\n') # Escribe el string de salida en el archivo
-                            # Ojo, este código asume que el lado del primario siempre es Y
                         n = 0
                         for TRAFO3F_multi in Graph_T3F_multi.nodes(data=True):
                             dataList = TRAFO3F_multi[1]
@@ -9071,8 +7988,8 @@ class QGIS2OpenDSS(object):
                             X_ = dataList['X1']
                             Y_ = dataList['Y1']
     
-                            grupo_trafo_lv = str(dataList['LV_GROUP'])
-                            grupo_trafo_mv = str(dataList['MV_GROUP'])
+                            grupo_trafo_lv = str(dataList['GRUPO_LV'])
+                            grupo_trafo_mv = str(dataList['GRUPO_MV'])
     
                             datos_trafo = trafoOperations.impedanceMultiUnit(kV_MedLL, kV_LowLN, kVA_A, kVA_B, kVA_C, phaseMV)
                             impedanceA = datos_trafo.get('impA')['Za']
@@ -9093,25 +8010,25 @@ class QGIS2OpenDSS(object):
                                 
                             if (dataList['CONBA'] == '4D'):  # si el transformador es delta 4 hilos en baja tensión
                                 line_A = 'new transformer.' + trafName1 + ' phases=1 windings=2 ' +  imagA
-                                line_A += ' buses=[' + busMV + '.1.4 ' + busLV + '.3.1' + ']' + ' ' + noloadlossA + ' '
+                                line_A += ' buses=[' + busMV + '.1.0 ' + busLV + '.3.1' + ']' + ' ' + noloadlossA + ' '
                                 line_A += impedanceA + ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + ']'
                                 line_A += ' kvas=[' + kVA_A + ' ' + kVA_A + ']' + ' conns=[wye wye] Taps=[' + tap + ', 1]'
                                 line_A += normhkva_A + ' !GroupMV=' + grupo_trafo_mv + ' !GroupLV=' + grupo_trafo_lv
                                 line_B = 'new transformer.' + trafName2 + ' phases=1 windings=3 '
-                                line_B += imagB + ' buses=[' + busMV + '.2.4 ' + busLV + '.1.0 ' + busLV + '.0.2] '
+                                line_B += imagB + ' buses=[' + busMV + '.2.0 ' + busLV + '.1.0 ' + busLV + '.0.2] '
                                 line_B += noloadlossB + ' ' + reactanceB + ' '
                                 line_B += resistanceB + ' kvs=[' + kV_MedLN + ' ' + kV_LowLN + ' ' + kV_LowLN + '] kvas=['
                                 line_B += kVA_B + ' ' + kVA_B + ' ' + kVA_B + ']'
                                 line_B += ' conns=[wye wye wye] Taps=[' + tap + ', 1, 1]' + normhkva_B
                                 line_B += ' !GroupMV=' + grupo_trafo_mv + ' !GroupLV=' + grupo_trafo_lv
                                 line_C = 'new transformer.' + trafName3 + ' phases=1 windings=2 ' + imagC
-                                line_C += ' buses=[' + busMV + '.3.4 ' + busLV + '.2.3]' + ' ' + noloadlossC + ' ' + impedanceC
+                                line_C += ' buses=[' + busMV + '.3.0 ' + busLV + '.2.3]' + ' ' + noloadlossC + ' ' + impedanceC
                                 line_C += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_C + ' ' + kVA_C
                                 line_C += '] conns=[wye wye] Taps=[' + tap + ', 1]' + normhkva_C
                                 line_C += ' !GroupMV=' + grupo_trafo_mv + ' !GroupLV=' + grupo_trafo_lv
-                                output_trdss.write(line_A + " \n")
-                                output_trdss.write(line_B + " \n")
-                                output_trdss.write(line_C + " \n")
+                                output_trdss.write(line_A + "\n")
+                                output_trdss.write(line_B + "\n")
+                                output_trdss.write(line_C + "\n")
                                 trafName = circuitName + '3U3P_' + str(n + 1)
                                 
                                 element = 'transformer.' + trafName1
@@ -9143,7 +8060,6 @@ class QGIS2OpenDSS(object):
                                 
                                 dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], trafName)
                                 dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXBUS1"], busMV)
-                            
                             elif (dataList['CONBA'] == 'Y'):
                                 if mv_mv is True: # Caso trafo mv-mv
                                     busLV = busMV + "_tx"
@@ -9171,9 +8087,9 @@ class QGIS2OpenDSS(object):
                                 line_C +=  normhkva_C + ' !GroupMV=' + grupo_trafo_mv + line_group
                                     
                                     
-                                output_trdss.write(line_A + " \n") # res
-                                output_trdss.write(line_B + " \n")
-                                output_trdss.write(line_C + " \n")
+                                output_trdss.write(line_A + "\n") # res
+                                output_trdss.write(line_B + "\n")
+                                output_trdss.write(line_C + "\n")
                                 trafName = circuitName + '3U3P_' + str(n + 1)
                                 
                                 element = 'transformer.' + trafName1
@@ -9206,65 +8122,10 @@ class QGIS2OpenDSS(object):
                                 dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], trafName)
                                 dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXBUS1"], busMV)
                             
-                            elif (dataList['CONBA'] == 'D'):
-                                    
-                                line_A = 'new transformer.' + trafName1 + ' phases=1 windings=2 ' + imagA
-                                line_A += ' buses=[' + busMV + '.1.4' + ' ' + busLV + '.3.1]' + ' ' + noloadlossA + ' '
-                                line_A +=  impedanceA + ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + ']'
-                                line_A += ' kvas=[' + kVA_A + ' ' + kVA_A + '] conns=[wye wye] Taps=[' + tap + ', 1]'
-                                line_A +=  normhkva_A + ' !GroupMV=' + grupo_trafo_mv + line_group
-    
-                                line_B = 'new transformer.' + trafName2 + ' phases=1 windings=2 ' + imagB
-                                line_B += ' buses=[' + busMV + '.2.4 ' + busLV + '.1.2]' + ' ' + noloadlossB + ' ' + impedanceB
-                                line_B +=  ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_B + ' ' + kVA_B + ']'
-                                line_B += ' conns=[wye wye] Taps=[' + tap + ', 1]' + normhkva_B
-                                line_B +=  ' !GroupMV=' + grupo_trafo_mv + line_group
-    
-                                line_C = 'new transformer.' + trafName3 + ' phases=1 windings=2 ' + imagC
-                                line_C += ' buses=[' +  busMV + '.3.4 ' + busLV + '.2.3]' + ' ' + noloadlossC + ' ' + impedanceC
-                                line_C += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + ']'
-                                line_C += ' kvas=[' + kVA_C + ' ' +  kVA_C + '] conns=[wye wye] Taps=[' + tap + ', 1]'
-                                line_C +=  normhkva_C + ' !GroupMV=' + grupo_trafo_mv + line_group
-                                    
-                                    
-                                output_trdss.write(line_A + " \n") # res
-                                output_trdss.write(line_B + " \n")
-                                output_trdss.write(line_C + " \n")
-                                trafName = circuitName + '3U3P_' + str(n + 1)
-                                
-                                element = 'transformer.' + trafName1
-                                line = 'new monitor.Mon' + trafName1 
-                                line += ' Element=' + element + ' Terminal=1 Mode=1\n'
-                                output_monitorsdss.write(line) # Escribe el string de salida en el archivo
-                                if mv_mv is False: #Solo si es un transformador mv/lv tiene un energymeter
-                                    line_em = 'new Energymeter.Met_' + trafName1 + ' Element=' + element
-                                    line_em += ' Terminal=1 \n'
-                                    output_energymdss.write(line_em) # Escribe el string de salida en el archivo
-                                
-                                element = 'transformer.' + trafName2
-                                line = 'new monitor.Mon' + trafName2
-                                line += ' Element=' + element + ' Terminal=1 Mode=1\n'
-                                output_monitorsdss.write(line) # Escribe el string de salida en el archivo
-                                if mv_mv is False: #Solo si es un transformador mv/lv tiene un energymeter
-                                    line_em = 'new Energymeter.Met_' + trafName2 + ' Element=' + element
-                                    line_em += ' Terminal=1 \n'
-                                    output_energymdss.write(line_em) # Escribe el string de salida en el archivo
-                                
-                                element = 'transformer.' + trafName3
-                                line = 'new monitor.Mon' + trafName3
-                                line += ' Element=' + element + ' Terminal=1 Mode=1\n'
-                                output_monitorsdss.write(line) # Escribe el string de salida en el archivo
-                                if mv_mv is False: #Solo si es un transformador mv/lv tiene un energymeter
-                                    line_em = 'new Energymeter.Met_' + trafName3 + ' Element=' + element
-                                    line_em += ' Terminal=1 \n'
-                                    output_energymdss.write(line_em) # Escribe el string de salida en el archivo
-                                
-                                dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], trafName)
-                                dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXBUS1"], busMV)
-
+							
                             else:
                                 msg = "Los transformadores trifásicos "
-                                msg += "de tres unidades monofásicos "
+                                msg += "de tres unidades monofásicos"
                                 msg += "sólo puede tener una conexión "
                                 msg += "en el secundario tipo delta "
                                 msg += " cuatro hilos o estrella. "
@@ -9272,14 +8133,11 @@ class QGIS2OpenDSS(object):
                                 msg += str(dataList['CONBA'])
                                 msg += ". Favor corrija y corra de "
                                 msg += "nuevo."
-                                self.msg_trafos += msg + " \n"
+                                self.msg_trafos += msg + "\n"
                             datos = [[trafName1, kVA_A, X_, Y_, grupo_trafo_lv, busMV]]
                             df_temp = pd.DataFrame(data=datos, columns = column_names_trafo)
-                            # df_trafo = df_trafo.append(df_temp, ignore_index=True)
-                            df_trafo = pd.concat([df_trafo, df_temp], ignore_index=True)
-                            
+                            df_trafo = df_trafo.append(df_temp, ignore_index=True)
                             n += 1
-
                     if (Graph_T2F.number_of_nodes()!= 0):  # revisa si hay trafos bifásicos
                         output_trdss.write(
                             '\n//Transformadores bifásicos (Conexiones especiales de dos transformadores)\n') # Escribe el string de salida en el archivo
@@ -9302,23 +8160,20 @@ class QGIS2OpenDSS(object):
                             kVA_A = str(int(float(dataList['KVA_FA'])))
                             kVA_B = str(int(float(dataList['KVA_FB'])))
                             kVA_C = str(int(float(dataList['KVA_FC'])))
-                            phase = dataList['PHASE'].strip()
+                            phase = dataList['PHASE']
                             tap = str(dataList['TAPS'])
                             # tap="1"
-                            grupo_trafo_lv = str(dataList['LV_GROUP'])
-                            grupo_trafo_mv = str(dataList['MV_GROUP'])
-
-                            if (dataList['CONBA'] == '4D') or (dataList['CONBA'] == 'OD'):  # si el transformador es delta 4 hilos en baja tensión or OpenDelta
-                                OYnod = False
-                                if (dataList['CONBA'] == 'OD'):
-                                    OYnod = True
+                            grupo_trafo_lv = str(dataList['GRUPO_LV'])
+                            grupo_trafo_mv = str(dataList['GRUPO_MV'])
+                            
+                            if (dataList['CONBA'] == '4D'):  # si el transformador es delta 4 hilos en baja tensión
                                 if phase == '.1.2':  # Las variables conexME y conexBA se utilizan para escribir a qué nodos de la barra se conecta la estrella abierta
                                     if float(dataList['KVA_FA'])>= float(dataList['KVA_FB']):
                                         buff_kVA_A = kVA_A
                                         buff_kVA_B = kVA_B
                                         kVA_A = buff_kVA_B
                                         kVA_B = buff_kVA_A
-
+    
                                     conexME_trafoA = '.1.0'  # Conexión en barra de media tensión del transformador A
                                     conexBA_trafoA = '.3.1'  # Conexión en barra de baja tensión del transformador A
                                     conexME_trafoB = '.2.0'  # Conexión en barra de media tensión del transformador B
@@ -9335,8 +8190,6 @@ class QGIS2OpenDSS(object):
                                     noloadlossB = datos_trafo.get('impB')['PnoloadB']
                                     kVA_trafoA = kVA_A  # Potencia del transformador A
                                     kVA_trafoB = kVA_B  # Potencia del transformador B
-                                    kVA_trafoA_OYOD = kVA_A
-                                    kVA_trafoB_OYOD = kVA_B
                                 elif phase == '.1.3':
                                     if float(dataList['KVA_FA'])>= float(dataList['KVA_FC']):
                                         buff_kVA_A = kVA_A
@@ -9359,8 +8212,6 @@ class QGIS2OpenDSS(object):
                                     noloadlossB = datos_trafo.get('impB')['PnoloadB']
                                     kVA_trafoA = kVA_A
                                     kVA_trafoB = kVA_C
-                                    kVA_trafoA_OYOD = kVA_A
-                                    kVA_trafoB_OYOD = kVA_C
                                 elif phase == '.2.3':
                                     if float(dataList['KVA_FB'])>= float(dataList['KVA_FC']):
                                         buff_kVA_B = kVA_B
@@ -9382,79 +8233,41 @@ class QGIS2OpenDSS(object):
                                     noloadlossB = datos_trafo.get('impB')['PnoloadB']
                                     kVA_trafoA = kVA_B
                                     kVA_trafoB = kVA_C
-                                    kVA_trafoA_OYOD = kVA_B
-                                    kVA_trafoB_OYOD = kVA_C
+                                
                                 else:
                                     msg = "Los transformadores "
                                     msg += "con conexión delta 4 hilos "
-                                    msg += 'en el secundario sólo puede'    #  Wouldn't be primary?
+                                    msg += 'en el secundario sólo puede'
                                     msg += "tener fases .1.2, .1.3 o "
                                     msg += ".2.3, y usted indicó "
-                                    msg += str(phase) + " \n"
+                                    msg += str(phase) + "\n"
                                     self.msg_trafos += msg
-
+                                    
                                 normhkva_A = " normhkva=" + kVA_trafoA
                                 normhkva_B = " normhkva=" + kVA_trafoB
-
+                                
                                 trafName1 = circuitName + '2U3P_1_' + str(n + 1)
                                 trafName2 = circuitName + '2U3P_2_' + str(n + 1)
-
-                                # Four wires
-                                if not OYnod:
-                                    line_A = 'new transformer.' + trafName1 + ' phases=1 windings=2 ' + imagA + ' '
-                                    line_A += impedanceA + ' ' + noloadlossA + ' buses=[' + busMV + conexME_trafoA + ' '
-                                    line_A +=  busLV + conexBA_trafoA + '] '
-                                    line_A += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoA + ' ' + kVA_trafoA + ']'
-                                    line_A += ' conns=[wye wye] Taps=[' + tap + ', 1]' + normhkva_A + ' !GroupMV=' + grupo_trafo_mv
-                                    line_B = 'new transformer.' + trafName2 + ' phases=1 windings=3 ' + imagB
-                                    line_B += ' ' + reactanceB + ' ' + resistanceB + ' ' + noloadlossB + ' buses=[' + busMV + conexME_trafoB
-                                    line_B += ' ' + busLV + conexBA1_trafoB + ' ' + busLV + conexBA2_trafoB 
-                                    line_B += '] kvs=[' + kV_MedLN + ' ' + kV_LowLN + ' ' + kV_LowLN + '] kvas=[' + kVA_trafoB + ' '
-                                    line_B += kVA_trafoB + ' ' + kVA_trafoB + '] conns=[wye wye wye] Taps=[' + tap + ', 1, 1]'
-                                    line_B +=  normhkva_B + ' !GroupMV=' + grupo_trafo_mv 
-                                    line_A += ' !GroupLV=' + grupo_trafo_lv
-                                    line_B += ' !GroupLV=' + grupo_trafo_lv
-
-                                # Connection OYnod1: Keep secondary lagging 30deg
-                                elif OYnod:
-                                    normhkva_A = " normhkva=" + kVA_trafoA_OYOD
-                                    normhkva_B = " normhkva=" + kVA_trafoB_OYOD
-                                    # Define connections primary: OYn
-                                    ph = "0" + phase
-                                    ph = ph.split(".")
-                                    primConnA = f".{ph[1]}.{ph[0]}"
-                                    primConnB = f".{ph[2]}.{ph[0]}"
-                                    # Define connections secondary: Od
-                                    if phase == ".1.2":
-                                        secConnA = ".1.2"
-                                        secConnB = ".2.3"
-                                    elif phase == ".1.3":
-                                        secConnA = ".1.2"
-                                        secConnB = ".2.3"
-                                    elif phase == ".2.3":
-                                        secConnA = ".2.3"
-                                        secConnB = ".3.1"
-
-                                    # Write file
-                                    line_A = 'new transformer.' + trafName1 + ' phases=1 windings=2 ' + imagA + ' '
-                                    line_A += impedanceA + ' ' + noloadlossA + ' buses=[' + busMV + primConnA + ' '
-                                    line_A +=  busLV + secConnA + ']'
-                                    line_A += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoA_OYOD + ' ' + kVA_trafoA_OYOD + ']'
-                                    line_A += ' conns=[wye wye] Taps=[' + tap + ', 1]' + normhkva_A + ' !GroupMV=' + grupo_trafo_mv
-                                    line_B = 'new transformer.' + trafName2 + ' phases=1 windings=2 ' + imagA
-                                    line_B += ' ' + impedanceA + ' ' + noloadlossA + ' buses=[' + busMV + primConnB
-                                    line_B += ' ' + busLV + secConnB 
-                                    line_B += '] kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoB_OYOD + ' '
-                                    line_B += kVA_trafoB_OYOD + '] conns=[wye wye] Taps=[' + tap + ', 1]'
-                                    line_B +=  normhkva_B + ' !GroupMV=' + grupo_trafo_mv 
-                                    line_A += ' !GroupLV=' + grupo_trafo_lv
-                                    line_B += ' !GroupLV=' + grupo_trafo_lv        
-
-
-                                output_trdss.write(line_A + " \n")
-                                output_trdss.write(line_B + " \n")
+                                
+                                line_A = 'new transformer.' + trafName1 + ' phases=1 windings=2 ' + imagA + ' '
+                                line_A += impedanceA + ' ' + noloadlossA + ' buses=[' + busMV + conexME_trafoA + ' '
+                                line_A +=  busLV + conexBA_trafoA + '] '
+                                line_A += ' kvs=[' + kV_MedLN + ' ' + kV_LowLL + '] kvas=[' + kVA_trafoA + ' ' + kVA_trafoA + ']'
+                                line_A += ' conns=[wye wye] Taps=[' + tap + ', 1]' + normhkva_A + ' !GroupMV=' + grupo_trafo_mv
+                                line_B = 'new transformer.' + trafName2 + ' phases=1 windings=3 ' + imagB
+                                line_B += ' ' + reactanceB + ' ' + resistanceB + ' ' + noloadlossB + ' buses=[' + busMV + conexME_trafoB
+                                line_B += ' ' + busLV + conexBA1_trafoB + ' ' + busLV + conexBA2_trafoB 
+                                line_B += '] kvs=[' + kV_MedLN + ' ' + kV_LowLN + ' ' + kV_LowLN + '] kvas=[' + kVA_trafoB + ' '
+                                line_B += kVA_trafoB + ' ' + kVA_trafoB + '] conns=[wye wye wye] Taps=[' + tap + ', 1, 1]'
+                                line_B +=  normhkva_B + ' !GroupMV=' + grupo_trafo_mv 
+                                line_A += ' !GroupLV=' + grupo_trafo_lv
+                                line_B += ' !GroupLV=' + grupo_trafo_lv
+                                    
+                                    
+                                output_trdss.write(line_A + "\n")
+                                output_trdss.write(line_B + "\n")
                                 trafName = circuitName + '2U3P_' + str(n + 1)
-
+                                
                                 element = 'transformer.' + trafName1
                                 line = 'new monitor.Mon' + trafName1
                                 line += ' Element=' + element +' Terminal=1 Mode=1\n'
@@ -9462,7 +8275,7 @@ class QGIS2OpenDSS(object):
                                 line_em = 'new Energymeter.Met_' + trafName1 + ' Element=' + element
                                 line_em += ' Terminal=1 \n'
                                 output_energymdss.write(line_em) # Escribe el string de salida en el archivo
-
+                                
                                 element = 'transformer.' + trafName2
                                 line = 'new monitor.Mon' + trafName2
                                 line += ' Element=' + element + ' Terminal=1 Mode=1\n'
@@ -9470,24 +8283,24 @@ class QGIS2OpenDSS(object):
                                 line_em = 'new Energymeter.Met_' + trafName2 + ' Element=' + element
                                 line_em += ' Terminal=1 \n'
                                 output_energymdss.write(line_em) # Escribe el string de salida en el archivo
-
+                                
                                 dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], trafName)
                                 dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXBUS1"], busMV)
-
+                                
                                 datos = [[trafName1, kVA_trafoA, X_, Y_, grupo_trafo_lv, busMV]]
                                 df_temp = pd.DataFrame(data=datos, columns = column_names_trafo)
-                                # df_trafo = df_trafo.append(df_temp, ignore_index=True)
-                                df_trafo = pd.concat([df_trafo, df_temp], ignore_index=True)
+                                df_trafo = df_trafo.append(df_temp, ignore_index=True)
+                                
                             else:
                                 msg = "Los transformadores bifásicos "
                                 msg += "sólo puede tener una conexión "
                                 msg += "en el secundario tipo "
                                 msg += "delta cuatro hilos. "
                                 msg += "Usted indicó una conexión "
-                                msg += str(dataList['CONBA']) + " \n"
+                                msg += str(dataList['CONBA']) + "\n"
                                 self.msg_trafos += msg
                             n += 1
-
+                    
                     output_trdss.close()
                     output_monitorsdss.close()
                     output_energymdss.close()
@@ -9499,7 +8312,7 @@ class QGIS2OpenDSS(object):
                         layerT2.commitChanges() # Activa modo edición
                     if len(selectedLayerTR3)!= 0:
                         layerT3.commitChanges() # Activa modo edición
-
+                    
                     # Realiza cambios en archivo de lineas debido a trafos mt_mt
                     if LMTactive is True and list_tx_buses_mv_mv != []:
                         filename = circuitName + '_LinesMV.dss'
@@ -9510,40 +8323,32 @@ class QGIS2OpenDSS(object):
 
                 except Exception:
                     self.print_error()
-
+    
+                    
             #####################################
             ##   FIN ESCRITURA DE TRANSFORMADORES
             #####################################
-
+            
             # Escritura GD large scale
             if capa_gd_ls is True:
                 line_out = '\nredirect ' + filename_gdls
                 self.output_filesQGIS2DSS.write(line_out)
-
+            
             # Escritura Reguladores
             if capa_reg is True:
                 self.Write_Reg(grafo_reg, layer_reg)
-
+                
             # Escritura Capacitores
             if capa_cap is True:
-                # Se verifica si los datos de la capa están bien (Control)
-                info_cap = self.WriteCapacitors(layerCap, grafoCap)
-                if info_cap == 0:
-                    self.progress.close()
-                    return 0
-
+                self.WriteCapacitors(layerCap, grafoCap)
+            
             self.progress.progressBar.setValue(65)
             # Se genera la salida de transformadores y monitores de transformadores para OpenDSS
-
+            
             ##################################
             ### ESCRITURA DE LÍNEAS BAJA TENSIÓN ####
             ##################################
-
-            lista_geo_BT_aer = []
-            lista_geo_BT_sub = []
-
             if (LBTactive is True):
-
                 try:
                     filename = circuitName + '_LinesLV.dss'
                     output_filesQGIS2DSS.write('\nredirect ' + filename)
@@ -9555,17 +8360,16 @@ class QGIS2OpenDSS(object):
                     if len(selectedLayerBT3)!= 0:
                         layerBT3.startEditing() # Activa modo edición
                     n = 1
-
+                    
                     column_names_lines = ['DSS_NAME', 'bus1', 'bus2', 'GROUP_LV']
                     df_lv_lines1 = pd.DataFrame(columns = column_names_lines)
-
+                    
                     for line in grafoBT.edges(data=True):
                         dataLine = line[2]
                         TrafNode = dataLine["TRAFNODE"]
                         busfrom = line[2]['bus1']
                         busto = line[2]['bus2']
-                        libcode = dataLine["LibName"]
-
+                        
                         # Si la linea no tiene algun transformador conectado se le asigna la cant de fases que dice en el shape
                         if dataLine['TRAFNPHAS'] == "NULL":
                             cantFases = dataLine['NPHAS']
@@ -9624,14 +8428,9 @@ class QGIS2OpenDSS(object):
                             else:
                                 equipment = 'NONE'
                                 conns = "NONE"
-
-                        if (libcode) and "::" in libcode:
-                            libtype = libcode.split("::")[1]
-                            equipment = f"Linecode={libtype}"
-
                         if float(dataLine['SHLEN'])== 0:
                             dataLine['SHLEN'] = 0.0001
-
+                        
                         #Se agrega la información de los nodos a los buses
                         """
                         A veces invierte el orden de los buses en BusBT_List
@@ -9646,7 +8445,7 @@ class QGIS2OpenDSS(object):
                                     busBT_List[line[0]]['PHASES'] = conns
                             else:
                                 busBT_List[line[0]]['PHASES'] = conns
-
+                        
                         elif busBT_List[line[1]]['bus'] == busfrom:
                             if 'PHASES' in busBT_List[line[1]]:
                                 # esto es porque si ya está en .1.2.3 no debería cambiar a otro valor
@@ -9654,7 +8453,7 @@ class QGIS2OpenDSS(object):
                                     busBT_List[line[1]]['PHASES'] = conns
                             else:
                                 busBT_List[line[1]]['PHASES'] = conns
-
+                            
                         #busto
                         if busBT_List[line[1]]['bus'] == busto:
                             if 'PHASES' in busBT_List[line[1]]:
@@ -9663,7 +8462,7 @@ class QGIS2OpenDSS(object):
                                     busBT_List[line[1]]['PHASES'] = conns
                             else:
                                 busBT_List[line[1]]['PHASES'] = conns
-
+                        
                         elif busBT_List[line[0]]['bus'] == busto:
                             if 'PHASES' in busBT_List[line[0]]:
                                 # esto es porque si ya está en .1.2.3 no debería cambiar a otro valor
@@ -9671,26 +8470,16 @@ class QGIS2OpenDSS(object):
                                     busBT_List[line[0]]['PHASES'] = conns
                             else:
                                 busBT_List[line[0]]['PHASES'] = conns
-
+                       
                         sh_len = "{0:.4f}".format(dataLine['SHLEN']) # Recibe la longitud de la linea
                         opervoltLN = dataLine["TRAFVOLTLN"]
                         grupo_aco = dataLine['GRUPO']
-                        if (libcode) and "::" in libcode:
-                            lineName = dataLine["ICEobjID"]
-                        else:
-                            lineName = "LV" + cantFases + 'F' + circuitName + str(n)
-
-                        if dataLine['AIR_UGND'] == "air":
-                            lista_geo_BT_aer.append((dataLine["ID"]-1, lineName, equipment.split("=")[1]))
-                        else:
-                            lista_geo_BT_sub.append((dataLine["ID"]-1, lineName, equipment.split("=")[1]))
-
-                        # Sentencia 
+                        lineName = "LV" + cantFases + 'F' + circuitName + str(n)
                         line = 'new line.' + lineName + ' bus1=' + busfrom
                         line += conns + ' bus2=' + busto + conns + " "
                         line += equipment + ' length=' + str(sh_len)
                         line += ' units=m !1ph_basekV=' + str(opervoltLN)
-                        line += ' Group=' + str(grupo_aco) + desc + " \n"
+                        line += ' Group=' + str(grupo_aco) + desc + "\n"
                         output_lbtdss.write(line) # Escribe el string de salida en el archivo
                         dataLine["LAYER"].changeAttributeValue(dataLine["ID"],
                                                                dataLine["INDEXDSS"],
@@ -9701,13 +8490,12 @@ class QGIS2OpenDSS(object):
                         dataLine["LAYER"].changeAttributeValue(dataLine["ID"],
                                                                dataLine["idx_bus2"],
                                                                busto)
-
-
+                        
+                        
                         datos = [[lineName, busfrom, busto, grupo_aco ]]
                         df_temp = pd.DataFrame(data=datos, columns = column_names_lines)
-                        # df_lv_lines1 = df_lv_lines1.append(df_temp, ignore_index=True)
-                        df_lv_lines1 = pd.concat([df_lv_lines1, df_temp], ignore_index=True)
-
+                        df_lv_lines1 = df_lv_lines1.append(df_temp, ignore_index=True)
+                        
                         n += 1
                     output_lbtdss.close() # Cierra el archivo de salida
                     if len(selectedLayerBT1)!= 0:
@@ -9716,7 +8504,7 @@ class QGIS2OpenDSS(object):
                         layerBT2.commitChanges() # Guarda
                     if len(selectedLayerBT3)!= 0:
                         layerBT3.commitChanges() # Guarda
-
+    
                 except Exception:
                     self.print_error()
 
@@ -9727,13 +8515,10 @@ class QGIS2OpenDSS(object):
             ##############################
             ###  ESCRITURA ACOMETIDAS
             ##############################
-
-            lista_geo_AC_aer = []
-
             if (ACOactive is True):
-
                 try:
-
+                    
+                
                     filename = circuitName + '_ServicesLV.dss'
                     output_filesQGIS2DSS.write('\nredirect ' + filename)
                     output_acodss = open(foldername + '/' + filename, 'w')
@@ -9743,21 +8528,21 @@ class QGIS2OpenDSS(object):
                         layerACO2.startEditing() # Activa modo edición
                     if len(selectedLayerACO3)!= 0:
                         layerACO3.startEditing() # Activa modo edición
-
+    
                     n = 1
-
+                    
                     column_names_lines = ['DSS_NAME', 'bus1', 'bus2', 'GROUP_LV']
                     df_lv_lines2 = pd.DataFrame(columns = column_names_lines)
-
+                    
                     for line in grafoACO.edges(data=True):
                         dataLine = line[2]
                         TrafNode = dataLine["TRAFNODE"]
                         busfrom = line[2]['bus1']
                         busto = line[2]['bus2']
-                        libcode = dataLine["LibName"]
 
                         # Si la linea no tiene algun transformador conectado se le asigna la cant de fases que dice en el shape
-                        if dataLine['TRAFNPHAS'] == "NULL":
+                        if dataLine[
+                            'TRAFNPHAS'] == "NULL":
                             cantFases = dataLine['NPHAS']
                             desc = " Disconnected"
                             busBT_List[line[0]]['VOLTAGELN'] = "0.12"
@@ -9774,12 +8559,9 @@ class QGIS2OpenDSS(object):
                         else:
                             equipment = 'NONE'
                             conns = "NONE"
-                        if (libcode) and "::" in libcode:
-                            equipment = libcode.split("::")[1]
-
                         if float(dataLine['SHLEN'])== 0:
                             dataLine['SHLEN'] = 0.0001
-
+                            
                         #Se agrega la información de los nodos a los buses
                         """
                         A veces invierte el orden de los buses en BusBT_List (a veces busfrom está en line[0] y a veces está en line[1]
@@ -9799,8 +8581,8 @@ class QGIS2OpenDSS(object):
                                     busBT_List[line[1]]['PHASES'] = conns
                             else:
                                 busBT_List[line[1]]['PHASES'] = conns
-
-
+                        
+                            
                         #busto
                         if busBT_List[line[1]]['bus'] == busto:
                             if 'PHASES' in busBT_List[line[1]]:
@@ -9815,24 +8597,18 @@ class QGIS2OpenDSS(object):
                                     busBT_List[line[0]]['PHASES'] = conns
                             else:
                                 busBT_List[line[0]]['PHASES'] = conns
-
-
+                            
+                            
                         sh_len = "{0:.4f}".format(dataLine['SHLEN']) # Recibe la longitud de la linea
                         opervoltLN = dataLine['TRAFVOLTLN']  # ,' !1ph_basekV=',opervoltLN
                         grupo_aco = dataLine['GRUPO']
-                        if (libcode) and "::" in libcode:
-                            lineName = dataLine["ICEobjID"]
-                        else:
-                            lineName = "SRV" + cantFases + 'F' + circuitName + str(n)
-
-                        lista_geo_AC_aer.append((dataLine["ID"]-1, lineName, equipment))
-
+                        lineName = "SRV" + cantFases + 'F' + circuitName + str(n)
                         text = 'new line.' + lineName + ' bus1=' + busfrom
                         text += conns + ' bus2=' + busto + conns
                         text += ' linecode=' + equipment + ' length='
                         text += str(sh_len) + ' units=m' + ' !1ph_basekV='
                         text += str(opervoltLN) + ' Group=' + str(grupo_aco) 
-                        text += desc + " \n"
+                        text += desc + "\n"
                         output_acodss.write(text) # Escribe el string de salida en el archivo
                         dataLine["LAYER"].changeAttributeValue(dataLine["ID"], dataLine["INDEXDSS"], lineName)
                         dataLine["LAYER"].changeAttributeValue(dataLine["ID"], dataLine["idx_bus1"], busfrom)
@@ -9840,8 +8616,7 @@ class QGIS2OpenDSS(object):
                         
                         datos = [[lineName, busfrom, busto, grupo_aco ]]
                         df_temp = pd.DataFrame(data=datos, columns = column_names_lines)
-                        # df_lv_lines2 = df_lv_lines2.append(df_temp, ignore_index=True)
-                        df_lv_lines2 = pd.concat([df_lv_lines2, df_temp], ignore_index=True)
+                        df_lv_lines2 = df_lv_lines2.append(df_temp, ignore_index=True)
                         
                         n += 1
                     output_acodss.close() # Cierra el archivo de salida
@@ -9855,7 +8630,7 @@ class QGIS2OpenDSS(object):
                 
                 except Exception:
                     self.print_error()
-
+                    
             ##############################
             ###   FIN ESCRITURA ACOMETIDAS
             ##############################
@@ -9934,7 +8709,7 @@ class QGIS2OpenDSS(object):
                         line += " kW=" + kW + " pf=" +pf + " status=variable "
                         line += "phases=" +  cantFases + ' ' + daily
                         line += " !kWh="  + kWhmonth + " class="
-                        line += loadclass + " !Group=" + Grupo + " \n"
+                        line += loadclass + " !Group=" + Grupo + "\n"
                         output_cadss_mv.write(line)
                         # layer.changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], loadName)
                         layer.changeAttributeValue(id_, idx_dss, loadName)
@@ -9944,11 +8719,11 @@ class QGIS2OpenDSS(object):
                         if cantFases == "3" and conns != ".1.2.3":
                             self.mensaje_log_gral += "Revise la carga " + loadName + " debido a que hay"
                             self.mensaje_log_gral += " inconsistencias entre las fases y el número de nodos a los que está"
-                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + " \n"
+                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + "\n"
                         elif cantFases == "1" and conns == ".1.2.3":
                             self.mensaje_log_gral += "Revise la carga " + loadName + " debido a que hay"
                             self.mensaje_log_gral += " inconsistencias entre las fases y el número de nodos a los que está"
-                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + " \n"
+                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + "\n"
                     
                     output_cadss_mv.close()
                     if len(selectedLayerCA_MT1)!= 0:
@@ -9999,7 +8774,7 @@ class QGIS2OpenDSS(object):
                         kWhmonth = str(dataList['kWh'])
                         loadclass = str(dataList['class'])
                         daily = str(dataList['CURVASIG'])
-                        Grupo = str(dataList['LV_GROUP'])
+                        Grupo = str(dataList['GRUPO'])
                         kV = str(dataList['NOMVOLT'])
                         X_ = dataList['X1']
                         Y_ = dataList['Y1']
@@ -10008,10 +8783,7 @@ class QGIS2OpenDSS(object):
                         idx_dss = dataList["INDEXDSS"]
                         idx_bus1 = dataList['idx_bus1']
                         layer = dataList["LAYER"]
-                        ICEloadName = ""
-                        if dataList["ICEobjID"]:
-                            ICEloadName = dataList["ICEobjID"]
-
+                        
                         # Si la carga no tiene algun transformador conectado se le asigna la cant de fases que dice en el shape
                         if dataList['TRAFNPHAS'] == "NULL":  
                             cantFases = "1"
@@ -10038,7 +8810,7 @@ class QGIS2OpenDSS(object):
                         line += " kW=" + kW + " kvar=" + kvar
                         line += " status=variable phases=" +  cantFases 
                         line += ' ' + daily + " !kWh="  + kWhmonth + " class="
-                        line +=  loadclass + " !Group=" + Grupo +  desc + " !ICEobjID="+ ICEloadName + " \n" 
+                        line +=  loadclass + " !Group=" + Grupo +  desc + "\n" 
                         output_cadss.write(line)
                         layer.changeAttributeValue(id_, idx_dss, loadName)
                         layer.changeAttributeValue(id_, idx_bus1, bus)
@@ -10060,19 +8832,18 @@ class QGIS2OpenDSS(object):
                             dist = -1
                         datos = [[loadName, kWhmonth, bus, X_, Y_, dist, loadclass, Grupo]]
                         df_temp = pd.DataFrame(data=datos, columns = column_names_load)
-                        # df_load = df_load.append(df_temp, ignore_index=True)
-                        df_load = pd.concat([df_load, df_temp], ignore_index=True)
+                        df_load = df_load.append(df_temp, ignore_index=True)
 
                         n += 1
                         
-                        if cantFases == "3" and conns not in {".1.2.3", ".1.2", ".2.3", ".1.3"}:
+                        if cantFases == "3" and conns != ".1.2.3":
                             self.mensaje_log_gral += "Revise la carga " + loadName + " debido a que hay"
                             self.mensaje_log_gral += " inconsistencias entre las fases y el número de nodos a los que está"
-                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + " \n"
+                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + "\n"
                         elif cantFases == "1" and conns == ".1.2.3":
                             self.mensaje_log_gral += "Revise la carga " + loadName + " debido a que hay"
                             self.mensaje_log_gral += " inconsistencias entre las fases y el número de nodos a los que está"
-                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + " \n"
+                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + "\n"
                         
                     output_cadss.close()
                     namefile_ = foldername + "/LoadsLVList.csv"
@@ -10164,7 +8935,7 @@ class QGIS2OpenDSS(object):
                         if cantFases == "1" and conns == ".1.2.3":
                             self.mensaje_log_gral += "Revise la carga " + loadName + " debido a que hay"
                             self.mensaje_log_gral += " inconsistencias entre las fases y el número de nodos a los que está"
-                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + " \n"
+                            self.mensaje_log_gral += " conectada. Número de fases: " + cantFases + ", nodos: " + conns + "\n"
                         
                     output_cadss.close()
                     namefile_ = foldername + "/StreetLightningList.csv"
@@ -10187,113 +8958,107 @@ class QGIS2OpenDSS(object):
             ### Escritura de GD
             ########################
             
-            # Escritura GD small scale
-            if capa_gd_ss is True:
-                line_out = '\nredirect ' + filename_gdss
-                self.output_filesQGIS2DSS.write(line_out)
             
-            
-            # if len(selectedLayerGD)!= 0:
-                # try:
+            if len(selectedLayerGD)!= 0:
+                try:
                     
-                    # if LoadShapesFile is False: #bandera que especifica si el archivo de loadshapes ya se abrió
-                        # filename = circuitName + '_Loadshapes.dss'
-                        # output_shpdss = open(foldername + '/' + filename, 'a+')
-                        # LoadShapesFile = True
-                    # layerGD = QgsProject.instance().mapLayersByName(selectedLayerGD)[
-                        # 0]
-                    # self.progress.progressBar.setValue(90)
-                    # filename = circuitName + '_DG.dss'
-                    # output_filesQGIS2DSS.write('\nredirect ' + filename)
-                    # output_GDdss = open(foldername + '/' + filename, 'w')
-                    # layerGD.startEditing() # Guarda
+                    if LoadShapesFile is False: #bandera que especifica si el archivo de loadshapes ya se abrió
+                        filename = circuitName + '_Loadshapes.dss'
+                        output_shpdss = open(foldername + '/' + filename, 'a+')
+                        LoadShapesFile = True
+                    layerGD = QgsProject.instance().mapLayersByName(selectedLayerGD)[
+                        0]
+                    self.progress.progressBar.setValue(90)
+                    filename = circuitName + '_DG.dss'
+                    output_filesQGIS2DSS.write('\nredirect ' + filename)
+                    output_GDdss = open(foldername + '/' + filename, 'w')
+                    layerGD.startEditing() # Guarda
                     
-                    # if errorLoadShape or cargas == 0:
-                        # output_shpdss.write('!' + folder_profile + '\n')
-                    # n = 1
-                    # i = 1
-                    # shapewritten = {}
-                    # for GD in grafoGD.nodes(data=True):
-                        # dataList = GD[1]
-                        # nodo = GD[0]
-                        # bus = str(dataList['BUS'])
-                        # kVA = str(dataList['KVA'])
-                        # conf = str(dataList['CONF'])
-                        # NPHAS = str(dataList["NPHAS"])
-                        # CURVE1 = dataList["CURVE1"]
-                        # CURVE2 = dataList["CURVE2"]
-                        # tech = dataList["TECH"]
-                        # kV = str(dataList["VOLTAGELL"])
-                        # if NPHAS == "1":
-                            # conn = ".1.2"
-                        # else:
-                            # conn = ".1.2.3"
-                        # if tech == "PV2":
-                            # if "MyPvsT" not in shapewritten:
-                                # shapewritten["MyPvsT"] = 0
-                                # out = 'New XYCurve.MyPvsT npts=4 xarray=[.001 25 75 100] '
-                                # out += ' yarray=[1.2 1.0 0.8 0.6]\n'
-                                # out += 'New XYCurve.MyEff npts=4 xarray=[.1 .2 .4 1.0] '
-                                # out += 'yarray=[.86 .9 .93 .97]\n'
-                                # output_shpdss.write(out)
+                    if errorLoadShape or cargas == 0:
+                        output_shpdss.write('!' + folder_profile + '\n')
+                    n = 1
+                    i = 1
+                    shapewritten = {}
+                    for GD in grafoGD.nodes(data=True):
+                        dataList = GD[1]
+                        nodo = GD[0]
+                        bus = str(dataList['BUS'])
+                        kVA = str(dataList['KVA'])
+                        conf = str(dataList['CONF'])
+                        NPHAS = str(dataList["NPHAS"])
+                        CURVE1 = dataList["CURVE1"]
+                        CURVE2 = dataList["CURVE2"]
+                        kV = str(dataList["VOLTAGELL"])
+                        if NPHAS == "1":
+                            conn = ".1.2"
+                        else:
+                            conn = ".1.2.3"
+                        if dataList["TECH"] == "PV":
+                            if "MyPvsT" not in shapewritten:
+                                shapewritten["MyPvsT"] = 0
+                                out = 'New XYCurve.MyPvsT npts=4 xarray=[.001 25 75 100] '
+                                out += ' yarray=[1.2 1.0 0.8 0.6]\n'
+                                out += 'New XYCurve.MyEff npts=4 xarray=[.1 .2 .4 1.0] '
+                                out += 'yarray=[.86 .9 .93 .97]\n'
+                                output_shpdss.write(out)
     
-                            # if CURVE1 not in shapewritten:
-                                # shapewritten[CURVE1] = 0
-                                # name1 = CURVE1.replace('.txt', '')
-                                # name1 = name1.replace('.dss', '')
-                                # out = 'New Loadshape.' + name1 + ' npts=96 '
-                                # out += 'minterval=15 csvfile=' + folder_profile
-                                # out += '\\DG\\' + CURVE1 + '\n'
-                                # output_shpdss.write(out)
-                            # if CURVE2 not in shapewritten:
-                                # shapewritten[CURVE2] = 0
-                                # name2 = CURVE2.replace('.txt', '')
-                                # name2 = name2.replace('.dss', '')
-                                # out = 'New Tshape.' + name2 + ' npts=96 '
-                                # out += 'minterval=15 csvfile=' + folder_profile
-                                # out += '\\DG\\' + CURVE2 + '\n'
-                                # output_shpdss.write(out)
-                            # pvname = "PV" + NPHAS + "F" 
-                            # pvname += circuitName + str(n)
-                            # pvSentence = "New PVSystem." + pvname
-                            # pvSentence += " bus1=" + bus + conn
-                            # pvSentence += " kV=" + kV + " phases="
-                            # pvSentence += NPHAS + " kVA=" + kVA
-                            # pvSentence += " PF=1 conn=" + conf
-                            # pvSentence += " irrad=0.90 Pmpp=" + kVA
-                            # pvSentence += " temperature=25 effcurve="
-                            # pvSentence += "Myeff P-TCurve=MyPvsT Daily="
-                            # pvSentence += name1 + " TDaily=" + name2 
-                            # pvSentence +=" %cutin=0.01 %cutout=0.01 "
-                            # pvSentence += "enabled=yes \n"
-                            # dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], pvname)
-                            # output_GDdss.write(pvSentence)
-                            # n += 1
-                        # else:
-                            # if (CURVE1, CURVE2)not in shapewritten:
-                                # shapewritten[(CURVE1, CURVE2)] = "curveDG" + str(i)
-                                # out = "New Loadshape.curveDG" + str(i) 
-                                # out += " npts=96 minterval=15 mult=(file="
-                                # out += folder_profile + '\\DG\\' + CURVE1
-                                # out += ")Qmult=(file=" + folder_profile
-                                # out += '\\DG\\' + CURVE2 + ")useactual=no \n"
-                                # output_shpdss.write(out)
-                                # i += 1
-                            # GDName = "DG" + NPHAS + "F" + circuitName + str(n)
-                            # DGsentence = "New Generator." + GDName
-                            # DGsentence += " Bus1=" + bus + conn + " phases="
-                            # DGsentence += NPHAS + " conn=" + conf
-                            # DGsentence +=  " kVA=" + kVA + " kV=" + kV
-                            # DGsentence += " kW=1 kVAR=1 Model=1 daily="
-                            # DGsentence += shapewritten[(CURVE1, CURVE2)] 
-                            # DGsentence += " status=variable\n"
-                            # dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], GDName)
-                            # output_GDdss.write(DGsentence)
-                            # n += 1
-                    # output_GDdss.close()
-                    # layerGD.commitChanges()
-                # except Exception:
-                    # self.print_error()
+                            if CURVE1 not in shapewritten:
+                                shapewritten[CURVE1] = 0
+                                name1 = CURVE1.replace('.txt', '')
+                                name1 = name1.replace('.dss', '')
+                                out = 'New Loadshape.' + name1 + ' npts=96 '
+                                out += 'minterval=15 csvfile=' + folder_profile
+                                out += '\\DG\\' + CURVE1 + '\n'
+                                output_shpdss.write(out)
+                            if CURVE2 not in shapewritten:
+                                shapewritten[CURVE2] = 0
+                                name2 = CURVE2.replace('.txt', '')
+                                name2 = name2.replace('.dss', '')
+                                out = 'New Tshape.' + name2 + ' npts=96 '
+                                out += 'minterval=15 csvfile=' + folder_profile
+                                out += '\\DG\\' + CURVE2 + '\n'
+                                output_shpdss.write(out)
+                            pvname = "PV" + NPHAS + "F" 
+                            pvname += circuitName + str(n)
+                            pvSentence = "New PVSystem." + pvname
+                            pvSentence += " bus1=" + bus + conn
+                            pvSentence += " kV=" + kV + " phases="
+                            pvSentence += NPHAS + " kVA=" + kVA
+                            pvSentence += " PF=1 conn=" + conf
+                            pvSentence += " irrad=0.90 Pmpp=" + kVA
+                            pvSentence += " temperature=25 effcurve="
+                            pvSentence += "Myeff P-TCurve=MyPvsT Daily="
+                            pvSentence += name1 + " TDaily=" + name2 
+                            pvSentence +=" %cutin=0.01 %cutout=0.01 "
+                            pvSentence += "enabled=yes \n"
+                            dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], pvname)
+                            output_GDdss.write(pvSentence)
+                            n += 1
+                        else:
+                            if (CURVE1, CURVE2)not in shapewritten:
+                                shapewritten[(CURVE1, CURVE2)] = "curveDG" + str(i)
+                                out = "New Loadshape.curveDG" + str(i) 
+                                out += " npts=96 minterval=15 mult=(file="
+                                out += folder_profile + '\\DG\\' + CURVE1
+                                out += ")Qmult=(file=" + folder_profile
+                                out += '\\DG\\' + CURVE2 + ")useactual=no \n"
+                                output_shpdss.write(out)
+                                i += 1
+                            GDName = "DG" + NPHAS + "F" + circuitName + str(n)
+                            DGsentence = "New Generator." + GDName
+                            DGsentence += " Bus1=" + bus + conn + " phases="
+                            DGsentence += NPHAS + " conn=" + conf
+                            DGsentence +=  " kVA=" + kVA + " kV=" + kV
+                            DGsentence += " kW=1 kVAR=1 Model=1 daily="
+                            DGsentence += shapewritten[(CURVE1, CURVE2)] 
+                            DGsentence += " status=variable\n"
+                            dataList["LAYER"].changeAttributeValue(dataList["ID"], dataList["INDEXDSS"], GDName)
+                            output_GDdss.write(DGsentence)
+                            n += 1
+                    output_GDdss.close()
+                    layerGD.commitChanges()
+                except Exception:
+                    self.print_error()
                     
                     
             ########################
@@ -10468,8 +9233,8 @@ class QGIS2OpenDSS(object):
                     os.remove(dir_archivo_ACOlog)
                 except Exception:
                     pass
-            
-                
+            self.progress.progressBar.setValue(98)
+           
            
             # Mensaje sobre transformadores con conexiones no aceptadas
            
@@ -10533,51 +9298,7 @@ class QGIS2OpenDSS(object):
                                                u"No se exportó la biblioteca de conductores porque ya existe en la carpeta de salida.")
                 
                 print(aviso)
-            
-            # Escritura de errores de geometrías
-            
-            avisoConex, conex_error_log = self.GeometryCode_Verification(foldername, lista_geo_MT_aer, lista_geo_MT_sub, lista_geo_BT_aer, lista_geo_BT_sub, lista_geo_AC_aer)
-            
-            filename_conex = "error_Conexiones"+circuitName+".log"
-            dir_archivo_conex = dir_logs + "/" + filename_conex
-            if avisoConex:
-                with open(dir_archivo_conex, 'w')as archivo_errConexlog:
-                    archivo_errConexlog.write(conex_error_log)
-                aviso = "Favor revise el archivo " + filename_conex
-                aviso += " ya que existen geometrías/linecodes que deben de ser agregados/corregidos"
-                QMessageBox.warning(None, QCoreApplication.translate('dialog', u'Advertencias conexiones'), aviso)
-                
-            else: # Si no hay mensajes de error se elimina el archivo para que no exista un archivo de errores falso
-                try:
-                    os.remove(dir_archivo_conex)
-                except Exception:
-                    pass
-            
-            # Escritura de advertencias de fusibles
-            if capa_fuses is True:
-            
-                fusebib_dir = foldername+"/Bibliotecas/Fuse_Curves.dss"
-                avisoFuses = self.Fuses_Verification(fusebib_dir, warning_fuses)
-                
-                filename_fuses_adv = "error_Fusibles"+circuitName+".log"
-                dir_archivo_fuses_adv = dir_logs + "/" + filename_fuses_adv
-                
-                if avisoFuses != "":
-                    with open(dir_archivo_fuses_adv, 'w') as archivo_errFuseslog:
-                        archivo_errFuseslog.write(avisoFuses)
-                    aviso = "Favor revise el archivo " + filename_fuses_adv
-                    aviso += " ya que existen curvas de fusibles o sus multiplicadores que deben de ser modificados"
-                    QMessageBox.warning(None, QCoreApplication.translate('dialog', u'Advertencias conexiones'), aviso)
-                    
-                else: # Si no hay mensajes de error se elimina el archivo para que no exista un archivo de errores falso
-                    try:
-                        os.remove(dir_archivo_fuses_adv)
-                    except Exception:
-                        pass
-                    
-            
-            self.progress.progressBar.setValue(98)
-            
+              
             if Error is True:
                 self.iface.messageBar().pushCritical("QGIS2OpenDSS", QCoreApplication.translate('dialog',
                                                                                                u'Sucedió un error grave y  no fue posible completar la operación')) # Aviso de finalizado en barra de QGIS
@@ -10626,3 +9347,7 @@ class QGIS2OpenDSS(object):
             # print "El tiempo de escritura fue "+ str(finalTime-startTimeWriting)
             
             """
+            
+            
+            
+            
