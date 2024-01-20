@@ -260,7 +260,7 @@ class LineCode():
 
         return LineCode_Data
 
-    def get_LineCode(self, df) -> None:
+    def get_LineCode(self, df, output_folder) -> None:
         
         # Call the linecode creator method
         LineCode_Data = self.get_linecodes(df)
@@ -271,7 +271,7 @@ class LineCode():
             LineCode_DataMod.append(linecode)
 
         # Output file
-        output_file = "Lineas_LineCode.dss"
+        output_file = output_folder + r"\Lineas_LineCode.dss"
         # Generate .dss file 
         with open(output_file, "w") as f:
             for linecode in LineCode_DataMod:
@@ -286,7 +286,10 @@ if __name__ == "__main__":
     linecode = LineCode()
 
     # Input file
-    input_file = "Lineas.xlsx"
+    input_file = r"C:\Users\luisd\Dropbox\Practica_UCR\Lineas_V2.xlsx"
+
+    output_folder = r"C:\Users\luisd\OneDrive\Escritorio\ICE CYME"\
+                    r"\Circuito_Juan_Ilama_Jaco\DSS\Bibliotecas"
 
     # Create a dataframe -> drop_duplicates() delete the duplicate rows
     df = pd.read_excel(input_file, sheet_name= "Lineas", skiprows= 2).drop_duplicates()
@@ -297,4 +300,4 @@ if __name__ == "__main__":
             df[c] = df[c].apply(f)
 
     # Execute method that obtains LineCodes
-    linecode.get_LineCode(df)
+    linecode.get_LineCode(df, output_folder)

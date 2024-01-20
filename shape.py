@@ -356,6 +356,22 @@ class CKTdata():
         """
         pvData = self._ders
         for k, v in pvData.items():
+            col1 = []
+            col2 = []
+            col3 = []
+            col4 = []
+            col5 = []
+            col6 = []
+            col7 = []
+            col8 = []
+            col9 = []
+            col10 = []
+            col11 = []
+            col12 = []
+            col13 = []
+            col14 = []
+            col15 = []
+
             if k == "Name":
                 col1 = v
             elif k == "Node1":
@@ -386,7 +402,6 @@ class CKTdata():
                 col14 = v
             if k == "CURVE2_Q":
                 col15 = v
-            
 
         cols = zip(col1, col2, col3, col4, col5, col6,
                    col7, col8, col9, col10,
@@ -906,10 +921,10 @@ class Fuse():
 
 class LSDG():
     """Large scale distributed generation
-    
+
     The main differences between large scale and small scale
     are the active and reactive power curves and installed power.
-    
+
     +-------------+-------------+
     | Small scale | Large scale |
     +-------------+-------------+
@@ -924,10 +939,10 @@ class LSDG():
         self._NODE1 = []
         self._SWITCH1 = []
         self._TECH = []
-        self._MVA = [] # LSGD
+        self._MVA = []  # LSGD
         self._XDP = []
         self._XDPP = []
-        self._DAILY = [] # LSGD
+        self._DAILY = []  # LSGD
         self._X1 = []
         self._Y1 = []
 
@@ -958,10 +973,10 @@ class LSDG_GD(LSDG):
 
 class SSDG():
     """Small scale distributed generation.
-    
+
     The main differences between large scale and small scale
     are the active and reactive power curves and installed power.
-    
+
     +-------------+-------------+
     | Small scale | Large scale |
     +-------------+-------------+
@@ -979,7 +994,7 @@ class SSDG():
         self._KVA = []
         self._XDP = []
         self._XDPP = []
-        self._CURVE1= []
+        self._CURVE1 = []
         self._CURVE2 = []
         self._X1 = []
         self._Y1 = []
@@ -2930,13 +2945,13 @@ def layer2df(layer: dict) -> tuple[pd.DataFrame]:
     """
     dictData = dict()
     for (k, v) in layer.items():
-        if type(v) == list:
+        if isinstance(v, list):
             if len(v) != 0:
                 dictData[k] = v
     return pd.DataFrame.from_dict(dictData), dictData
 
 
-def df2shp(df: pd.DataFrame, namestr: str):
+def df2shp(df: pd.DataFrame, namestr: str, output_path: str):
     """From pandas.DataFrame to shapefile.
 
     It will create a folder named "GIS" in the current
@@ -2964,7 +2979,7 @@ def df2shp(df: pd.DataFrame, namestr: str):
     import os
 
     # Define the folder name
-    folder_name = "GIS"
+    folder_name = output_path + r"\GIS\Capas"
 
     # Create the folder if it does not exist
     if not os.path.exists(folder_name):
@@ -2973,24 +2988,30 @@ def df2shp(df: pd.DataFrame, namestr: str):
     # Define the file path within the folder
     file_path = os.path.join(".", folder_name, namestr)
 
-    if "X2" and "Y2" in df.columns:
-        from_buses = [Point(X1, Y1) for X1, Y1 in zip(df["X1"], df["Y1"])]
-        to_buses = [Point(X2, Y2) for X2, Y2 in zip(df["X2"], df["Y2"])]
-        lines = [LineString([p1, p2]) for p1, p2 in zip(from_buses, to_buses)]
-        gdf = gpd.GeoDataFrame(df, geometry=lines, crs="EPSG:5367")
-        gdf.to_file(file_path+".shp")
-        return gdf
+    if not df.empty:
+        if "X2" and "Y2" in df.columns:
+            from_buses = [Point(X1, Y1) for X1, Y1 in zip(df["X1"], df["Y1"])]
+            to_buses = [Point(X2, Y2) for X2, Y2 in zip(df["X2"], df["Y2"])]
+            lines = [
+                LineString([p1, p2]) for p1, p2 in zip(from_buses, to_buses)
+                ]
+            gdf = gpd.GeoDataFrame(df, geometry=lines, crs="EPSG:5367")
+            gdf.to_file(file_path+".shp")
+            return gdf
 
-    else:
-        geometry = [Point(X, Y) for X, Y in zip(df["X1"], df["Y1"])]
-        gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:5367")
-        gdf.to_file(file_path+".shp")
-        return gdf
+        else:
+            geometry = [Point(X, Y) for X, Y in zip(df["X1"], df["Y1"])]
+            gdf = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:5367")
+            gdf.to_file(file_path+".shp")
+            return gdf
 
 
 if __name__ == "__main__":
     # Import Neplan circuit data
-    directory = "Circuito.xlsx"
+    directory = r"C:\Users\luisd\Dropbox\Practica_UCR\Juan_Ilama_Jaco"\
+                r"\Circuito_5.xlsx"
+    output_path = r"C:\Users\luisd\OneDrive\Escritorio\ICE CYME"\
+                  r"\Circuito_Juan_Ilama_Jaco"
     cktNeplan = CKTdata()
     cktNeplan.call_data(directory)
     # New QGIS circuit
@@ -3005,10 +3026,10 @@ if __name__ == "__main__":
     UG_LVbuses_df, _ = layer2df(cktQgis._buses["underG_LVbuses"])
     UG_MVbuses_df, _ = layer2df(cktQgis._buses["underG_MVbuses"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    OH_LVbuses_gdf = df2shp(OH_LVbuses_df, "overH_LVbuses")
-    OH_MVbuses_gdf = df2shp(OH_MVbuses_df, "overH_MVbuses")
-    UG_LVbuses_gdf = df2shp(UG_LVbuses_df, "underG_LVbuses")
-    UG_MVbuses_gdf = df2shp(UG_MVbuses_df, "underG_MVbuses")
+    OH_LVbuses_gdf = df2shp(OH_LVbuses_df, "overH_LVbuses", output_path)
+    OH_MVbuses_gdf = df2shp(OH_MVbuses_df, "overH_MVbuses", output_path)
+    UG_LVbuses_gdf = df2shp(UG_LVbuses_df, "underG_LVbuses", output_path)
+    UG_MVbuses_gdf = df2shp(UG_MVbuses_df, "underG_MVbuses", output_path)
 
     # ------------------------------
     # Transformer layers *.shp files
@@ -3025,16 +3046,19 @@ if __name__ == "__main__":
     #     cktQgis._transformers["Subestation_without_modeling_transformer"])
     # Finally write shapefiles within "./GIS/shapename.shp"
     Distribution_transformers_gdf = df2shp(
-        Distribution_transformers_df, "Distribution_transformers")
+        Distribution_transformers_df, "Distribution_transformers", output_path)
     # Subestation_three_phase_transformer_gdf = df2shp(
     #     Subestation_three_phase_transformer_df,
-    #     "Subestation_three_phase_transformer")
+    #     "Subestation_three_phase_transformer",
+    #     output_path)
     # Subestation_autotransformer_gdf = df2shp(
     #     Subestation_autotransformer_df,
-    #     "Subestation_autotransformer")
+    #     "Subestation_autotransformer",
+    #     output_path)
     # Subestation_without_modeling_transformer_gdf = df2shp(
     #     Subestation_without_modeling_transformer_df,
-    #     "Subestation_without_modeling_transformer")
+    #     "Subestation_without_modeling_transformer",
+    #     output_path)
 
     # Provisional model of subestation
     subestation_without_modeling = {"MEDVOLT": [34.5],
@@ -3048,7 +3072,7 @@ if __name__ == "__main__":
         crs="EPSG:5367")
 
     modelFree_subEstat_gdf.to_file(
-        "./GIS/modelFree_subEstat.shp")
+        output_path + r"\GIS\Capas\modelFree_subEstat.shp")
 
     # -----------------------
     # Load layers *.shp files
@@ -3058,8 +3082,8 @@ if __name__ == "__main__":
     LV_load_df, _ = layer2df(cktQgis._LVloads["LV_load"])
     MV_load_df, _ = layer2df(cktQgis._MVloads["MV_load"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    LV_load_gdf = df2shp(LV_load_df, "LV_load")
-    # MV_load_gdf = df2shp(MV_load_df, "MV_load")
+    LV_load_gdf = df2shp(LV_load_df, "LV_load", output_path)
+    # MV_load_gdf = df2shp(MV_load_df, "MV_load", output_path)
 
     # -----------------------
     # Line layers *.shp files
@@ -3072,13 +3096,14 @@ if __name__ == "__main__":
     UG_MVlines_df, _ = layer2df(cktQgis._lines["underG_MVlines"])
     service_LVlines_df, _ = layer2df(cktQgis._lines["service_LVlines"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    OH_LVline_gdf = df2shp(OH_LVlines_df, "overH_LVlines")
-    OH_MVline_gdf = df2shp(OH_MVlines_df, "overH_MVlines")
-    UG_LVline_gdf = df2shp(UG_LVlines_df, "underG_LVlines")
-    UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines")
+    OH_LVline_gdf = df2shp(OH_LVlines_df, "overH_LVlines", output_path)
+    OH_MVline_gdf = df2shp(OH_MVlines_df, "overH_MVlines", output_path)
+    UG_LVline_gdf = df2shp(UG_LVlines_df, "underG_LVlines", output_path)
+    UG_MVline_gdf = df2shp(UG_MVlines_df, "underG_MVlines", output_path)
     service_LVlines_gdf = df2shp(
         service_LVlines_df,
-        "service_LVlines")
+        "service_LVlines",
+        output_path)
 
     # -----------------------
     # Fuse layers *.shp files
@@ -3087,7 +3112,7 @@ if __name__ == "__main__":
     # Turn layers into df
     fuse_df, _ = layer2df(cktQgis._fuses["Fuses"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    fuse_gdf = df2shp(fuse_df, "Fuses")
+    fuse_gdf = df2shp(fuse_df, "Fuses", output_path)
 
     # ----------------------------
     # Regulator layers *.shp files
@@ -3096,7 +3121,7 @@ if __name__ == "__main__":
     # Turn layers into df
     regulator_df, _ = layer2df(cktQgis._regulators["Regulators"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    regulator_gdf = df2shp(regulator_df, "Regulators")
+    regulator_gdf = df2shp(regulator_df, "Regulators", output_path)
 
     # ---------------------
     # PV layers *.shp files
@@ -3105,7 +3130,7 @@ if __name__ == "__main__":
     # Turn layers into df
     PV_df, _ = layer2df(cktQgis._smallScale_DG["SSDG_PVs"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    PV_gdf = df2shp(PV_df, "SSDG_PVs")
+    PV_gdf = df2shp(PV_df, "SSDG_PVs", output_path)
 
     # ---------------------------
     # Recloser layers *.shp files
@@ -3114,7 +3139,7 @@ if __name__ == "__main__":
     # Turn layers into df
     recloser_df, _ = layer2df(cktQgis._reclosers["Reclosers"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    recloser_gdf = df2shp(recloser_df, "Reclosers")
+    recloser_gdf = df2shp(recloser_df, "Reclosers", output_path)
 
     # ---------------------------------
     # Public Lights layers *.shp files
@@ -3123,4 +3148,4 @@ if __name__ == "__main__":
     # Turn layers into df
     public_Lights_df, _ = layer2df(cktQgis._publicLights["Public_Lights"])
     # Finally write shapefiles within "./GIS/shapename.shp"
-    public_Lights_gdf = df2shp(public_Lights_df, "Public_Lights")
+    public_Lights_gdf = df2shp(public_Lights_df, "Public_Lights", output_path)
